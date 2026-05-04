@@ -215,6 +215,14 @@ export default function BranchRecipesAdminPage() {
             />
           </DialogContent>
         </Dialog>
+        <Button
+          variant="outline"
+          onClick={() => setLocation("/branch-recipes/admin/onboarding")}
+          data-testid="button-onboarding-admin"
+          title="Reçete onboarding programını yönet (rol bazlı öğrenme yolları)"
+        >
+          🎓 <span className="ml-1 hidden sm:inline">Onboarding</span>
+        </Button>
       </div>
 
       {/* Filtreler */}

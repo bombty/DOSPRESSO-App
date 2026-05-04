@@ -9,7 +9,7 @@ import { isHQRole } from "@shared/schema";
 import {
   BookOpen, Trophy, TrendingUp, Target,
   CheckCircle, Flame, GraduationCap, ChevronRight,
-  Clock, Star, Play, Sparkles, Award,
+  Clock, Star, Play, Sparkles, Award, Coffee,
 } from "lucide-react";
 import { Link } from "wouter";
 import { ErrorState } from "../components/error-state";
@@ -315,6 +315,11 @@ export default function Academy() {
           </Card>
         ) : null}
 
+        {/* Section 3.5: Reçete Onboarding (sadece şube rolleri için) */}
+        {!userIsHQ && user?.role && ['barista', 'bar_buddy', 'stajyer', 'supervisor', 'supervisor_buddy'].includes(user.role) && (
+          <RecipeOnboardingCard userRole={user.role} />
+        )}
+
         {/* Section 4: Rozetler & Başarılar */}
         <Card data-testid="card-badges">
           <CardHeader className="pb-2">
@@ -365,5 +370,93 @@ export default function Academy() {
 
       </div>
     </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// Recipe Onboarding Card — Şube rolleri için reçete öğrenme kartı
+// (TASK-ONBOARDING-001 — 4 May 2026)
+// ════════════════════════════════════════════════════════════════
+
+function RecipeOnboardingCard({ userRole }: { userRole: string }) {
+  const { data, isLoading } = useQuery<{
+    role: string;
+    totalSteps: number;
+    completedSteps: number;
+    percentComplete: number;
+    steps: Array<{
+      id: number;
+      stepNumber: number;
+      title: string;
+      progress: {
+        totalRecipes: number;
+        masteredRecipes: number;
+        percentComplete: number;
+        isComplete: boolean;
+      };
+    }>;
+  }>({
+    queryKey: ["/api/branch-onboarding", userRole, "progress"],
+    queryFn: async () => {
+      const res = await fetch(`/api/branch-onboarding/${userRole}/progress`, { credentials: "include" });
+      if (!res.ok) throw new Error("İlerleme alınamadı");
+      return res.json();
+    },
+    staleTime: 60000,
+  });
+
+  if (isLoading) {
+    return <Skeleton className="h-32 w-full" />;
+  }
+
+  if (!data || data.totalSteps === 0) {
+    return null; // Bu rol için onboarding tanımlanmamış
+  }
+
+  // Sıradaki tamamlanmamış adım
+  const nextStep = data.steps.find(s => !s.progress.isComplete);
+
+  return (
+    <Card data-testid="card-recipe-onboarding">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Coffee className="w-4 h-4 text-primary" />
+            <span className="font-semibold text-sm">Reçete Onboarding</span>
+          </div>
+          <Badge variant="outline" className="text-xs">
+            {data.completedSteps}/{data.totalSteps} adım
+          </Badge>
+        </div>
+
+        <Progress value={data.percentComplete} className="h-2 mb-3" data-testid="progress-onboarding" />
+
+        {nextStep ? (
+          <Link to="/branch-recipes">
+            <div className="p-3 rounded-md bg-muted/50 hover:bg-muted/80 transition-colors cursor-pointer">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="secondary" className="text-[10px]">
+                  Adım {nextStep.stepNumber}
+                </Badge>
+                <span className="text-xs font-medium truncate flex-1">{nextStep.title}</span>
+                <ChevronRight className="w-3 h-3 text-muted-foreground" />
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <span>{nextStep.progress.masteredRecipes}/{nextStep.progress.totalRecipes} reçete</span>
+                <span>•</span>
+                <span>%{nextStep.progress.percentComplete} tamamlandı</span>
+              </div>
+            </div>
+          </Link>
+        ) : (
+          <div className="p-3 rounded-md bg-green-50 dark:bg-green-950/30 text-center">
+            <CheckCircle className="w-5 h-5 text-green-600 mx-auto mb-1" />
+            <p className="text-xs text-green-700 dark:text-green-400 font-medium">
+              Tüm onboarding adımları tamamlandı! 🎉
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

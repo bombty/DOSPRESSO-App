@@ -437,6 +437,291 @@ router.get("/api/branch-onboarding/:role", isAuthenticated, async (req: any, res
 });
 
 // ──────────────────────────────────────
+// GET /api/branch-onboarding (ALL ROLES)
+// Tüm rollerin onboarding adımları (HQ admin için)
+// ──────────────────────────────────────
+router.get("/api/branch-onboarding", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Sadece HQ rolleri" });
+    }
+
+    const includeInactive = req.query.includeInactive === 'true';
+
+    const steps = await db.select().from(branchOnboardingSteps)
+      .where(includeInactive ? sql`1=1` : eq(branchOnboardingSteps.isActive, true))
+      .orderBy(branchOnboardingSteps.targetRole, branchOnboardingSteps.stepNumber);
+
+    // Rol bazlı grupla
+    const byRole: Record<string, any[]> = {};
+    for (const s of steps) {
+      if (!byRole[s.targetRole]) byRole[s.targetRole] = [];
+      byRole[s.targetRole].push(s);
+    }
+
+    res.json({ steps, byRole, total: steps.length });
+  } catch (error: any) {
+    console.error("[branch-onboarding ALL] hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// POST /api/branch-onboarding
+// Yeni onboarding adımı ekle
+// Yetki: HQ_EDIT_ROLES
+// ──────────────────────────────────────
+router.post("/api/branch-onboarding", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const {
+      targetRole, stepNumber, title, description,
+      recipeIds, estimatedMinutes, prerequisiteStepIds, completionCriteria,
+    } = req.body;
+
+    if (!targetRole || !stepNumber || !title) {
+      return res.status(400).json({ error: "targetRole, stepNumber ve title zorunlu" });
+    }
+
+    // Aynı role + stepNumber çakışması var mı?
+    const [conflict] = await db.select()
+      .from(branchOnboardingSteps)
+      .where(and(
+        eq(branchOnboardingSteps.targetRole, targetRole),
+        eq(branchOnboardingSteps.stepNumber, stepNumber),
+      ));
+
+    if (conflict) {
+      return res.status(409).json({
+        error: `${targetRole} rolü için adım #${stepNumber} zaten mevcut (id=${conflict.id})`,
+        existingId: conflict.id,
+      });
+    }
+
+    const [step] = await db.insert(branchOnboardingSteps).values({
+      targetRole,
+      stepNumber,
+      title,
+      description: description ?? null,
+      recipeIds: Array.isArray(recipeIds) ? recipeIds : [],
+      estimatedMinutes: estimatedMinutes ?? 30,
+      prerequisiteStepIds: Array.isArray(prerequisiteStepIds) ? prerequisiteStepIds : [],
+      completionCriteria: completionCriteria ?? null,
+      isActive: true,
+    }).returning();
+
+    res.status(201).json(step);
+  } catch (error: any) {
+    console.error("[POST branch-onboarding] hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// PATCH /api/branch-onboarding/:id
+// Onboarding adımı güncelle
+// ──────────────────────────────────────
+router.patch("/api/branch-onboarding/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const allowed = ['targetRole', 'stepNumber', 'title', 'description', 'recipeIds',
+      'estimatedMinutes', 'prerequisiteStepIds', 'completionCriteria', 'isActive'];
+
+    const updates: any = { updatedAt: new Date() };
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+
+    // Eğer role + stepNumber değiştiriliyorsa çakışma kontrolü
+    if (updates.targetRole !== undefined || updates.stepNumber !== undefined) {
+      const [current] = await db.select().from(branchOnboardingSteps).where(eq(branchOnboardingSteps.id, id));
+      if (!current) return res.status(404).json({ error: "Adım bulunamadı" });
+
+      const newRole = updates.targetRole ?? current.targetRole;
+      const newStep = updates.stepNumber ?? current.stepNumber;
+
+      const [conflict] = await db.select()
+        .from(branchOnboardingSteps)
+        .where(and(
+          eq(branchOnboardingSteps.targetRole, newRole),
+          eq(branchOnboardingSteps.stepNumber, newStep),
+        ));
+
+      if (conflict && conflict.id !== id) {
+        return res.status(409).json({
+          error: `Bu role + step kombinasyonu zaten kullanılıyor (id=${conflict.id})`,
+        });
+      }
+    }
+
+    const [updated] = await db.update(branchOnboardingSteps)
+      .set(updates)
+      .where(eq(branchOnboardingSteps.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Adım bulunamadı" });
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("[PATCH branch-onboarding] hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// DELETE /api/branch-onboarding/:id
+// Soft delete (isActive=false)
+// ──────────────────────────────────────
+router.delete("/api/branch-onboarding/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const [updated] = await db.update(branchOnboardingSteps)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(branchOnboardingSteps.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Adım bulunamadı" });
+    }
+
+    res.json({ message: "Onboarding adımı pasif edildi (soft delete)", id: updated.id });
+  } catch (error: any) {
+    console.error("[DELETE branch-onboarding] hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// GET /api/branch-onboarding/:role/progress
+// Bu rol için kullanıcının ilerleme durumu
+// (her adım için: tamamlanan reçete / toplam reçete)
+// ──────────────────────────────────────
+router.get("/api/branch-onboarding/:role/progress", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const role = req.params.role;
+    const userId = (req.query.userId as string) || req.user.id;
+
+    // Sadece kendi progress'ini ya da HQ admin başkasının
+    if (userId !== req.user.id && !canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Sadece kendi ilerlemenizi görebilirsiniz" });
+    }
+
+    const steps = await db.select().from(branchOnboardingSteps)
+      .where(and(
+        eq(branchOnboardingSteps.targetRole, role),
+        eq(branchOnboardingSteps.isActive, true),
+      ))
+      .orderBy(branchOnboardingSteps.stepNumber);
+
+    if (steps.length === 0) {
+      return res.json({ role, userId, steps: [], totalSteps: 0, completedSteps: 0, percentComplete: 0 });
+    }
+
+    // Tüm adımlardaki recipe ID'leri topla
+    const allRecipeIds = new Set<number>();
+    for (const s of steps) {
+      for (const rid of (s.recipeIds || [])) allRecipeIds.add(rid);
+    }
+
+    // Bu kullanıcının ilgili reçeteleri için progress
+    const progressRows = allRecipeIds.size > 0
+      ? await db.select()
+        .from(branchRecipeLearningProgress)
+        .where(and(
+          eq(branchRecipeLearningProgress.userId, userId),
+          inArray(branchRecipeLearningProgress.recipeId, Array.from(allRecipeIds)),
+        ))
+      : [];
+
+    const progressByRecipe = new Map(progressRows.map(p => [p.recipeId, p]));
+
+    // Her adım için ilerleme hesapla
+    let completedSteps = 0;
+    const stepsWithProgress = steps.map(step => {
+      const recipeIds = step.recipeIds || [];
+      const total = recipeIds.length;
+
+      let mastered = 0;
+      let viewed = 0;
+      let demoApproved = 0;
+      let avgScore = 0;
+      let scoreCount = 0;
+
+      for (const rid of recipeIds) {
+        const p = progressByRecipe.get(rid);
+        if (!p) continue;
+        if (p.viewCount && p.viewCount > 0) viewed++;
+        if (p.masteredAt) mastered++;
+        if (p.demoCompleted) demoApproved++;
+        if (p.bestScore) {
+          avgScore += parseFloat(p.bestScore);
+          scoreCount++;
+        }
+      }
+
+      // Tamamlanma kriteri
+      const criteria = step.completionCriteria as any;
+      const minScore = criteria?.minQuizScore || 70;
+      const requireDemo = criteria?.requireRecipeDemo || false;
+
+      // Adım tamamlanmış sayılır mı?
+      const isComplete = total === 0 || (
+        mastered === total ||
+        (scoreCount === total && (avgScore / scoreCount) >= minScore && (!requireDemo || demoApproved === total))
+      );
+
+      if (isComplete) completedSteps++;
+
+      return {
+        ...step,
+        progress: {
+          totalRecipes: total,
+          viewedRecipes: viewed,
+          masteredRecipes: mastered,
+          demoApprovedRecipes: demoApproved,
+          avgScore: scoreCount > 0 ? Math.round(avgScore / scoreCount) : null,
+          isComplete,
+          percentComplete: total === 0 ? 100 : Math.round((mastered / total) * 100),
+        },
+      };
+    });
+
+    res.json({
+      role,
+      userId,
+      steps: stepsWithProgress,
+      totalSteps: steps.length,
+      completedSteps,
+      percentComplete: Math.round((completedSteps / steps.length) * 100),
+    });
+  } catch (error: any) {
+    console.error("[branch-onboarding/:role/progress] hatası:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
 // Helper: Görüntüleme kaydet
 // ──────────────────────────────────────
 async function trackRecipeView(userId: string, recipeId: number) {
