@@ -1288,7 +1288,7 @@ export default function FabrikaReceteDuzenle() {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <CardTitle className="text-base flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4" />
-                TGK Uyum Bilgileri
+                Etiket Bilgileri (TGK 2017/2284)
                 <Badge variant="outline" className="text-[10px]">Türk Gıda Kodeksi</Badge>
               </CardTitle>
               {canEditNutrition && (

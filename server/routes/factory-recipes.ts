@@ -2454,7 +2454,7 @@ router.post("/api/factory/recipes/:id/calculate-nutrition", isAuthenticated, asy
         saltG: Number(per100g.saltG.toFixed(2)),
       };
       await db.update(factoryRecipes)
-        .set({ nutritionFacts: nutritionFacts } as any)
+        .set({ nutritionFacts: sql`${JSON.stringify(nutritionFacts)}::jsonb` })
         .where(eq(factoryRecipes.id, recipeId));
     }
 
