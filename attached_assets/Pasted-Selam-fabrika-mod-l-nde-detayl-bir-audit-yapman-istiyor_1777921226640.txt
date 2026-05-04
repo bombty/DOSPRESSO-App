@@ -1,0 +1,65 @@
+Selam, fabrika modülünde detaylı bir audit yapmanı istiyorum. Claude bugün
+TASK-URETIM-PLANLAMA-V2'yi tamamladı (Sistem A deprecated, Sistem B aktif),
+sonra fabrika modülü genelinde derin tarama yapıp bulgu raporu çıkardı:
+docs/audit/FABRIKA-AUDIT-4-MAYIS-2026.md
+
+Şimdi senin gözünden bağımsız bir doğrulama istiyorum. 4 ana konu var:
+
+═══════════════════════════════════════════════════════════════════
+KONU 1 — KAÇ PARALEL ÜRETİM SİSTEMİ VAR?
+═══════════════════════════════════════════════════════════════════
+
+Claude 6 paralel sistem tespit etti:
+  A) factory_production_plans (eski, deprecated)
+  B) weekly_production_plans + production_plan_items + daily_production_records
+  C) factory_production_logs (reçete versiyon log)
+  D) factory_production_runs + factory_production_outputs + factory_shift_sessions
+  E) factory-production-batches (kiosk personel kullanıyor — fabrika/kiosk.tsx 2897 satır)
+  F) factory-f2.ts (production-dashboard, stock-kpi, shift-production — UI YOK)
+
+Yapılacak:
+  1. Her tablonun row count + son 30 gün aktif kayıt sayısını çıkar:
+     - factory_production_plans
+     - weekly_production_plans
+     - factory_production_logs
+     - factory_production_runs
+     - factory_production_outputs
+     - factory_shift_sessions
+     - factory_production_batches (varsa)
+
+  2. Hangileri gerçekten kullanılıyor (last 30 day activity)?
+  3. C, D, E, F arasında birleşebilir olanlar var mı?
+  4. F (factory-f2) gerçekten ölü kod mu yoksa Aslan'ın hatırlamadığı bir şey mi?
+
+═══════════════════════════════════════════════════════════════════
+KONU 2 — GIDA ETİKET SİSTEMİ TGK 2017/2284 UYUMLU MU?
+═══════════════════════════════════════════════════════════════════
+
+Claude bugün şunları ekledi (henüz commit edilmemiş, branch:
+claude/fabrika-p1-pilot-2026-05-04, dosyalar local'da):
+  - schema-22-factory-recipes.ts'e 4 yeni kolon:
+    * storageConditions (saklama koşulları)
+    * manufacturerInfo (üretici bilgisi)
+    * mayContainAllergens (cross-contamination)
+    * shelfLifeDays (raf ömrü)
+  - factory-allergens.ts'te response'a manufacturerInfo + shelfLifeDays eklendi
+
+Yapılacak:
+  1. drizzle-kit push çalıştırıp 4 yeni kolonu DB'ye ekle
+  2. Türk Gıda Kodeksi Etiketleme Yönetmeliği (2017/2284) zorunlu alanlarını
+     listele (yasal referansla):
+     - Gıda adı ✅ (recipe.name)
+     - Bileşen listesi ✅ (factoryRecipeIngredients)
+     - Allergen vurgulu liste ✅ (recipe.allergens)
+     - Net miktar ✅ (expectedUnitWeight)
+     - Son tüketim/tavsiye edilen tüketim tarihi ✅ (expiryDate input)
+     - Saklama ve kullanım koşulları ✅ (yeni: storageConditions)
+     - Üretici/distribütör adı/adresi ✅ (yeni: manufacturerInfo)
+     - Menşe ülke (gerekirse)
+     - Net miktar
+     - Alkol oranı (alkollü içecekler için)
+     - Besin değeri tablosu ✅
+     - Lot numarası ✅ (lotNumber input)
+  3. Eksik veya zayıf alan var mı?
+  4. Mevcut etiket örnekleri (factory_recipe_label_print_logs son 10 kayıt)
+     incele — hangi alanlar dolu, hangi reçeteler etiket basm
