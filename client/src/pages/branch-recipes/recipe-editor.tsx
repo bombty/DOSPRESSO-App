@@ -41,6 +41,7 @@ import {
 import {
   ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Save,
   Coffee, ListChecks, AlertTriangle, CheckCircle2, Sparkles, X, Star, StarOff,
+  Brain, Wand2, Loader2,
 } from "lucide-react";
 
 const HQ_EDIT_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer'];
@@ -124,6 +125,13 @@ export default function BranchRecipeEditor() {
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
   const [pendingExitUrl, setPendingExitUrl] = useState<string | null>(null);
 
+  // Quiz generator state
+  const [quizGenOpen, setQuizGenOpen] = useState(false);
+  const [quizMaxQuestions, setQuizMaxQuestions] = useState(8);
+  const [quizDifficulty, setQuizDifficulty] = useState<'easy' | 'medium' | 'hard' | 'mixed'>('mixed');
+  const [quizReplaceExisting, setQuizReplaceExisting] = useState(true);
+  const [quizPreview, setQuizPreview] = useState<any[] | null>(null);
+
   // Reçete detayını çek
   const { data: detail, isLoading } = useQuery<RecipeDetail>({
     queryKey: ["/api/branch-recipes", recipeId, "edit"],
@@ -204,6 +212,74 @@ export default function BranchRecipeEditor() {
         throw new Error(err.error || err.message || "Adımlar kaydedilemedi");
       }
       return res.json();
+    },
+  });
+
+  // Quiz preview mutation (dryRun=true)
+  const quizPreviewMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/branch-recipes/${recipeId}/quizzes/generate`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          maxQuestions: quizMaxQuestions,
+          difficulty: quizDifficulty,
+          dryRun: true,
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || e.message || "Quiz üretilemedi");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setQuizPreview(data.quizzes ?? []);
+      if ((data.quizzes ?? []).length === 0) {
+        toast({
+          title: "Quiz üretilemedi",
+          description: data.message || "Yetersiz veri — daha fazla malzeme/adım ekleyin",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (e: any) => {
+      toast({ title: "Hata", description: e?.message || 'Quiz üretilemedi', variant: 'destructive' });
+    },
+  });
+
+  // Quiz apply mutation (DB'ye yaz)
+  const quizApplyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/branch-recipes/${recipeId}/quizzes/generate`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          maxQuestions: quizMaxQuestions,
+          difficulty: quizDifficulty,
+          dryRun: false,
+          replace: quizReplaceExisting,
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || e.message || "Quiz kaydedilemedi");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Quiz kaydedildi",
+        description: data.message,
+      });
+      setQuizGenOpen(false);
+      setQuizPreview(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/branch-recipes', recipeId] });
+    },
+    onError: (e: any) => {
+      toast({ title: "Hata", description: e?.message || 'Quiz kaydedilemedi', variant: 'destructive' });
     },
   });
 
@@ -431,20 +507,35 @@ export default function BranchRecipeEditor() {
             </div>
           </div>
         </div>
-        <Button
-          onClick={handleSaveAll}
-          disabled={!isDirty || isSaving}
-          className="gap-2 shrink-0"
-          data-testid="button-save-all"
-        >
-          {isSaving ? (
-            <>Kaydediliyor...</>
-          ) : (
-            <>
-              <Save className="h-4 w-4" /> Tümünü Kaydet
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          <Button
+            onClick={() => setQuizGenOpen(true)}
+            variant="outline"
+            disabled={isDirty}
+            className="gap-2"
+            title={isDirty ? "Önce malzeme/adım değişikliklerini kaydedin" : "Bu reçete için otomatik quiz soruları üret"}
+            data-testid="button-generate-quiz"
+          >
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">Quiz Üret</span>
+          </Button>
+          <Button
+            onClick={handleSaveAll}
+            disabled={!isDirty || isSaving}
+            className="gap-2"
+            data-testid="button-save-all"
+          >
+            {isSaving ? (
+              <>Kaydediliyor...</>
+            ) : (
+              <>
+                <Save className="h-4 w-4" />
+                <span className="hidden sm:inline">Tümünü Kaydet</span>
+                <span className="sm:hidden">Kaydet</span>
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Yardım kutusu */}
@@ -823,6 +914,162 @@ export default function BranchRecipeEditor() {
               }}
             >
               <Save className="h-4 w-4 mr-2" /> Kaydet ve çık
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Quiz Generator Modal */}
+      <AlertDialog open={quizGenOpen} onOpenChange={(open) => {
+        setQuizGenOpen(open);
+        if (!open) setQuizPreview(null);
+      }}>
+        <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-600" />
+              Otomatik Quiz Üretici
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {detail?.product.name} için reçete malzeme ve adımlarından otomatik quiz soruları üret.
+              Önce "Önizle" ile görür, beğenirsen "Kaydet" dersin.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-3 py-2">
+            {/* Ayarlar */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Maksimum Soru Sayısı</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={quizMaxQuestions}
+                  onChange={(e) => setQuizMaxQuestions(Math.min(20, Math.max(1, Number(e.target.value) || 8)))}
+                  data-testid="input-quiz-max-questions"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Zorluk</Label>
+                <Select value={quizDifficulty} onValueChange={(v) => setQuizDifficulty(v as any)}>
+                  <SelectTrigger data-testid="select-quiz-difficulty">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mixed">Karışık</SelectItem>
+                    <SelectItem value="easy">Kolay</SelectItem>
+                    <SelectItem value="medium">Orta</SelectItem>
+                    <SelectItem value="hard">Zor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded bg-muted/40">
+              <div>
+                <Label htmlFor="quiz-replace" className="text-xs cursor-pointer">
+                  Eski otomatik quizleri sil
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Manuel girilenler korunur. Sadece "auto-generated" olanlar silinir.
+                </p>
+              </div>
+              <Switch
+                id="quiz-replace"
+                checked={quizReplaceExisting}
+                onCheckedChange={setQuizReplaceExisting}
+                data-testid="switch-quiz-replace"
+              />
+            </div>
+
+            {/* Önizleme alanı */}
+            {quizPreview && quizPreview.length > 0 && (
+              <div className="space-y-2 max-h-96 overflow-y-auto border rounded-lg p-3">
+                <div className="flex items-center justify-between sticky top-0 bg-background pb-2 border-b">
+                  <span className="text-sm font-semibold">
+                    Önizleme: {quizPreview.length} soru
+                  </span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    Henüz kaydedilmedi
+                  </Badge>
+                </div>
+                {quizPreview.map((q, idx) => (
+                  <div key={idx} className="border rounded p-2.5 space-y-1.5 text-xs">
+                    <div className="flex items-start gap-2">
+                      <Badge variant="outline" className="text-[9px] shrink-0">#{idx + 1}</Badge>
+                      <Badge
+                        variant="outline"
+                        className={`text-[9px] shrink-0 ${
+                          q.difficulty === 'easy' ? 'border-green-500 text-green-700' :
+                          q.difficulty === 'medium' ? 'border-amber-500 text-amber-700' :
+                          'border-red-500 text-red-700'
+                        }`}
+                      >
+                        {q.difficulty === 'easy' ? 'Kolay' : q.difficulty === 'medium' ? 'Orta' : 'Zor'}
+                      </Badge>
+                      <Badge variant="outline" className="text-[9px] shrink-0">
+                        {q.focusArea}
+                      </Badge>
+                    </div>
+                    <p className="font-medium">{q.question}</p>
+                    {q.options && (
+                      <ul className="ml-4 space-y-0.5">
+                        {q.options.map((opt: string, i: number) => (
+                          <li
+                            key={i}
+                            className={opt === q.correctAnswer ? 'font-semibold text-green-700 dark:text-green-400' : ''}
+                          >
+                            {opt === q.correctAnswer && '✓ '}{opt}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {q.explanation && (
+                      <p className="text-[10px] text-muted-foreground italic mt-1">
+                        💡 {q.explanation}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {quizPreview && quizPreview.length === 0 && (
+              <div className="rounded border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="h-4 w-4 inline mr-1" />
+                Yeterli veri yok — bu reçeteden quiz üretilemedi. Daha fazla malzeme/adım ekleyin.
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel onClick={() => setQuizPreview(null)}>Kapat</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => quizPreviewMutation.mutate()}
+              disabled={quizPreviewMutation.isPending}
+              data-testid="button-quiz-preview"
+            >
+              {quizPreviewMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Üretiliyor</>
+              ) : (
+                <><Wand2 className="h-4 w-4 mr-2" /> Önizle</>
+              )}
+            </Button>
+            <AlertDialogAction
+              disabled={!quizPreview || quizPreview.length === 0 || quizApplyMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                quizApplyMutation.mutate();
+              }}
+              data-testid="button-quiz-apply"
+            >
+              {quizApplyMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Kaydediliyor</>
+              ) : (
+                <><Save className="h-4 w-4 mr-2" /> Kaydet</>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
