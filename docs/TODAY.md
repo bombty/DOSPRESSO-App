@@ -90,11 +90,14 @@
    grep "RecipeFinder" /tmp/logs/Start_application_*.log | tail -10
    ```
    ```sql
-   SELECT id, title, category, severity, created_at
+   -- DOĞRU: skill_id kolonu yok, category kullan
+   SELECT COUNT(*), MAX(created_at), subcategory
    FROM agent_pending_actions
-   WHERE skill_id = 'recipe_finder'
-   ORDER BY created_at DESC LIMIT 10;
+   WHERE category = 'egitim'
+   GROUP BY subcategory
+   ORDER BY MAX(created_at) DESC;
    ```
+   Beklenen subcategory'ler: recete_baslangic / quiz_basarisizlik / demo_onay / near_master
 4. **Vardiya planlama** — 4-10 May haftası, Yavuz/Ece ile birlikte (kod değil, organizasyon)
 
 ---
