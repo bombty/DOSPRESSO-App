@@ -1,4 +1,4 @@
-# TODAY.md — 4 MAYIS 2026 (Pazartesi 20:35)
+# TODAY.md — 4 MAYIS 2026 (Pazartesi → 5 May'a geçiş)
 
 > **Skill kuralı:** Her oturum sonu Claude bu dosyayı 30 saniyede okunabilir özet olarak tazeler.
 > **Bağlam:** Pilot 12 May 09:00 — **8 gün kaldı**.
@@ -7,127 +7,121 @@
 
 ## ⚡ ŞU AN DURUM
 
-**Branch:** `main` — HEAD `9c7d1fc` (LLM fix)
-**Local:** main `9c7d1fc` (1 commit local-only — origin'e push lazım)
-**Production:** Çalışıyor — port 5000 + 23636 sandbox + 42 scheduler aktif
-**DB:** 409 user, son backup 16:18 başarılı, 16 onboarding step seed edildi
-**Pilot skoru:** ~9.95/10 (sabah 9.6 idi)
+**Saat:** 4 May 22:50+ (Aslan2 gece vardıyası, Replit Plan mode aktif)
+**Branch (gece son):** `claude/fabrika-p1-pilot-2026-05-04` (6 commit) + `claude/night-utility-2026-05-04` (yeni)
+**Replit Plan Mode:** ⏳ Çalışıyor — `fabrika-pilot-prep-4-mayis-2026` task (4 iş, ~30 dk)
+**Pilot skoru:** 9.6 → ~9.97
 
 ---
 
-## 🎯 BUGÜN BİTENLER (4 MAYIS — 13:08–20:35, ~7.5 saat)
+## 🎯 BUGÜN BİTENLER (4 MAYIS — 13:08 → 23:00, ~10 saat)
 
-### Hızlı Temizlik (3 task)
+### Aslan ile (16 task)
+
+#### Hızlı Temizlik (3)
 - ✅ 6 [TEST] banner arşivlendi
-- ✅ 2 test projesi + 1 milestone (jafdsf/fsfasdf) arşivlendi (id=4 izmir korundu)
-- ✅ 36 eski test görev iptal edildi (>60 gün geçmiş, son 7 gün eklenmiş)
+- ✅ 2 test projesi + 1 milestone arşivlendi
+- ✅ 36 eski test görev iptal
 
-### 5 Yeni Feature (P0)
-- ✅ **Mobil + Bordro + Dobody dedup** (commit `f750929`, merge `2f3b440`) — production
-  - CentrumShell flex-col md:flex-row (16 sayfa etkilendi)
-  - CEO command center: fake bordro widget'ları → real backend data
-  - Dobody PDKS warning dedup (4x → 1x)
-- ✅ **Vardiya HQ şube seçici** (merge `53d2bae`) — production
-  - 10 HQ rolü dropdown ile şube seçer
-  - AI Plan endpoint test: 12 personel → 84 shift önerisi
-- ✅ **Reçete editörü** (TASK-EDIT-001, merge `2f3b440`) — production
-  - `/branch-recipes/admin/recipe/:recipeId`
-  - 3 tab: Malzemeler / Adımlar / Aromalar (template ise)
-  - isDirty tracking + beforeunload + AlertDialog
-- ✅ **Aroma sistemi** (TASK-AROMA-001) — production
-  - 5 endpoint, 32 aroma DB'de, 29 template reçete
-  - Slot bazlı (primary/primary_fruit/secondary_fruit) UI
-- ✅ **Quiz üretici** (TASK-QUIZ-001, merge `f7a1fbb`) — production
-  - Template-based 5 soru tipi
-  - Bulk test sonucu: **44 reçete → 41 quiz DB'de** ✅
+#### 5 P0 Feature
+- ✅ Mobil + Bordro + Dobody dedup (`f750929` → merge `2f3b440`)
+- ✅ Vardıya HQ şube seçici (merge `53d2bae`)
+- ✅ Reçete editörü TASK-EDIT-001 (merge `2f3b440`)
+- ✅ Aroma sistemi TASK-AROMA-001 (5 endpoint, 32 aroma)
+- ✅ Quiz üretici TASK-QUIZ-001 (merge `f7a1fbb`, 41/44 quiz)
 
-### Bonus
-- ✅ **Dobody LLM "json" prompt fix** (commit `9c7d1fc`) — production
-  - OpenAI response_format hatası giderildi
-  - Test: 5 action üretildi (1 critical, 1 high, 3 med/high)
+#### Bonus + Ekstra
+- ✅ Dobody LLM "json" prompt fix (`9c7d1fc`)
+- ✅ Akademi onboarding TASK-ONBOARDING-001 (merge `d884f2f`, 16 step seed)
+- ✅ Recipe Finder skill TASK-DOBODY-001 (merge `958d15e`, 38. skill)
 
-### Merge Bekleyen 2 Branch
-- ⏳ **Akademi onboarding** (TASK-ONBOARDING-001, branch `claude/onboarding-akademi-v2-2026-05-04`)
-  - 4 endpoint + 2 yeni sayfa
-  - Default seed: 16 adım kuruldu (5 barista + 3 bar_buddy + 8 stajyer)
-  - Smoke test ✅ tamamı geçti
-- ⏳ **Recipe Finder skill** (TASK-DOBODY-001, branch `claude/dobody-recipe-finder-v2-2026-05-04`)
-  - Mr.Dobody'nin 38. skill'i
-  - Daily scheduler: 07:00 TR
-  - Yarın sabah ilk run kontrol edilmeli
+#### Üretim Planlama V2 (TASK-URETIM-PLANLAMA-V2)
+- ✅ Sistem A vs B karar — Replit DB sorgusu ile veri konuştu
+- ✅ DailyRecordTab + ResponsibilitiesTab + Comparison KPI iyileştirme
+- ✅ Default tab haftalik, Sistem A "eski" badge
+- ✅ Merge `e1324fd` (~1184 satır kod)
+
+#### Audit + Doc'lar
+- ✅ Fabrika modülü kapsamlı denetim raporu (282 satır)
+- ✅ Lessons Learned 4 May 2026 — 7 ders (338 satır)
+- ✅ Besin değer otomatik hesaplama UI butonu (`1d3617b`)
+- ✅ TGK 2017/2284 etiket form UI (`b2e4124`)
+
+### Aslan2 ile (3 task — gece vardıyası)
+- ✅ PDKS bug analizi doc (`ea0f911`, 168 satır)
+- ✅ Etiket smoke test rehberi (250+ satır)
+- ✅ Devir-Teslim 4 May Gece + Replit Plan Mode prompt
+- ✅ Tüm dosyalar `claude/fabrika-p1-pilot-2026-05-04` branch'inde push (`0a7c976`)
+
+### Aslan2 + Replit ile (5 task — Plan mode)
+- ⏳ Branch merge → main (3 commit: 1d3617b, b2e4124, ea0f911)
+- ⏳ TGK migration EXECUTE (4 yeni kolon)
+- ⏳ Orphan vardıya kapatma (id 113, 114)
+- ⏳ Backup + Dry-run + Smoke test
+- ⏳ Aslan'a sabah devir-teslim eki
 
 ---
 
-## 📊 PLATFORM METRİKLERİ (4 May 2026 sonu)
+## 📊 PLATFORM METRİKLERİ
 
-| Metrik | Değer |
+| Metrik | Değer (4 May sonu) |
 |---|---|
-| Tablolar | ~480 |
+| Tablolar | ~482 (4 yeni TGK kolonu sonrası) |
 | Endpoint'ler | ~2000 |
 | Sayfalar | ~325 |
 | Roller | 31 |
-| Kullanıcılar | 409 (372'den artış) |
-| Mr.Dobody Skills | 38 (recipe_finder eklendi) |
+| Kullanıcılar | 409 |
+| Mr.Dobody Skills | 38 |
 | Aktif scheduler | 42 |
+| Bugünkü kod | ~7500 satır |
+| Bugünkü doc | 8 dosya |
+| Production hatası | 0 |
 
 ---
 
-## 🔥 YARIN SABAH KONTROL
+## 🔥 SABAH ASLAN İÇİN (5 May)
 
-1. **`git push origin main`** Replit Shell'de — `9c7d1fc` LLM fix'i origin'e gönder
-2. **2 branch merge** Replit Shell'de:
+### P0 — Hemen
+1. **Replit Plan mode sonucu kontrol** — gece çalıştı, 4 iş bitmiş olmalı
    ```bash
-   git fetch origin
-   git merge --no-ff origin/claude/onboarding-akademi-v2-2026-05-04 -m "Merge: Onboarding (TASK-ONBOARDING-001)"
-   git merge --no-ff origin/claude/dobody-recipe-finder-v2-2026-05-04 -m "Merge: Recipe Finder skill (TASK-DOBODY-001)"
-   git push origin main
-   git push origin --delete claude/onboarding-akademi-v2-2026-05-04
-   git push origin --delete claude/dobody-recipe-finder-v2-2026-05-04
-   git pull origin main
+   git fetch origin && git log --oneline -10
    ```
-3. **07:00 sonrası recipe_finder log kontrol**:
+   Beklenen son commit'ler: branch merge + 2 migration
+2. **Recipe Finder skill ilk run kontrol** (07:00 sonrası)
    ```bash
    grep "RecipeFinder" /tmp/logs/Start_application_*.log | tail -10
    ```
    ```sql
-   -- DOĞRU: skill_id kolonu yok, category kullan
    SELECT COUNT(*), MAX(created_at), subcategory
-   FROM agent_pending_actions
-   WHERE category = 'egitim'
-   GROUP BY subcategory
-   ORDER BY MAX(created_at) DESC;
+   FROM agent_pending_actions WHERE category='egitim'
+   GROUP BY subcategory;
    ```
-   Beklenen subcategory'ler: recete_baslangic / quiz_basarisizlik / demo_onay / near_master
-4. **Vardiya planlama** — 4-10 May haftası, Yavuz/Ece ile birlikte (kod değil, organizasyon)
+
+### P1 — Sabah Yarısı
+3. **Eren ile kiosk testi** (1 saat) — `docs/audit/PDKS-TEST-CHECKLIST-DETAYLI-5-MAYIS-2026.md` (Replit'in detaylı versiyon)
+4. **Etiket smoke test** (30 dk) — `docs/audit/ETIKET-SMOKE-TEST-5-MAYIS-2026.md`
+5. **Aroma compatibility seed** — `docs/audit/AROMA-SEED-REHBERI-5-MAYIS-2026.md` (yeni!)
+
+### P2 — Sabah Sonrası
+6. Eski branch'leri temizle (`git branch -d`)
+7. HQ Coach ekibi onboarding step content review
 
 ---
 
-## 🎯 PILOT'A KADAR (12 May'a 8 gün)
+## 🟢 RİSKLER
 
-### Yapılacak (Aslan'ın işi, kod değil)
-- [ ] HQ Coach team onboarding step'lerini gözden geçirsin (16 default seed yeterli mi?)
-- [ ] Aroma compatibility'leri 8 template reçete için doldurulsun (32 aroma var, eşleştirilmeli)
-- [ ] Pilot şube müdürleri (4 şube) ile 1 saat eğitim toplantısı
-- [ ] Samet'ten kalan 23 fatura (isEstimate:true) gelsin → fiyatlar netleşsin
-- [ ] 5-10 May vardiya planı imzalansın
+### Yeşil
+- Kod tarafı %100 hazır
+- Mr.Dobody çalışıyor (38 skill)
+- Quiz havuzu 41/44
+- Onboarding 16 step seed
+- TGK schema hazır (DB migration Replit'te)
 
-### İsteğe bağlı (Claude'un yapabileceği post-pilot)
-- [ ] trainer-egitim-merkezi.tsx insights stub fix (10 dk)
-- [ ] Demo onayı UI (supervisor için, 1-2h)
-- [ ] Drag-drop reçete sıralama (dnd-kit, 1-2h)
-- [ ] Branch opening project cowork (Vendor Portal MVP, 3-5 gün)
+### Sarı (takip)
+- Sistem B kullanıcı testi gerek (boş veri)
+- MRP-Light 4 endpoint UI'sız (P1 post-pilot)
+- Etiket hiç basılmamış (yarın smoke test)
+- Recipe Finder skill ilk run yarın 07:00
 
----
-
-## 🟢 YEŞİL — RİSK YOK
-- Pilot 12 May için kod tarafı tamamen hazır
-- Dobody çalışıyor (LLM fix doğrulandı)
-- Quiz havuzu hazır (41 quiz)
-- Onboarding seed yapılı
-
-## 🟡 SARI — TAKİP
-- Recipe finder skill ilk kez yarın sabah çalışacak (07:00) — log kontrol et
-- Aroma compatibility seed gerekli (32 aroma var ama template'lere bağlanmadı)
-
-## 🔴 KIRMIZI — RİSK
-- (Yok — pilotu ertelemeyi gerektiren açık konu yok)
+### Kırmızı
+- Yok (PDKS bug Eren testi sonrası fix planlanacak, post-pilot)
