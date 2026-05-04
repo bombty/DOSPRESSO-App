@@ -32,8 +32,10 @@ import {
   branchRecipeQuizzes,
   branchOnboardingSteps,
   branchRecipeLearningProgress,
+  branchAromaOptions,
+  branchRecipeAromaCompatibility,
 } from "@shared/schema";
-import { eq, and, desc, sql, ilike, or, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, ilike, or, inArray, asc } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
 
 const router = Router();
@@ -949,6 +951,327 @@ router.post("/api/branch-products/:id/recipes", isAuthenticated, async (req: any
     res.status(201).json(recipe);
   } catch (error: any) {
     console.error("[POST branch-products/:id/recipes] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════
+// AROMA OPTIONS ENDPOINTS (TASK-AROMA-001 — 4 May 2026)
+// ════════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────
+// GET /api/aroma-options
+// Tüm aktif aromaları getirir (kategori ile gruplandırılmış)
+// Query: ?category=fruit|herbal|dairy|sweet (opsiyonel filtre)
+// ──────────────────────────────────────
+router.get("/api/aroma-options", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canView(req.user.role)) {
+      return res.status(403).json({ error: "Aroma listesini görüntüleme yetkiniz yok" });
+    }
+
+    const category = req.query.category as string | undefined;
+
+    const conditions = [eq(branchAromaOptions.isActive, true)];
+    if (category) {
+      conditions.push(eq(branchAromaOptions.category, category));
+    }
+
+    const aromas = await db.select()
+      .from(branchAromaOptions)
+      .where(and(...conditions))
+      .orderBy(asc(branchAromaOptions.displayOrder), asc(branchAromaOptions.name));
+
+    // Kategoriye göre grupla (UI için pratik)
+    const grouped: Record<string, any[]> = {};
+    for (const aroma of aromas) {
+      const cat = aroma.category || 'other';
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(aroma);
+    }
+
+    res.json({
+      aromas,
+      grouped,
+      categories: Object.keys(grouped),
+      total: aromas.length,
+    });
+  } catch (error: any) {
+    console.error("[GET aroma-options] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// GET /api/branch-recipes/:id/aroma-options
+// Bu reçete için uygun aromaları getirir (slot bazlı gruplandırılmış)
+// Reçete template değilse boş döner.
+// ──────────────────────────────────────
+router.get("/api/branch-recipes/:id/aroma-options", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canView(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz reçete ID" });
+    }
+
+    // Reçete var mı, template mi
+    const [recipe] = await db.select()
+      .from(branchRecipes)
+      .where(eq(branchRecipes.id, id));
+
+    if (!recipe) {
+      return res.status(404).json({ error: "Reçete bulunamadı" });
+    }
+
+    if (!recipe.isTemplate) {
+      return res.json({
+        recipeId: id,
+        isTemplate: false,
+        message: "Bu reçete şablon değil — aroma seçimi yok",
+        slots: {},
+        compatibilities: [],
+      });
+    }
+
+    // Compatibility + aroma JOIN
+    const compatRows = await db.select({
+      compatId: branchRecipeAromaCompatibility.id,
+      aromaId: branchRecipeAromaCompatibility.aromaId,
+      slotName: branchRecipeAromaCompatibility.slotName,
+      overridePumpsMassivo: branchRecipeAromaCompatibility.overridePumpsMassivo,
+      overridePumpsLongDiva: branchRecipeAromaCompatibility.overridePumpsLongDiva,
+      overrideUnit: branchRecipeAromaCompatibility.overrideUnit,
+      isDefault: branchRecipeAromaCompatibility.isDefault,
+      displayNameOverride: branchRecipeAromaCompatibility.displayNameOverride,
+      // Aroma detayı
+      aromaName: branchAromaOptions.name,
+      aromaShortCode: branchAromaOptions.shortCode,
+      aromaCategory: branchAromaOptions.category,
+      aromaDescription: branchAromaOptions.description,
+      aromaColorHex: branchAromaOptions.colorHex,
+      aromaIconEmoji: branchAromaOptions.iconEmoji,
+      aromaFormType: branchAromaOptions.formType,
+      aromaDisplayOrder: branchAromaOptions.displayOrder,
+    })
+    .from(branchRecipeAromaCompatibility)
+    .innerJoin(branchAromaOptions, eq(branchAromaOptions.id, branchRecipeAromaCompatibility.aromaId))
+    .where(and(
+      eq(branchRecipeAromaCompatibility.recipeId, id),
+      eq(branchRecipeAromaCompatibility.isActive, true),
+      eq(branchAromaOptions.isActive, true),
+    ))
+    .orderBy(
+      asc(branchRecipeAromaCompatibility.slotName),
+      desc(branchRecipeAromaCompatibility.isDefault),
+      asc(branchAromaOptions.displayOrder),
+    );
+
+    // Slot'lara göre grupla
+    const slots: Record<string, any[]> = {};
+    for (const row of compatRows) {
+      if (!slots[row.slotName]) slots[row.slotName] = [];
+      slots[row.slotName].push({
+        compatId: row.compatId,
+        aroma: {
+          id: row.aromaId,
+          name: row.aromaName,
+          shortCode: row.aromaShortCode,
+          category: row.aromaCategory,
+          description: row.aromaDescription,
+          colorHex: row.aromaColorHex,
+          iconEmoji: row.aromaIconEmoji,
+          formType: row.aromaFormType,
+        },
+        overridePumpsMassivo: row.overridePumpsMassivo,
+        overridePumpsLongDiva: row.overridePumpsLongDiva,
+        overrideUnit: row.overrideUnit,
+        isDefault: row.isDefault,
+        displayNameOverride: row.displayNameOverride,
+      });
+    }
+
+    res.json({
+      recipeId: id,
+      isTemplate: true,
+      templateType: recipe.templateType,
+      slots,
+      slotNames: Object.keys(slots),
+      compatibilities: compatRows,
+      total: compatRows.length,
+    });
+  } catch (error: any) {
+    console.error("[GET branch-recipes/:id/aroma-options] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// PUT /api/branch-recipes/:id/aroma-compatibility
+// Bu reçetenin aroma uyumluluk listesini topluca güncelle (replace all)
+// Sadece HQ_EDIT_ROLES.
+// ──────────────────────────────────────
+router.put("/api/branch-recipes/:id/aroma-compatibility", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Düzenleme yetkiniz yok (sadece HQ rolleri)" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz reçete ID" });
+    }
+
+    const { compatibilities } = req.body;
+    if (!Array.isArray(compatibilities)) {
+      return res.status(400).json({ error: "compatibilities dizi olmalı" });
+    }
+
+    // Reçete var mı + template mi kontrol
+    const [recipe] = await db.select()
+      .from(branchRecipes)
+      .where(eq(branchRecipes.id, id));
+
+    if (!recipe) {
+      return res.status(404).json({ error: "Reçete bulunamadı" });
+    }
+
+    if (!recipe.isTemplate) {
+      return res.status(400).json({
+        error: "Bu reçete şablon değil — aroma uyumluluğu eklenemez",
+        hint: "Önce reçeteyi 'isTemplate=true' olarak güncelleyin",
+      });
+    }
+
+    // Her bir compatibility için aroma ID + slot kombinasyonu unique olmalı
+    // Replace-all transaction
+    await db.transaction(async (tx) => {
+      await tx.delete(branchRecipeAromaCompatibility)
+        .where(eq(branchRecipeAromaCompatibility.recipeId, id));
+
+      if (compatibilities.length > 0) {
+        await tx.insert(branchRecipeAromaCompatibility).values(
+          compatibilities.map((c: any) => ({
+            recipeId: id,
+            aromaId: Number(c.aromaId),
+            slotName: c.slotName || 'primary',
+            overridePumpsMassivo: c.overridePumpsMassivo?.toString() ?? null,
+            overridePumpsLongDiva: c.overridePumpsLongDiva?.toString() ?? null,
+            overrideUnit: c.overrideUnit ?? null,
+            isDefault: c.isDefault ?? false,
+            displayNameOverride: c.displayNameOverride ?? null,
+            isActive: true,
+          }))
+        );
+      }
+    });
+
+    const updated = await db.select()
+      .from(branchRecipeAromaCompatibility)
+      .where(eq(branchRecipeAromaCompatibility.recipeId, id));
+
+    res.json({
+      message: "Aroma uyumluluğu güncellendi",
+      count: updated.length,
+      compatibilities: updated,
+    });
+  } catch (error: any) {
+    console.error("[PUT branch-recipes/:id/aroma-compatibility] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// POST /api/aroma-options
+// Yeni aroma ekle (sadece HQ_EDIT_ROLES)
+// ──────────────────────────────────────
+router.post("/api/aroma-options", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Aroma ekleme yetkiniz yok" });
+    }
+
+    const { name, shortCode, category, description, colorHex, iconEmoji, formType, displayOrder } = req.body;
+
+    if (!name || !category) {
+      return res.status(400).json({ error: "name ve category zorunlu" });
+    }
+
+    // Aynı isimde aktif aroma var mı?
+    const [existing] = await db.select()
+      .from(branchAromaOptions)
+      .where(eq(branchAromaOptions.name, name));
+
+    if (existing) {
+      return res.status(409).json({
+        error: "Bu isimde bir aroma zaten var",
+        existingId: existing.id,
+        isActive: existing.isActive,
+      });
+    }
+
+    const [aroma] = await db.insert(branchAromaOptions).values({
+      name,
+      shortCode: shortCode ?? null,
+      category,
+      description: description ?? null,
+      colorHex: colorHex ?? null,
+      iconEmoji: iconEmoji ?? null,
+      formType: formType ?? 'syrup',
+      displayOrder: displayOrder ?? 0,
+      isActive: true,
+    }).returning();
+
+    res.status(201).json(aroma);
+  } catch (error: any) {
+    console.error("[POST aroma-options] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// PATCH /api/aroma-options/:id
+// Aroma güncelle / pasif et
+// ──────────────────────────────────────
+router.patch("/api/aroma-options/:id", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Geçersiz ID" });
+    }
+
+    const { name, shortCode, category, description, colorHex, iconEmoji, formType, displayOrder, isActive } = req.body;
+
+    const updates: any = { updatedAt: new Date() };
+    if (name !== undefined) updates.name = name;
+    if (shortCode !== undefined) updates.shortCode = shortCode;
+    if (category !== undefined) updates.category = category;
+    if (description !== undefined) updates.description = description;
+    if (colorHex !== undefined) updates.colorHex = colorHex;
+    if (iconEmoji !== undefined) updates.iconEmoji = iconEmoji;
+    if (formType !== undefined) updates.formType = formType;
+    if (displayOrder !== undefined) updates.displayOrder = displayOrder;
+    if (isActive !== undefined) updates.isActive = isActive;
+
+    const [updated] = await db.update(branchAromaOptions)
+      .set(updates)
+      .where(eq(branchAromaOptions.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Aroma bulunamadı" });
+    }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("[PATCH aroma-options/:id] hata:", error);
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
   }
 });

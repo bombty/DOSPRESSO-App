@@ -40,12 +40,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Save,
-  Coffee, ListChecks, AlertTriangle, CheckCircle2, Sparkles, X,
+  Coffee, ListChecks, AlertTriangle, CheckCircle2, Sparkles, X, Star, StarOff,
 } from "lucide-react";
 
 const HQ_EDIT_ROLES = ['admin', 'ceo', 'cgo', 'coach', 'trainer'];
 
 const COMMON_UNITS = ['gr', 'ml', 'adet', 'pump', 'shot', 'scoop', 'kg', 'lt', 'çay kaşığı', 'yemek kaşığı'];
+
+const SLOT_OPTIONS = [
+  { value: 'primary', label: 'Birincil Aroma' },
+  { value: 'primary_fruit', label: 'Birinci Meyve' },
+  { value: 'secondary_fruit', label: 'İkinci Meyve' },
+  { value: 'secondary', label: 'İkincil Aroma' },
+];
 
 interface BranchRecipeIngredient {
   id?: number;
@@ -110,7 +117,7 @@ export default function BranchRecipeEditor() {
   const recipeId = params?.recipeId ? Number(params.recipeId) : null;
   const canEdit = user?.role && HQ_EDIT_ROLES.includes(user.role);
 
-  const [activeTab, setActiveTab] = useState<'ingredients' | 'steps'>('ingredients');
+  const [activeTab, setActiveTab] = useState<'ingredients' | 'steps' | 'aromas'>('ingredients');
   const [ingredients, setIngredients] = useState<BranchRecipeIngredient[]>([]);
   const [steps, setSteps] = useState<BranchRecipeStep[]>([]);
   const [isDirty, setIsDirty] = useState(false);
@@ -456,8 +463,8 @@ export default function BranchRecipeEditor() {
       </Card>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'ingredients' | 'steps')}>
-        <TabsList className="grid w-full grid-cols-2 mb-4">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'ingredients' | 'steps' | 'aromas')}>
+        <TabsList className={`grid w-full mb-4 ${detail.recipe.isTemplate ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="ingredients" data-testid="tab-ingredients">
             <ListChecks className="h-4 w-4 mr-2" />
             Malzemeler ({ingredients.length})
@@ -466,6 +473,12 @@ export default function BranchRecipeEditor() {
             <Coffee className="h-4 w-4 mr-2" />
             Adımlar ({steps.length})
           </TabsTrigger>
+          {detail.recipe.isTemplate && (
+            <TabsTrigger value="aromas" data-testid="tab-aromas">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Aromalar
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Malzemeler Tab */}
@@ -757,6 +770,13 @@ export default function BranchRecipeEditor() {
             <Plus className="h-4 w-4" /> Yeni Adım Ekle
           </Button>
         </TabsContent>
+
+        {/* Aromalar Tab — sadece template reçeteler için */}
+        {detail.recipe.isTemplate && (
+          <TabsContent value="aromas" className="space-y-3">
+            <AromaCompatibilityManager recipeId={recipeId!} />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Sticky Save Button (mobile) */}
@@ -803,6 +823,450 @@ export default function BranchRecipeEditor() {
               }}
             >
               <Save className="h-4 w-4 mr-2" /> Kaydet ve çık
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// AROMA COMPATIBILITY MANAGER — Template reçete için aroma yönetimi
+// ════════════════════════════════════════════════════════════════
+
+interface AromaCompatItem {
+  aromaId: number;
+  slotName: string;
+  overridePumpsMassivo: string | null;
+  overridePumpsLongDiva: string | null;
+  overrideUnit: string | null;
+  isDefault: boolean;
+  displayNameOverride: string | null;
+  // Editor only
+  _localId?: string;
+  _aromaName?: string;
+  _aromaIcon?: string | null;
+  _aromaCategory?: string;
+}
+
+interface AromaOption {
+  id: number;
+  name: string;
+  shortCode: string | null;
+  category: string;
+  description: string | null;
+  colorHex: string | null;
+  iconEmoji: string | null;
+  formType: string;
+  isActive: boolean;
+}
+
+function AromaCompatibilityManager({ recipeId }: { recipeId: number }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [compats, setCompats] = useState<AromaCompatItem[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [selectedAromaId, setSelectedAromaId] = useState<string>('');
+  const [selectedSlotName, setSelectedSlotName] = useState<string>('primary');
+
+  // Tüm aromalar (modal için)
+  const { data: allAromasData } = useQuery<{ aromas: AromaOption[]; grouped: Record<string, AromaOption[]> }>({
+    queryKey: ['/api/aroma-options'],
+    queryFn: async () => {
+      const res = await fetch('/api/aroma-options', { credentials: 'include' });
+      if (!res.ok) throw new Error('Aromalar yüklenemedi');
+      return res.json();
+    },
+    staleTime: 300000,
+  });
+
+  // Mevcut compatibility
+  const { data: currentData, isLoading } = useQuery<{
+    slots: Record<string, any[]>;
+    total: number;
+  }>({
+    queryKey: ['/api/branch-recipes', recipeId, 'aroma-options', 'edit'],
+    queryFn: async () => {
+      const res = await fetch(`/api/branch-recipes/${recipeId}/aroma-options`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Yüklenemedi');
+      return res.json();
+    },
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (currentData) {
+      const items: AromaCompatItem[] = [];
+      let counter = 0;
+      for (const [slotName, slotItems] of Object.entries(currentData.slots || {})) {
+        for (const item of slotItems as any[]) {
+          items.push({
+            aromaId: item.aroma.id,
+            slotName,
+            overridePumpsMassivo: item.overridePumpsMassivo,
+            overridePumpsLongDiva: item.overridePumpsLongDiva,
+            overrideUnit: item.overrideUnit,
+            isDefault: item.isDefault,
+            displayNameOverride: item.displayNameOverride,
+            _localId: `_${++counter}`,
+            _aromaName: item.aroma.name,
+            _aromaIcon: item.aroma.iconEmoji,
+            _aromaCategory: item.aroma.category,
+          });
+        }
+      }
+      setCompats(items);
+      setIsDirty(false);
+    }
+  }, [currentData]);
+
+  const allAromas = allAromasData?.aromas ?? [];
+  const groupedAromas = allAromasData?.grouped ?? {};
+
+  // Aromaları kullanılabilir filtrele (zaten ekli olanları çıkar)
+  const availableAromas = useMemo(() => {
+    const usedKey = new Set(compats.map(c => `${c.aromaId}_${c.slotName}`));
+    return allAromas.filter(a => !usedKey.has(`${a.id}_${selectedSlotName}`));
+  }, [allAromas, compats, selectedSlotName]);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const payload = compats.map(({ _localId, _aromaName, _aromaIcon, _aromaCategory, ...rest }) => rest);
+      const res = await fetch(`/api/branch-recipes/${recipeId}/aroma-compatibility`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ compatibilities: payload }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || e.message || 'Kaydedilemedi');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: 'Aromalar kaydedildi', description: `${data.count} kombinasyon güncellendi.` });
+      setIsDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/branch-recipes', recipeId, 'aroma-options'] });
+    },
+    onError: (e: any) => {
+      toast({ title: 'Kaydedilemedi', description: e?.message || 'Hata', variant: 'destructive' });
+    },
+  });
+
+  const addCompat = () => {
+    if (!selectedAromaId) return;
+    const aroma = allAromas.find(a => a.id === Number(selectedAromaId));
+    if (!aroma) return;
+
+    let counter = compats.length;
+    const newItem: AromaCompatItem = {
+      aromaId: aroma.id,
+      slotName: selectedSlotName,
+      overridePumpsMassivo: null,
+      overridePumpsLongDiva: null,
+      overrideUnit: 'pump',
+      isDefault: compats.filter(c => c.slotName === selectedSlotName).length === 0,
+      displayNameOverride: null,
+      _localId: `_${++counter}`,
+      _aromaName: aroma.name,
+      _aromaIcon: aroma.iconEmoji,
+      _aromaCategory: aroma.category,
+    };
+
+    setCompats(prev => [...prev, newItem]);
+    setIsDirty(true);
+    setAddModalOpen(false);
+    setSelectedAromaId('');
+  };
+
+  const updateCompat = (localId: string, patch: Partial<AromaCompatItem>) => {
+    setCompats(prev => prev.map(c => c._localId === localId ? { ...c, ...patch } : c));
+    setIsDirty(true);
+  };
+
+  const removeCompat = (localId: string) => {
+    setCompats(prev => prev.filter(c => c._localId !== localId));
+    setIsDirty(true);
+  };
+
+  const toggleDefault = (localId: string) => {
+    setCompats(prev => {
+      const target = prev.find(c => c._localId === localId);
+      if (!target) return prev;
+      // Aynı slot içinde sadece bir tanesi default olabilir
+      return prev.map(c => {
+        if (c.slotName !== target.slotName) return c;
+        if (c._localId === localId) return { ...c, isDefault: !target.isDefault };
+        return { ...c, isDefault: false };
+      });
+    });
+    setIsDirty(true);
+  };
+
+  // Slot'a göre grupla
+  const groupedCompats = useMemo(() => {
+    const g: Record<string, AromaCompatItem[]> = {};
+    for (const c of compats) {
+      if (!g[c.slotName]) g[c.slotName] = [];
+      g[c.slotName].push(c);
+    }
+    return g;
+  }, [compats]);
+
+  if (isLoading) {
+    return <Skeleton className="h-40 w-full" />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Bilgi kutusu */}
+      <Card className="border-purple-200 dark:border-purple-900 bg-purple-50/40 dark:bg-purple-950/20">
+        <CardContent className="p-3 text-xs text-purple-900 dark:text-purple-200 flex items-start gap-2">
+          <Sparkles className="h-4 w-4 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p>
+              <strong>Aroma uyumluluğu</strong> — bu şablon reçetenin hangi aromaları kabul edeceğini ve her aroma için pump miktarını yönetir.
+            </p>
+            <p>
+              <strong>Slot</strong> — aroma yerleştirme noktası. Tek aromalı reçeteler "Birincil" kullanır.
+              Çift aromalı (Meyveli Yoğurt vb.) "Birinci Meyve" + "İkinci Meyve" kullanır.
+            </p>
+            <p>
+              <strong>Varsayılan</strong> ⭐ — müşteri aroma seçmediğinde otomatik gelen.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Kaydet butonu */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm text-muted-foreground">
+          {compats.length} aroma kombinasyonu
+          {isDirty && (
+            <Badge variant="destructive" className="ml-2 text-[9px]">
+              Kaydedilmedi
+            </Badge>
+          )}
+        </span>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setAddModalOpen(true)}
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            data-testid="button-add-aroma-compat"
+          >
+            <Plus className="h-4 w-4" /> Ekle
+          </Button>
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={!isDirty || saveMutation.isPending}
+            size="sm"
+            className="gap-1.5"
+            data-testid="button-save-aromas"
+          >
+            <Save className="h-4 w-4" />
+            {saveMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Slot'lara göre listele */}
+      {Object.keys(groupedCompats).length === 0 && (
+        <Card>
+          <CardContent className="p-6 text-center text-muted-foreground text-sm">
+            Henüz aroma uyumluluğu tanımlanmadı. "Ekle" ile başlayın.
+          </CardContent>
+        </Card>
+      )}
+
+      {Object.entries(groupedCompats).map(([slotName, items]) => (
+        <Card key={slotName}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm uppercase tracking-wide text-muted-foreground">
+              {SLOT_OPTIONS.find(s => s.value === slotName)?.label || slotName}
+              <Badge variant="outline" className="ml-2 text-[9px]">{items.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {items.map(item => (
+              <div
+                key={item._localId}
+                className="border rounded-lg p-3 space-y-2"
+                data-testid={`aroma-compat-${item.aromaId}-${item.slotName}`}
+              >
+                {/* Üst satır: emoji + isim + default + sil */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {item._aromaIcon && (
+                    <span className="text-xl shrink-0" aria-hidden>{item._aromaIcon}</span>
+                  )}
+                  <span className="font-medium text-sm">{item._aromaName}</span>
+                  <Badge variant="outline" className="text-[9px]">
+                    {item._aromaCategory}
+                  </Badge>
+                  <div className="ml-auto flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => toggleDefault(item._localId!)}
+                      title={item.isDefault ? "Varsayılan değil" : "Varsayılan yap"}
+                      data-testid={`button-toggle-default-${item.aromaId}`}
+                    >
+                      {item.isDefault ? (
+                        <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                      ) : (
+                        <StarOff className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive"
+                      onClick={() => removeCompat(item._localId!)}
+                      data-testid={`button-remove-aroma-${item.aromaId}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Pump miktarları */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Massivo (pump)</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={item.overridePumpsMassivo ?? ''}
+                      onChange={(e) =>
+                        updateCompat(item._localId!, { overridePumpsMassivo: e.target.value || null })
+                      }
+                      placeholder="ör: 3"
+                      className="h-8 text-sm"
+                      data-testid={`input-pumps-massivo-${item.aromaId}`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Long Diva (pump)</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={item.overridePumpsLongDiva ?? ''}
+                      onChange={(e) =>
+                        updateCompat(item._localId!, { overridePumpsLongDiva: e.target.value || null })
+                      }
+                      placeholder="ör: 4"
+                      className="h-8 text-sm"
+                      data-testid={`input-pumps-longdiva-${item.aromaId}`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] text-muted-foreground">Birim</Label>
+                    <Select
+                      value={item.overrideUnit ?? 'pump'}
+                      onValueChange={(v) => updateCompat(item._localId!, { overrideUnit: v })}
+                    >
+                      <SelectTrigger className="h-8 text-sm" data-testid={`select-unit-${item.aromaId}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pump">pump</SelectItem>
+                        <SelectItem value="ölçek">ölçek</SelectItem>
+                        <SelectItem value="gr">gr</SelectItem>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="adet">adet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Görüntü adı override */}
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">
+                    Müşteriye Gösterilen İsim (opsiyonel — ör: "Moulin Rouge")
+                  </Label>
+                  <Input
+                    value={item.displayNameOverride ?? ''}
+                    onChange={(e) =>
+                      updateCompat(item._localId!, { displayNameOverride: e.target.value || null })
+                    }
+                    placeholder={item._aromaName}
+                    className="h-8 text-sm"
+                    data-testid={`input-display-override-${item.aromaId}`}
+                  />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+
+      {/* Aroma ekleme modal'ı */}
+      <AlertDialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aroma Ekle</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu reçeteye yeni bir aroma uyumluluğu ekle.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Slot</Label>
+              <Select value={selectedSlotName} onValueChange={setSelectedSlotName}>
+                <SelectTrigger data-testid="select-add-slot">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SLOT_OPTIONS.map(s => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Aroma</Label>
+              <Select value={selectedAromaId} onValueChange={setSelectedAromaId}>
+                <SelectTrigger data-testid="select-add-aroma">
+                  <SelectValue placeholder="Aroma seç..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(groupedAromas).map(([cat, list]) => (
+                    <div key={cat}>
+                      <div className="px-2 py-1 text-[10px] uppercase font-semibold text-muted-foreground">
+                        {cat}
+                      </div>
+                      {(list as AromaOption[])
+                        .filter(a => !compats.some(c => c.aromaId === a.id && c.slotName === selectedSlotName))
+                        .map(a => (
+                          <SelectItem key={a.id} value={String(a.id)}>
+                            {a.iconEmoji ? `${a.iconEmoji} ` : ''}{a.name}
+                          </SelectItem>
+                        ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+              {availableAromas.length === 0 && (
+                <p className="text-xs text-amber-600">
+                  Bu slot için tüm aromalar zaten ekli.
+                </p>
+              )}
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedAromaId('')}>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!selectedAromaId}
+              onClick={addCompat}
+              data-testid="button-confirm-add-aroma"
+            >
+              <Plus className="h-4 w-4 mr-2" /> Ekle
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

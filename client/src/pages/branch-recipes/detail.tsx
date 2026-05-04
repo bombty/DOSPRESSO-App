@@ -507,6 +507,7 @@ export default function BranchRecipeDetailPage() {
 }
 
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // Template Aroma Seçici (alt bileşen)
 // ─────────────────────────────────────────────
 
@@ -520,6 +521,41 @@ interface TemplateAromaSelectorProps {
   onSecondaryAromaChange: (id: number) => void;
 }
 
+interface AromaSlotItem {
+  compatId: number;
+  aroma: {
+    id: number;
+    name: string;
+    shortCode: string | null;
+    category: string;
+    description: string | null;
+    colorHex: string | null;
+    iconEmoji: string | null;
+    formType: string;
+  };
+  overridePumpsMassivo: string | null;
+  overridePumpsLongDiva: string | null;
+  overrideUnit: string | null;
+  isDefault: boolean;
+  displayNameOverride: string | null;
+}
+
+interface RecipeAromaResponse {
+  recipeId: number;
+  isTemplate: boolean;
+  templateType?: string;
+  slots: Record<string, AromaSlotItem[]>;
+  slotNames: string[];
+  total: number;
+}
+
+const SLOT_LABEL: Record<string, string> = {
+  primary: "Aroma",
+  primary_fruit: "Birinci Meyve",
+  secondary_fruit: "İkinci Meyve",
+  secondary: "İkincil Aroma",
+};
+
 function TemplateAromaSelector({
   recipeId,
   templateType,
@@ -529,13 +565,138 @@ function TemplateAromaSelector({
   onPrimaryAromaChange,
   onSecondaryAromaChange,
 }: TemplateAromaSelectorProps) {
-  // Bu reçetenin aroma uyumluluğunu çek
-  // Şu an basit endpoint yok, simulasyon: template type'a göre uygun aromaları varsayıyorum
-  // Gerçek API: GET /api/branch-recipes/:id/aroma-options (yeni endpoint olmalı)
+  const { data, isLoading, error } = useQuery<RecipeAromaResponse>({
+    queryKey: ["/api/branch-recipes", recipeId, "aroma-options"],
+    queryFn: async () => {
+      const res = await fetch(`/api/branch-recipes/${recipeId}/aroma-options`, { credentials: "include" });
+      if (!res.ok) throw new Error("Aroma seçenekleri yüklenemedi");
+      return res.json();
+    },
+    enabled: !!recipeId,
+    staleTime: 300000, // 5 dk cache
+  });
 
-  // Çift slot template tipleri
+  // Çift slot template'leri
   const isDoubleSlot = ['fruit_yogurt_double', 'fruit_milkshake_double'].includes(templateType);
 
+  // Slot isimleri (öncelik sırası)
+  const primarySlotName = useMemo(() => {
+    if (!data?.slotNames) return null;
+    return data.slotNames.find(s => s === 'primary' || s === 'primary_fruit') || data.slotNames[0] || null;
+  }, [data?.slotNames]);
+
+  const secondarySlotName = useMemo(() => {
+    if (!data?.slotNames || !isDoubleSlot) return null;
+    return data.slotNames.find(s => s === 'secondary' || s === 'secondary_fruit') || null;
+  }, [data?.slotNames, isDoubleSlot]);
+
+  const primaryOptions = primarySlotName ? (data?.slots[primarySlotName] ?? []) : [];
+  const secondaryOptions = secondarySlotName ? (data?.slots[secondarySlotName] ?? []) : [];
+
+  // Yardımcı: pump miktarını hesapla (override varsa onu, yoksa "—")
+  const pumpsForSize = (item: AromaSlotItem): string => {
+    const v = selectedSize === 'long_diva' ? item.overridePumpsLongDiva : item.overridePumpsMassivo;
+    if (!v) return '—';
+    const unit = item.overrideUnit || 'pump';
+    return `${v} ${unit}`;
+  };
+
+  // Yardımcı: aroma kart'ı render et
+  const renderAromaButton = (
+    item: AromaSlotItem,
+    isSelected: boolean,
+    onClick: () => void
+  ) => {
+    const a = item.aroma;
+    const displayName = item.displayNameOverride || a.name;
+    return (
+      <button
+        key={a.id}
+        type="button"
+        onClick={onClick}
+        className={`relative flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-center ${
+          isSelected
+            ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 shadow-md'
+            : 'border-border hover:border-purple-300 bg-background'
+        }`}
+        style={a.colorHex && !isSelected ? { borderLeftColor: a.colorHex, borderLeftWidth: '3px' } : undefined}
+        data-testid={`aroma-button-${a.id}`}
+      >
+        {item.isDefault && (
+          <Badge variant="secondary" className="absolute top-1 right-1 text-[8px] px-1.5 py-0 h-4">
+            Varsayılan
+          </Badge>
+        )}
+        {a.iconEmoji && (
+          <span className="text-2xl leading-none" aria-hidden>
+            {a.iconEmoji}
+          </span>
+        )}
+        <span className="text-xs font-medium leading-tight">{displayName}</span>
+        <span className="text-[10px] text-muted-foreground">
+          {pumpsForSize(item)}
+        </span>
+        {a.shortCode && !a.iconEmoji && (
+          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-mono">
+            {a.shortCode}
+          </Badge>
+        )}
+      </button>
+    );
+  };
+
+  // ── Yükleniyor ───────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <Card className="mb-4 border-purple-200 bg-purple-50/50 dark:bg-purple-900/10">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            Aroma Seçimi
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-20 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── Hata ─────────────────────────────────────────────────
+  if (error) {
+    return (
+      <Card className="mb-4 border-red-200 bg-red-50/50">
+        <CardContent className="p-4 text-sm text-red-700 dark:text-red-300">
+          Aroma seçenekleri yüklenemedi: {(error as Error).message}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── Compatibility tanımlanmamış ──────────────────────────
+  if (!data || data.total === 0) {
+    return (
+      <Card className="mb-4 border-amber-200 bg-amber-50/50 dark:bg-amber-900/10">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-amber-600" />
+            Aroma Seçimi
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-start gap-2 text-sm">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+            <p className="text-amber-700 dark:text-amber-300">
+              Bu şablon reçete için henüz aroma uyumluluğu tanımlanmamış.
+              HQ yetkilisi reçete editöründen aromaları yapılandırabilir.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ── Normal render ────────────────────────────────────────
   return (
     <Card className="mb-4 border-purple-200 bg-purple-50/50 dark:bg-purple-900/10">
       <CardHeader className="pb-3">
@@ -545,16 +706,59 @@ function TemplateAromaSelector({
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           {isDoubleSlot
-            ? "Bu şablon iki aroma kombinasyonu kullanır"
-            : "Müşterinin tercihine göre aroma seçin"}
+            ? `Bu şablon ${primaryOptions.length} birinci aroma + ${secondaryOptions.length} ikinci aroma kabul eder.`
+            : `${primaryOptions.length} aroma seçeneği — pump miktarı boya göre değişir.`}
         </p>
       </CardHeader>
-      <CardContent>
-        <div className="text-sm text-muted-foreground italic">
-          Aroma seçim arayüzü için ek API endpoint gerekiyor.
-          (Şu an reçete malzeme listesinde "Müşteri seçer" badge'i ile gösteriliyor)
-        </div>
-        {/* TODO: GET /api/branch-recipes/:id/aroma-options endpoint'i ile aromaları çek */}
+      <CardContent className="space-y-4">
+        {/* Birinci slot */}
+        {primaryOptions.length > 0 && (
+          <div>
+            <Label className="text-xs font-semibold text-purple-700 dark:text-purple-300 mb-2 block uppercase tracking-wide">
+              {SLOT_LABEL[primarySlotName!] || primarySlotName}
+            </Label>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+              {primaryOptions.map(item =>
+                renderAromaButton(
+                  item,
+                  selectedPrimaryAromaId === item.aroma.id,
+                  () => onPrimaryAromaChange(item.aroma.id)
+                )
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* İkinci slot (double template) */}
+        {isDoubleSlot && secondaryOptions.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <Label className="text-xs font-semibold text-purple-700 dark:text-purple-300 mb-2 block uppercase tracking-wide">
+                {SLOT_LABEL[secondarySlotName!] || secondarySlotName}
+              </Label>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                {secondaryOptions.map(item =>
+                  renderAromaButton(
+                    item,
+                    selectedSecondaryAromaId === item.aroma.id,
+                    () => onSecondaryAromaChange(item.aroma.id)
+                  )
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Seçim özeti (her ikisi seçilince) */}
+        {selectedPrimaryAromaId && (!isDoubleSlot || selectedSecondaryAromaId) && (
+          <div className="flex items-center gap-2 p-2 rounded bg-purple-100 dark:bg-purple-900/40 text-xs">
+            <CheckCircle2 className="h-4 w-4 text-purple-600 shrink-0" />
+            <span className="text-purple-800 dark:text-purple-200">
+              Seçim tamamlandı — malzeme listesinde aroma satırları otomatik güncellendi.
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
