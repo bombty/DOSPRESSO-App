@@ -306,14 +306,30 @@ export default function BranchRecipeDetailPage() {
 
             {/* HQ edit butonu */}
             {canEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLocation(`/branch-recipes/admin/${product.id}`)}
-                data-testid="button-edit"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <div className="flex flex-col gap-1.5 shrink-0">
+                {activeRecipe && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocation(`/branch-recipes/admin/recipe/${activeRecipe.id}`)}
+                    data-testid="button-edit-recipe"
+                    className="gap-1.5"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    <span className="text-xs">Reçeteyi Düzenle</span>
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation(`/branch-recipes/admin/${product.id}`)}
+                  data-testid="button-edit"
+                  className="gap-1.5"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  <span className="text-[10px] text-muted-foreground">Ürün Bilgileri</span>
+                </Button>
+              </div>
             )}
           </div>
         </CardContent>
