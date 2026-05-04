@@ -436,6 +436,438 @@ router.get("/api/branch-onboarding/:role", isAuthenticated, async (req: any, res
   }
 });
 
+// ════════════════════════════════════════════════════════════════
+// ONBOARDING ADMIN ENDPOINTS (TASK-ONBOARDING-001 — 4 May 2026)
+// ════════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────
+// GET /api/branch-onboarding-admin/all
+// Tüm rollerin onboarding adımları (admin paneli için, isActive filtre yok)
+// ──────────────────────────────────────
+router.get("/api/branch-onboarding-admin/all", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yönetim yetkiniz yok" });
+    }
+
+    const all = await db.select().from(branchOnboardingSteps)
+      .orderBy(asc(branchOnboardingSteps.targetRole), asc(branchOnboardingSteps.stepNumber));
+
+    // Rolleri grupla
+    const grouped: Record<string, any[]> = {};
+    for (const step of all) {
+      if (!grouped[step.targetRole]) grouped[step.targetRole] = [];
+      grouped[step.targetRole].push(step);
+    }
+
+    res.json({
+      steps: all,
+      grouped,
+      roles: Object.keys(grouped),
+      total: all.length,
+    });
+  } catch (error: any) {
+    console.error("[GET branch-onboarding-admin/all] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// PUT /api/branch-onboarding-admin/:role
+// Belirli rolün tüm onboarding adımlarını topluca güncelle (replace all)
+// Body: { steps: [{ stepNumber, title, description, recipeIds, estimatedMinutes, ... }] }
+// ──────────────────────────────────────
+router.put("/api/branch-onboarding-admin/:role", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const role = req.params.role;
+    const { steps } = req.body;
+
+    if (!Array.isArray(steps)) {
+      return res.status(400).json({ error: "steps dizi olmalı" });
+    }
+
+    // Validation: stepNumber'lar unique ve >=1
+    const stepNumbers = steps.map((s: any) => s.stepNumber);
+    const uniqueStepNumbers = new Set(stepNumbers);
+    if (stepNumbers.length !== uniqueStepNumbers.size) {
+      return res.status(400).json({ error: "stepNumber değerleri benzersiz olmalı" });
+    }
+    if (stepNumbers.some((n: any) => !Number.isInteger(n) || n < 1)) {
+      return res.status(400).json({ error: "stepNumber pozitif tam sayı olmalı" });
+    }
+
+    // Validation: title boş olamaz
+    const emptyTitle = steps.find((s: any) => !s.title || !s.title.trim());
+    if (emptyTitle) {
+      return res.status(400).json({ error: "Tüm adımların başlığı olmalı" });
+    }
+
+    await db.transaction(async (tx) => {
+      // Eski adımları sil
+      await tx.delete(branchOnboardingSteps)
+        .where(eq(branchOnboardingSteps.targetRole, role));
+
+      // Yenileri ekle
+      if (steps.length > 0) {
+        await tx.insert(branchOnboardingSteps).values(
+          steps.map((s: any) => ({
+            targetRole: role,
+            stepNumber: s.stepNumber,
+            title: s.title.trim(),
+            description: s.description ?? null,
+            recipeIds: Array.isArray(s.recipeIds) ? s.recipeIds.map(Number) : [],
+            estimatedMinutes: s.estimatedMinutes ?? 30,
+            prerequisiteStepIds: Array.isArray(s.prerequisiteStepIds) ? s.prerequisiteStepIds.map(Number) : [],
+            completionCriteria: s.completionCriteria ?? null,
+            isActive: s.isActive !== false,
+          }))
+        );
+      }
+    });
+
+    const updated = await db.select().from(branchOnboardingSteps)
+      .where(eq(branchOnboardingSteps.targetRole, role))
+      .orderBy(asc(branchOnboardingSteps.stepNumber));
+
+    res.json({
+      message: "Onboarding adımları güncellendi",
+      role,
+      count: updated.length,
+      steps: updated,
+    });
+  } catch (error: any) {
+    console.error("[PUT branch-onboarding-admin/:role] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// GET /api/branch-onboarding/me/progress
+// Kullanıcının kendi onboarding ilerlemesi (rol bazlı)
+// Her adım için: tamamlandı mı, bekliyor mu, kilitli mi?
+// ──────────────────────────────────────
+router.get("/api/branch-onboarding/me/progress", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const role = req.user.role;
+
+    // Bu rol için adımlar
+    const steps = await db.select().from(branchOnboardingSteps)
+      .where(and(
+        eq(branchOnboardingSteps.targetRole, role),
+        eq(branchOnboardingSteps.isActive, true),
+      ))
+      .orderBy(asc(branchOnboardingSteps.stepNumber));
+
+    if (steps.length === 0) {
+      return res.json({
+        role,
+        steps: [],
+        progress: [],
+        completedSteps: 0,
+        totalSteps: 0,
+        percentComplete: 0,
+        message: "Bu rol için onboarding tanımlı değil",
+      });
+    }
+
+    // Kullanıcının tüm reçete ilerlemesini çek
+    const myProgress = await db.select()
+      .from(branchRecipeLearningProgress)
+      .where(eq(branchRecipeLearningProgress.userId, userId));
+
+    const progressByRecipe: Record<number, any> = {};
+    for (const p of myProgress) {
+      progressByRecipe[p.recipeId] = p;
+    }
+
+    // Her adım için durum hesapla
+    const progress = steps.map((step) => {
+      const recipeIds = (step.recipeIds || []) as number[];
+      const totalRecipes = recipeIds.length;
+
+      let completedRecipes = 0;
+      let viewedRecipes = 0;
+      let totalQuizScore = 0;
+      let recipesWithQuiz = 0;
+      const recipeDetails: any[] = [];
+
+      for (const rid of recipeIds) {
+        const p = progressByRecipe[rid];
+        if (p) {
+          if ((p.viewCount ?? 0) > 0) viewedRecipes++;
+          if (p.bestScore && Number(p.bestScore) > 0) {
+            totalQuizScore += Number(p.bestScore);
+            recipesWithQuiz++;
+          }
+          // Tamamlandı: en az 1 görüntüleme + bestScore >= minQuizScore (default 70)
+          const minScore = step.completionCriteria?.minQuizScore ?? 70;
+          const passed = p.bestScore && Number(p.bestScore) >= minScore;
+          const demoOk = !step.completionCriteria?.requireRecipeDemo || p.demoCompleted;
+          if (passed && demoOk) completedRecipes++;
+          recipeDetails.push({
+            recipeId: rid,
+            viewed: (p.viewCount ?? 0) > 0,
+            quizAttempts: p.quizAttempts ?? 0,
+            bestScore: p.bestScore ? Number(p.bestScore) : null,
+            demoCompleted: p.demoCompleted ?? false,
+            passed: passed && demoOk,
+          });
+        } else {
+          recipeDetails.push({
+            recipeId: rid,
+            viewed: false,
+            quizAttempts: 0,
+            bestScore: null,
+            demoCompleted: false,
+            passed: false,
+          });
+        }
+      }
+
+      const stepCompleted = totalRecipes > 0 && completedRecipes === totalRecipes;
+      const stepProgress = totalRecipes > 0 ? Math.round((completedRecipes / totalRecipes) * 100) : 0;
+      const avgQuizScore = recipesWithQuiz > 0 ? Math.round(totalQuizScore / recipesWithQuiz) : null;
+
+      return {
+        stepId: step.id,
+        stepNumber: step.stepNumber,
+        title: step.title,
+        description: step.description,
+        estimatedMinutes: step.estimatedMinutes,
+        totalRecipes,
+        viewedRecipes,
+        completedRecipes,
+        stepProgress,
+        completed: stepCompleted,
+        avgQuizScore,
+        recipeDetails,
+        prerequisiteStepIds: step.prerequisiteStepIds,
+        completionCriteria: step.completionCriteria,
+      };
+    });
+
+    // Locked durumu hesapla (önkoşul tamamlanmamış mı?)
+    const completedStepIds = new Set(progress.filter(p => p.completed).map(p => p.stepId));
+    for (const p of progress) {
+      const prereqs = (p.prerequisiteStepIds || []) as number[];
+      (p as any).locked = prereqs.length > 0 && !prereqs.every(id => completedStepIds.has(id));
+    }
+
+    const completedCount = progress.filter(p => p.completed).length;
+    const percentComplete = steps.length > 0 ? Math.round((completedCount / steps.length) * 100) : 0;
+
+    res.json({
+      role,
+      userId,
+      steps,
+      progress,
+      completedSteps: completedCount,
+      totalSteps: steps.length,
+      percentComplete,
+    });
+  } catch (error: any) {
+    console.error("[GET branch-onboarding/me/progress] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// ──────────────────────────────────────
+// POST /api/branch-onboarding/seed-defaults
+// Default barista onboarding adımlarını seed et (idempotent — sadece boş ise)
+// ──────────────────────────────────────
+router.post("/api/branch-onboarding/seed-defaults", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    if (!canEdit(req.user.role)) {
+      return res.status(403).json({ error: "Yetkiniz yok" });
+    }
+
+    const force = req.body?.force === true;
+
+    // Mevcut sayım
+    const existing = await db.select({ count: sql<number>`count(*)::int` })
+      .from(branchOnboardingSteps);
+
+    if (!force && existing[0]?.count > 0) {
+      return res.status(200).json({
+        message: "Onboarding adımları zaten mevcut — seed atlandı",
+        existing: existing[0].count,
+        hint: "Tüm adımları silmek için body'de force:true gönderin",
+      });
+    }
+
+    // İlk 5 reçete'yi al (ID sıralı)
+    const firstRecipes = await db.select({ id: branchRecipes.id, productId: branchRecipes.productId })
+      .from(branchRecipes)
+      .where(eq(branchRecipes.isActive, true))
+      .orderBy(asc(branchRecipes.id))
+      .limit(20);
+
+    const recipeIds = firstRecipes.map(r => r.id);
+
+    // Seed verileri (default barista yolu)
+    const baristaSteps = [
+      {
+        targetRole: 'barista',
+        stepNumber: 1,
+        title: 'Hoşgeldin & Sistem Tanıtımı',
+        description: 'DOSPRESSO platformunu tanı, profilini doldur, KVKK formunu imzala. Bu adımda reçete yok — sadece sistem alışkanlığı.',
+        recipeIds: [],
+        estimatedMinutes: 30,
+        prerequisiteStepIds: [],
+        completionCriteria: { requireSupervisorApproval: true },
+        isActive: true,
+      },
+      {
+        targetRole: 'barista',
+        stepNumber: 2,
+        title: 'Temel Ekipman & Hijyen',
+        description: 'Espresso makinesi, grinder, blender kullanımı. Hijyen kuralları, mavi/yeşil/kırmızı bıçak ayrımı.',
+        recipeIds: [],
+        estimatedMinutes: 60,
+        prerequisiteStepIds: [],
+        completionCriteria: { requireSupervisorApproval: true, minQuizScore: 80 },
+        isActive: true,
+      },
+      {
+        targetRole: 'barista',
+        stepNumber: 3,
+        title: 'Klasik Kahveler — İlk 5 Reçete',
+        description: 'Espresso, Americano, Cappuccino, Latte, Mocha. Her reçeteyi oku, quizini geç, ustaya demo yap.',
+        recipeIds: recipeIds.slice(0, 5),
+        estimatedMinutes: 120,
+        prerequisiteStepIds: [],
+        completionCriteria: { minQuizScore: 70, requireRecipeDemo: true },
+        isActive: true,
+      },
+      {
+        targetRole: 'barista',
+        stepNumber: 4,
+        title: 'Soğuk İçecekler',
+        description: 'Buzlu kahveler, freshess, frozen yogurt. Boyutlandırma (Massivo / Long Diva) farkı.',
+        recipeIds: recipeIds.slice(5, 12),
+        estimatedMinutes: 120,
+        prerequisiteStepIds: [],
+        completionCriteria: { minQuizScore: 70, requireRecipeDemo: true },
+        isActive: true,
+      },
+      {
+        targetRole: 'barista',
+        stepNumber: 5,
+        title: 'Şablon Reçeteler & Aroma Sistemi',
+        description: 'Meyveli Mojito, Meyveli Yoğurt gibi aroma kombinasyonu kullanan reçeteler. Hangi aroma + hangi pump?',
+        recipeIds: recipeIds.slice(12, 20),
+        estimatedMinutes: 90,
+        prerequisiteStepIds: [],
+        completionCriteria: { minQuizScore: 75, requireRecipeDemo: true, requireSupervisorApproval: true },
+        isActive: true,
+      },
+    ];
+
+    // Bar buddy için kısa yol (3 adım)
+    const barBuddySteps = [
+      {
+        targetRole: 'bar_buddy',
+        stepNumber: 1,
+        title: 'Hoşgeldin & Sistem',
+        description: 'Platform tanıtımı + profil + KVKK.',
+        recipeIds: [],
+        estimatedMinutes: 30,
+        prerequisiteStepIds: [],
+        completionCriteria: { requireSupervisorApproval: true },
+        isActive: true,
+      },
+      {
+        targetRole: 'bar_buddy',
+        stepNumber: 2,
+        title: 'Hijyen & Yardımcı Görevler',
+        description: 'Mise en place, blender temizliği, buz hazırlığı.',
+        recipeIds: [],
+        estimatedMinutes: 45,
+        prerequisiteStepIds: [],
+        completionCriteria: { requireSupervisorApproval: true },
+        isActive: true,
+      },
+      {
+        targetRole: 'bar_buddy',
+        stepNumber: 3,
+        title: 'Temel Reçete Bilgisi',
+        description: 'Baristanın hangi reçete için ne hazırlamasını istediğini anla. Malzemeleri tanı.',
+        recipeIds: recipeIds.slice(0, 5),
+        estimatedMinutes: 60,
+        prerequisiteStepIds: [],
+        completionCriteria: { minQuizScore: 60 },
+        isActive: true,
+      },
+    ];
+
+    // Stajyer için ileri seviye yol (8 adım) — barista yolunun üstüne 3 ek
+    const stajyerSteps = [
+      ...baristaSteps.map(s => ({ ...s, targetRole: 'stajyer' })),
+      {
+        targetRole: 'stajyer',
+        stepNumber: 6,
+        title: 'Mali Sorumluluk & Kasa',
+        description: 'POS sistemi, sipariş alma, müşteri ile iletişim.',
+        recipeIds: [],
+        estimatedMinutes: 90,
+        prerequisiteStepIds: [],
+        completionCriteria: { requireSupervisorApproval: true, minQuizScore: 75 },
+        isActive: true,
+      },
+      {
+        targetRole: 'stajyer',
+        stepNumber: 7,
+        title: 'Stok Sayımı & Kayıt',
+        description: 'Günlük stok sayımı, fire raporu, sistem girişi.',
+        recipeIds: [],
+        estimatedMinutes: 60,
+        prerequisiteStepIds: [],
+        completionCriteria: { requireSupervisorApproval: true },
+        isActive: true,
+      },
+      {
+        targetRole: 'stajyer',
+        stepNumber: 8,
+        title: 'Kapanış & Devir',
+        description: 'Vardiya kapanışı, kasa sayımı, bir sonraki vardiyaya devir.',
+        recipeIds: [],
+        estimatedMinutes: 45,
+        prerequisiteStepIds: [],
+        completionCriteria: { requireSupervisorApproval: true },
+        isActive: true,
+      },
+    ];
+
+    const allSteps = [...baristaSteps, ...barBuddySteps, ...stajyerSteps];
+
+    await db.transaction(async (tx) => {
+      if (force) {
+        // Force ise tüm onboarding'i sıfırla
+        await tx.delete(branchOnboardingSteps);
+      }
+      await tx.insert(branchOnboardingSteps).values(allSteps);
+    });
+
+    res.json({
+      message: force ? "Onboarding sıfırlandı ve seed edildi" : "Onboarding seed edildi",
+      inserted: allSteps.length,
+      breakdown: {
+        barista: baristaSteps.length,
+        bar_buddy: barBuddySteps.length,
+        stajyer: stajyerSteps.length,
+      },
+    });
+  } catch (error: any) {
+    console.error("[POST seed-defaults] hata:", error);
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
 // ──────────────────────────────────────
 // Helper: Görüntüleme kaydet
 // ──────────────────────────────────────
