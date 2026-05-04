@@ -95,7 +95,7 @@ export default function PlanComparisonTab() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <Card>
               <CardContent className="p-3 text-center">
                 <Target className="h-5 w-5 mx-auto mb-1 text-blue-500" />
@@ -114,7 +114,28 @@ export default function PlanComparisonTab() {
               <CardContent className="p-3 text-center">
                 <AlertTriangle className="h-5 w-5 mx-auto mb-1 text-amber-500" />
                 <p className="text-lg font-bold" data-testid="kpi-total-waste">{totalWaste.toLocaleString("tr-TR")}</p>
-                <p className="text-[10px] text-muted-foreground">Fire</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Fire
+                  {totalProduced > 0 && (
+                    <span className="ml-1 font-semibold text-red-600">
+                      (%{Math.round((totalWaste / (totalProduced + totalWaste)) * 100)})
+                    </span>
+                  )}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 text-center">
+                <div className={`text-lg font-bold ${
+                  (totalPlanned - totalProduced) === 0 ? "text-emerald-600" :
+                  (totalPlanned - totalProduced) > 0 ? "text-red-600" : "text-blue-600"
+                }`}>
+                  {totalPlanned - totalProduced > 0 ? "−" : "+"}{Math.abs(totalPlanned - totalProduced).toLocaleString("tr-TR")}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Varyans
+                  {totalPlanned - totalProduced > 0 ? " (eksik)" : totalPlanned - totalProduced < 0 ? " (fazla)" : " (tam)"}
+                </p>
               </CardContent>
             </Card>
             <Card>
@@ -143,18 +164,36 @@ export default function PlanComparisonTab() {
               <CardContent className="space-y-2">
                 {data.summary.map((item) => {
                   const rate = item.completionRate ?? 0;
+                  const variance = item.totalPlanned - item.totalProduced;
+                  const wasteRate = (item.totalProduced + item.totalWaste) > 0
+                    ? Math.round((item.totalWaste / (item.totalProduced + item.totalWaste)) * 100)
+                    : 0;
                   return (
                     <div key={item.productId} className="flex items-center gap-3 p-2 rounded-md bg-muted/30" data-testid={`comp-product-${item.productId}`}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="text-xs font-medium truncate">{item.name}</span>
                           <Badge variant="outline" className="text-[9px] h-4">{item.category}</Badge>
+                          {wasteRate >= 10 && (
+                            <Badge variant="destructive" className="text-[9px] h-4 gap-0.5">
+                              <AlertTriangle className="h-2.5 w-2.5" />
+                              Yüksek fire %{wasteRate}
+                            </Badge>
+                          )}
                         </div>
                         <Progress value={Math.min(rate, 100)} className="h-2" />
-                        <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground">
+                        <div className="flex items-center justify-between mt-1 text-[10px] text-muted-foreground gap-2 flex-wrap">
                           <span>Plan: {item.totalPlanned} {item.unit}</span>
                           <span>Üretim: {item.totalProduced} {item.unit}</span>
-                          <span>Fire: {item.totalWaste} {item.unit}</span>
+                          <span className={item.totalWaste > 0 ? "text-red-600 font-medium" : ""}>
+                            Fire: {item.totalWaste} {item.unit}
+                            {wasteRate > 0 && <> (%{wasteRate})</>}
+                          </span>
+                          {variance !== 0 && (
+                            <span className={variance > 0 ? "text-amber-600" : "text-blue-600"}>
+                              Varyans: {variance > 0 ? "−" : "+"}{Math.abs(variance)}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">

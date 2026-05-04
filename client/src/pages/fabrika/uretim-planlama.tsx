@@ -44,6 +44,8 @@ import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
 import WeeklyPlanTab from "@/components/fabrika/WeeklyPlanTab";
 import PlanComparisonTab from "@/components/fabrika/PlanComparisonTab";
+import DailyRecordTab from "@/components/fabrika/DailyRecordTab";
+import ResponsibilitiesTab from "@/components/fabrika/ResponsibilitiesTab";
 
 interface ProductionPlan {
   id: number;
@@ -157,7 +159,7 @@ export default function FabrikaUretimPlanlama() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState("takvim");
+  const [activeTab, setActiveTab] = useState("haftalik");
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [selectedRecipeId, setSelectedRecipeId] = useState("");
@@ -546,14 +548,37 @@ export default function FabrikaUretimPlanlama() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap">
-          <TabsTrigger value="takvim" data-testid="tab-takvim">
+          {/* SİSTEM B — Yeni (haftalık plan → günlük üretim → fire) */}
+          <TabsTrigger value="haftalik" data-testid="tab-haftalik">
+            <Boxes className="h-4 w-4 mr-1" />
+            Haftalık Plan
+          </TabsTrigger>
+          <TabsTrigger value="gunluk-kayit" data-testid="tab-gunluk-kayit">
+            <ArrowDownToLine className="h-4 w-4 mr-1" />
+            Günlük Kayıt
+          </TabsTrigger>
+          <TabsTrigger value="karsilastirma" data-testid="tab-karsilastirma">
+            <BarChart3 className="h-4 w-4 mr-1" />
+            Karşılaştırma
+          </TabsTrigger>
+          <TabsTrigger value="sorumluluklar" data-testid="tab-sorumluluklar">
+            <Target className="h-4 w-4 mr-1" />
+            Sorumluluklar
+          </TabsTrigger>
+
+          {/* SİSTEM A — Eski (DEPRECATED, ileride kaldırılacak) */}
+          <TabsTrigger value="takvim" data-testid="tab-takvim" className="opacity-60">
             <CalendarIcon className="h-4 w-4 mr-1" />
             Takvim
+            <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5">eski</Badge>
           </TabsTrigger>
-          <TabsTrigger value="gecmis" data-testid="tab-gecmis">
+          <TabsTrigger value="gecmis" data-testid="tab-gecmis" className="opacity-60">
             <History className="h-4 w-4 mr-1" />
-            Üretim Geçmişi
+            Geçmiş
+            <Badge variant="outline" className="ml-1 text-[8px] px-1 py-0 h-3.5">eski</Badge>
           </TabsTrigger>
+
+          {/* MALİYET BAĞLANTILARI — Sistem A/B'den bağımsız, kalsın */}
           <TabsTrigger value="baglanti" data-testid="tab-baglanti">
             <Link2 className="h-4 w-4 mr-1" />
             Stok Bağlantıları
@@ -561,14 +586,6 @@ export default function FabrikaUretimPlanlama() {
           <TabsTrigger value="ai-analiz" data-testid="tab-ai-analiz">
             <Brain className="h-4 w-4 mr-1" />
             AI Analiz
-          </TabsTrigger>
-          <TabsTrigger value="haftalik" data-testid="tab-haftalik">
-            <Boxes className="h-4 w-4 mr-1" />
-            Haftalık Plan
-          </TabsTrigger>
-          <TabsTrigger value="karsilastirma" data-testid="tab-karsilastirma">
-            <BarChart3 className="h-4 w-4 mr-1" />
-            Karşılaştırma
           </TabsTrigger>
         </TabsList>
 
@@ -1127,8 +1144,16 @@ export default function FabrikaUretimPlanlama() {
           <WeeklyPlanTab />
         </TabsContent>
 
+        <TabsContent value="gunluk-kayit" className="mt-4">
+          <DailyRecordTab />
+        </TabsContent>
+
         <TabsContent value="karsilastirma" className="mt-4">
           <PlanComparisonTab />
+        </TabsContent>
+
+        <TabsContent value="sorumluluklar" className="mt-4">
+          <ResponsibilitiesTab />
         </TabsContent>
       </Tabs>
 
