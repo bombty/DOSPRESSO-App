@@ -219,6 +219,9 @@ export default function FactoryKiosk() {
   const [currentPhase, setCurrentPhase] = useState<KioskPhase>('hazirlik');
   const [phaseStartTime, setPhaseStartTime] = useState<Date>(new Date());
   const [phaseDurations, setPhaseDurations] = useState({ hazirlik: 0, uretim: 0, temizlik: 0 });
+  // P1 (4 May gece son): Aktif phase için canlı timer (saniye bazlı tick)
+  // Aslan'ın bulgusu: "Aktif phase çok belirgin olsun, her butonda zaman akışı görünsün"
+  const [phaseElapsedSec, setPhaseElapsedSec] = useState(0);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [productError, setProductError] = useState('');
   const [wasteDoughKg, setWasteDoughKg] = useState('');
@@ -263,6 +266,23 @@ export default function FactoryKiosk() {
       events.forEach(e => document.removeEventListener(e, resetInactivityTimer));
     };
   }, [step, selectedUser]);
+
+  // P1 (4 May gece son): Aktif phase için saniye bazlı tick
+  // Worker-home'da currentSession varsa her saniyede phaseElapsedSec güncellenir.
+  // Bu sayede phase butonlarında "00:02:15" gibi canlı timer görünür.
+  useEffect(() => {
+    if (step !== 'worker-home' || !phaseStartTime) {
+      setPhaseElapsedSec(0);
+      return;
+    }
+    const updateElapsed = () => {
+      const sec = Math.floor((Date.now() - phaseStartTime.getTime()) / 1000);
+      setPhaseElapsedSec(sec);
+    };
+    updateElapsed();
+    const intervalId = setInterval(updateElapsed, 1000);
+    return () => clearInterval(intervalId);
+  }, [step, phaseStartTime]);
 
   async function kioskFetchJson<T>(url: string, fallback: T): Promise<T> {
     const res = await kioskFetch(url);
@@ -1610,21 +1630,9 @@ export default function FactoryKiosk() {
                   Arıza Bildir
                 </Button>
 
-                {/* P1 (4 May gece): İstasyon Değiştir butonu — mola ekranından buraya taşındı.
-                    Sadece istasyon seçilmişse görünür (yani üretim modu) */}
-                {currentStationInfo && (
-                  <Button
-                    className="h-24 text-lg flex flex-col items-center gap-2 bg-purple-600 hover:bg-purple-700"
-                    onClick={() => {
-                      setSelectedStation(null);
-                      setStep('select-station');
-                    }}
-                    data-testid="button-change-station"
-                  >
-                    <Repeat className="h-8 w-8" />
-                    İstasyon Değiştir
-                  </Button>
-                )}
+                {/* P1 (4 May gece): "İstasyon Değiştir" butonu zaten yukarıda
+                    "İstasyon Seç / İstasyon Değiştir" olarak var (currentStationInfo'ya göre).
+                    Duplicate kaldırıldı. */}
               </div>
 
               <Button
@@ -1661,12 +1669,14 @@ export default function FactoryKiosk() {
               {loadingStations ? (
                 <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
               ) : (
-                <div className="grid grid-cols-2 gap-3">
+                /* P1 (4 May gece son): Grid 2 → 4 kolon (mobile: 2, sm+: 3, md+: 4)
+                   10 istasyon scroll yapmadan tek ekranda görünsün */
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {stations.map((station) => (
                     <Button
                       key={station.id}
                       variant={selectedStation === station.id ? "default" : "outline"}
-                      className={`h-auto p-4 flex flex-col items-center gap-2 transition-all ${
+                      className={`h-auto p-3 flex flex-col items-center gap-1.5 transition-all ${
                         selectedStation === station.id 
                           ? 'bg-amber-600 hover:bg-amber-700 border-amber-500' 
                           : 'bg-slate-700/50 border-slate-600 hover:bg-slate-600 hover:border-amber-500'
@@ -1674,14 +1684,14 @@ export default function FactoryKiosk() {
                       onClick={() => setSelectedStation(station.id)}
                       data-testid={`station-select-${station.id}`}
                     >
-                      <Settings className="h-8 w-8" />
-                      <span className="font-medium text-center">{station.name}</span>
+                      <Settings className="h-6 w-6" />
+                      <span className="font-medium text-center text-sm leading-tight">{station.name}</span>
                       {station.productName && (
-                        <span className="text-xs text-amber-400">{station.productName}</span>
+                        <span className="text-[10px] text-amber-400 leading-tight">{station.productName}</span>
                       )}
                       {station.targetHourlyOutput && (
-                        <Badge variant="secondary" className="text-xs">
-                          Hedef: {station.targetHourlyOutput}/saat
+                        <Badge variant="secondary" className="text-[10px] py-0">
+                          {station.targetHourlyOutput}/sa
                         </Badge>
                       )}
                     </Button>
@@ -1736,29 +1746,79 @@ export default function FactoryKiosk() {
 
               <Separator className="bg-slate-700" />
 
-              <div className="flex items-center gap-1 w-full" data-testid="phase-progress">
+              {/* P1 (4 May gece son): Phase görünürlüğü iyileştirildi
+                  - Aktif phase 2x büyük, mavi glow + pulse animation
+                  - Aktif phase'te canlı timer (HH:MM:SS) saniye bazlı
+                  - Tamamlanmış phase'lerde "5dk" gibi özet
+                  Aslan'ın bulgusu: "Üretim aktif olduğu çok belirgin olsun" */}
+              <div className="flex items-stretch gap-2 w-full" data-testid="phase-progress">
                 {[
-                  { key: 'hazirlik' as KioskPhase, label: 'Hazırlık', Icon: Wrench },
-                  { key: 'uretim' as KioskPhase, label: 'Üretim', Icon: Sparkles },
-                  { key: 'temizlik' as KioskPhase, label: 'Temizlik', Icon: SprayCan },
+                  { key: 'hazirlik' as KioskPhase, label: 'Hazırlık', Icon: Wrench, color: 'amber' },
+                  { key: 'uretim' as KioskPhase, label: 'Üretim', Icon: Sparkles, color: 'blue' },
+                  { key: 'temizlik' as KioskPhase, label: 'Temizlik', Icon: SprayCan, color: 'green' },
                 ].map((phase, index) => {
                   const isDone = PHASE_ORDER.indexOf(currentPhase) > index;
                   const isActive = currentPhase === phase.key;
                   const PhaseIcon = phase.Icon;
+                  // Aktif phase için canlı timer formatı: HH:MM:SS veya MM:SS
+                  const hours = Math.floor(phaseElapsedSec / 3600);
+                  const minutes = Math.floor((phaseElapsedSec % 3600) / 60);
+                  const seconds = phaseElapsedSec % 60;
+                  const liveTimer = hours > 0
+                    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
                   return (
                     <div key={phase.key} className={cn(
-                      "flex-1 flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-xs font-medium transition-all",
-                      isDone && "bg-green-900/40 text-green-400 border border-green-700",
-                      isActive && "bg-blue-900/40 text-blue-400 ring-2 ring-blue-500",
-                      !isDone && !isActive && "bg-slate-700/50 text-slate-500"
+                      "flex-1 flex flex-col items-center justify-center gap-1.5 rounded-lg font-medium transition-all duration-300",
+                      // Aktif phase BÜYÜK ve animasyonlu
+                      isActive && "py-4 px-2 bg-blue-900/60 text-blue-200 ring-2 ring-blue-400 shadow-lg shadow-blue-500/50 scale-105",
+                      // Tamamlanmış phase
+                      isDone && "py-2 px-1 bg-green-900/40 text-green-400 border border-green-700",
+                      // Henüz gelmeyen phase
+                      !isDone && !isActive && "py-2 px-1 bg-slate-700/30 text-slate-500 opacity-60"
                     )} data-testid={`phase-indicator-${phase.key}`}>
-                      <PhaseIcon className="h-4 w-4" />
-                      <span>{phase.label}</span>
+                      <PhaseIcon className={cn(
+                        "transition-all",
+                        isActive ? "h-7 w-7" : "h-4 w-4"
+                      )} />
+                      <span className={cn(
+                        "transition-all",
+                        isActive ? "text-base font-bold" : "text-xs"
+                      )}>{phase.label}</span>
+                      {/* Aktif phase: Canlı timer (saniye bazlı) */}
+                      {isActive && (
+                        <span className="font-mono text-lg font-bold tabular-nums tracking-wider" data-testid={`phase-live-timer-${phase.key}`}>
+                          {liveTimer}
+                        </span>
+                      )}
+                      {/* Tamamlanmış phase: Toplam süre özet */}
                       {isDone && <span className="text-[10px]">{phaseDurations[phase.key]}dk</span>}
+                      {/* Henüz gelmeyen phase: Boş state */}
+                      {!isDone && !isActive && <span className="text-[10px] opacity-50">⋯</span>}
                     </div>
                   );
                 })}
               </div>
+
+              {/* Aktif phase için BÜYÜK durum banner'ı */}
+              {currentPhase === 'uretim' && (
+                <div className="bg-gradient-to-r from-blue-900/60 to-blue-700/40 border-2 border-blue-500 rounded-lg p-3 flex items-center justify-center gap-3" data-testid="active-phase-banner">
+                  <Sparkles className="h-6 w-6 text-blue-300" />
+                  <span className="text-blue-100 font-bold text-lg">📦 ÜRETİM AKTİF</span>
+                </div>
+              )}
+              {currentPhase === 'hazirlik' && (
+                <div className="bg-gradient-to-r from-amber-900/60 to-amber-700/40 border-2 border-amber-500 rounded-lg p-3 flex items-center justify-center gap-3" data-testid="active-phase-banner">
+                  <Wrench className="h-6 w-6 text-amber-300" />
+                  <span className="text-amber-100 font-bold text-lg">🔧 HAZIRLIK AŞAMASI</span>
+                </div>
+              )}
+              {currentPhase === 'temizlik' && (
+                <div className="bg-gradient-to-r from-green-900/60 to-green-700/40 border-2 border-green-500 rounded-lg p-3 flex items-center justify-center gap-3" data-testid="active-phase-banner">
+                  <SprayCan className="h-6 w-6 text-green-300" />
+                  <span className="text-green-100 font-bold text-lg">🧹 TEMİZLİK AŞAMASI</span>
+                </div>
+              )}
 
               <div className="bg-slate-700/50 rounded-lg p-4">
                 <div className="flex items-center gap-3">
