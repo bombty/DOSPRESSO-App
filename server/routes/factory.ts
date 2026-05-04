@@ -691,6 +691,35 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
     }
   });
 
+  // P1 (4 May gece): QC yetkili kullanıcılar listesi
+  // Kiosk'ta "Kalite Kontrol" butonu tıklanınca açılan ekranda
+  // text input yerine kullanıcı listesi gösterilir.
+  // QC roller: admin, ceo, kalite_yoneticisi, gida_muhendisi, kalite_kontrol
+  // Eren manuel olarak admin/fabrika_mudur rolündeyse listede görünür.
+  router.get('/api/factory/kiosk/qc-users', isAuthenticated, async (req, res) => {
+    try {
+      const qcRoles = ['admin', 'ceo', 'kalite_yoneticisi', 'gida_muhendisi', 'kalite_kontrol'];
+      const qcUsers = await db.select({
+        id: users.id,
+        username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        role: users.role,
+      }).from(users)
+        .where(and(
+          kioskEligibleWhere(),
+          inArray(users.role, qcRoles),
+        ))
+        .orderBy(users.firstName);
+
+      res.json(qcUsers);
+    } catch (error: unknown) {
+      console.error("Error fetching QC users:", error);
+      res.status(500).json({ message: "QC yetkili kullanıcılar alınamadı" });
+    }
+  });
+
   // Kiosk PIN girişi (personel seçip PIN ile giriş)
   router.post('/api/factory/kiosk/login', async (req, res) => {
     try {

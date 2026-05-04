@@ -1,91 +1,103 @@
 # 📋 DOSPRESSO — PENDING.md
 
-**Son güncelleme:** 4 May 2026 Pazartesi 20:35 (Claude)
+**Son güncelleme:** 4 May 2026 Pazartesi 22:55 (Aslan2 + Claude)
 **Format:** TASK-XXX (iş) / DECISION-XXX (Aslan kararı)
-**Kural:** Her biten sonra üst tablodaki ilgili satırı **DELETE**, TODAY.md "BİTENLER" bölümüne ekle.
 **Bağlam:** Pilot 12 May 09:00 — **8 gün uzakta**.
 
 ---
 
-## 🚨 ASLAN'A BEKLEYEN (yeni oturum açar açmaz)
+## 🚨 SABAH ASLAN'A BEKLEYEN
 
-**Replit Shell'de yapılacak (3 dk):**
+### 1. Replit Plan Mode Sonuç Kontrolü
+Gece çalıştı, sabah doğrula:
 ```bash
-# 1) LLM fix push
-git push origin main
-
-# 2) 2 branch merge (Onboarding + Recipe Finder)
 git fetch origin
-git merge --no-ff origin/claude/onboarding-akademi-v2-2026-05-04 -m "Merge: Onboarding (TASK-ONBOARDING-001)"
-git merge --no-ff origin/claude/dobody-recipe-finder-v2-2026-05-04 -m "Merge: Recipe Finder skill (TASK-DOBODY-001)"
-git push origin main
-git push origin --delete claude/onboarding-akademi-v2-2026-05-04
-git push origin --delete claude/dobody-recipe-finder-v2-2026-05-04
-git pull origin main
+git log --oneline -10  # son commit'ler
+psql -c "SELECT column_name FROM information_schema.columns WHERE table_name='factory_recipes' AND column_name LIKE '%storage%' OR column_name LIKE '%manufacturer%';"
+psql -c "SELECT id, status FROM factory_shift_sessions WHERE id IN (113, 114);"
 ```
 
-**Sonra Replit Agent'a smoke test:**
-- /branch-recipes/admin/onboarding → Default Seed butonu çalışıyor mu
-- /onboarding (kullanıcı görünümü) → timeline render
-- POST /api/agent/run-now → recipe_finder skill çağrılıyor mu (insights üretiyor mu)
+Beklenen:
+- Son commit: branch merge (3 commit getirmiş olmalı)
+- factory_recipes: 4 yeni kolon (storage_conditions, manufacturer_info, may_contain_allergens, shelf_life_days)
+- Vardıya 113+114: status='completed'
+
+### 2. Recipe Finder Skill İlk Run (07:00 sonrası)
+```bash
+grep "RecipeFinder" /tmp/logs/Start_application_*.log | tail -10
+```
+```sql
+SELECT COUNT(*), MAX(created_at), subcategory
+FROM agent_pending_actions WHERE category='egitim'
+GROUP BY subcategory;
+```
+
+### 3. Eren Kiosk + Etiket Testi (1.5 saat birlikte)
+- `docs/audit/PDKS-TEST-CHECKLIST-DETAYLI-5-MAYIS-2026.md` (Replit, 330 satır)
+- `docs/audit/ETIKET-SMOKE-TEST-5-MAYIS-2026.md` (Claude, 250+ satır)
 
 ---
 
-## 📌 P1 — POST-PILOT (12 May sonrası)
+## 📌 P1 — PILOT ÖNCESİ (12 May'a 8 gün)
+
+### TASK-AROMA-SEED-COMPATIBILITY (Aslan + HQ Coach)
+**Süre:** Kod yok, data entry — 4-8 saat
+**Konu:** 32 aroma DB'de, 8 template reçete için compatibility eksik
+**Rehber:** `docs/audit/AROMA-SEED-REHBERI-5-MAYIS-2026.md`
+
+### TASK-MRP-MISSING-UI (Claude — opsiyonel)
+**Süre:** 3-4 saat
+**Konu:** MRP-Light backend'de var, 4 endpoint UI'sız:
+- `/api/mrp/daily-plan/:id/confirm` (HQ onay)
+- `/api/mrp/leftovers/:id/verify` (akşam kapanış)
+- `/api/mrp/deduct-stock` (stok düşme)
+- `/api/mrp/calculate-waste` (fire hesabı)
+
+**Pilot etkisi:** Düşük (mevcut 7 endpoint UI var). Post-pilot polish yapılabilir.
+
+### TASK-EREN-KIOSK-FIX (PDKS sonrası)
+**Bekliyor:** Eren testi sonrası bug listesi
+**Olası fix'ler:** Phase butonlarına vurgu, auto-logout (8h), prompt mesajları
+
+---
+
+## 📌 P2 — POST-PILOT (12 May sonrası)
 
 ### TASK-INSIGHTS-STUB-FIX
 **Süre:** 10 dk
-**Konu:** `trainer-egitim-merkezi.tsx` `/api/agent/insights` stub kullanıyor — gerçek `/api/agent/actions` ile değiştirilmeli
-**Etki:** Trainer akademi sayfası şu an boş insight gösteriyor, hata değil ama eksik
 **Dosya:** `client/src/pages/trainer-egitim-merkezi.tsx`
+**Konu:** Stub `/api/agent/insights` → gerçek `/api/agent/actions`
 
 ### TASK-DEMO-APPROVAL-UI
 **Süre:** 1-2 saat
-**Konu:** Süpervizör onboarding adımlarında demo (uygulama) onayı veriyor
-**Şu an:** Sadece API tarafta `demoCompleted` flag, UI yok
-**Yapılacak:**
-- Süpervizör paneline "Demo Onayı Bekleyenler" widget
-- Her trainee × recipe için "Gözlemledim, onaylıyorum" buton + not alanı
-- POST /api/branch-recipes/learning-progress/:userId/:recipeId/approve-demo
+**Konu:** Süpervizör paneline "Demo Onayı Bekleyenler" widget
 
 ### TASK-DRAG-DROP-RECIPE
 **Süre:** 1-2 saat
-**Konu:** Reçete editöründe malzeme/adım sıralaması drag-drop ile (şu an yukarı/aşağı oklar)
-**Kütüphane:** dnd-kit
-**Etki:** UX iyileşmesi, mobile'da bile çalışır
+**Konu:** Reçete editöründe dnd-kit ile drag-drop sıralama
 
-### TASK-AROMA-SEED-COMPATIBILITY
-**Süre:** Aslan + HQ Coach ekibi (kod değil, data entry)
-**Konu:** 32 aroma DB'de var, 8 template reçete var, ama compatibility tablosu eksik
-**Yapılacak:**
-- HQ Coach `/branch-recipes/admin/recipe/:id` editöründen "Aromalar" tab'ında her template için 4-8 aroma kombinasyonu ekleyip kaydetsin
-- Örn: Meyveli Mojito × {Mango, Şeftali, Pinkberry, Blueberry, Lime} primary_fruit slot
+### TASK-RECETE-LOCK-UI
+**Süre:** 1 saat
+**Konu:** `POST /api/factory/recipes/:id/lock` UI butonu — kalite/audit risk azaltma
 
----
+### TASK-PAYROLL-FABRIKA-DESTEK
+**Süre:** 1 gün
+**Konu:** `payroll-engine.ts`'e `factory_shift_sessions` ekle (Eren maaş sisteme girmesi için)
 
-## 📌 P2 — POST-PILOT (uzun)
+### TASK-FACTORY-F2-DASHBOARD
+**Karar bekliyor:** F2 backend var (268 satır), UI yok. Kalsın mı, kaldırılsın mı?
+
+### TASK-KIOSK-REFACTOR
+**Süre:** 1 hafta
+**Konu:** kiosk.tsx (2897 satır, 16 step) → component split + useReducer
 
 ### TASK-BRANCH-OPENING-COWORK
 **Süre:** 3-5 gün
-**Konu:** Yeni şube açılış projesi (id=4 izmir) için cowork tooling
-**3 Seçenek (Aslan henüz seçmedi):**
-- A) Vendor Portal MVP — magic-link ile dış kullanıcı erişimi
-- B) Cowork yorum-dosya-aktivite — proje kart sayfasına Slack benzeri yorumlar
-- C) Gantt timeline — 7 fazlı görsel takvim
-
-**Mevcut altyapı:**
-- NEW_SHOP_PHASE_TEMPLATE (7 faz)
-- projectPhases / projectBudgetLines / projectVendors / projectRisks tabloları
-- magic-link external user portal kodu var ama kullanılmıyor
-
-### TASK-VARDIYA-V2
-**Süre:** 3-5 gün
-**Konu:** Vardiya planlama redesign (Aslan'ın memory'sinde "vardiya redesign" notu var)
-**Detay belirsiz** — Aslan ile tartışılacak
+**Konu:** id=4 izmir projesi için cowork tooling (Vendor Portal MVP)
 
 ---
 
-## 🚫 İPTAL / BEKLET (1-2 ay sonra dönülür)
+## 🚫 İPTAL / BEKLET
 
 - AI auto-suggest reçete adımları (1-2 ay sonra)
 - Versiyon geçmişi reçete editör (low-priority)
@@ -93,22 +105,23 @@ git pull origin main
 
 ---
 
-## 🔧 BİLİNEN KÜÇÜK ITEMLAR (gerekirse 5-15 dk)
+## 🔧 KÜÇÜK (gerekirse 5-15 dk)
 
-- Phantom roller (`fabrika_pisman`, `fabrika_kalite`, `fabrika_sorumlu`, `fabrika_personel`, `fabrika`) — sıfır user, kaldırılabilir
-- Procurement modülü dormant (sıfır branch order, sıfır goods receipt) — pilot sonrası activate
-- ~2887 raw `console.log` — Sentry/Pino entegrasyonu (sprint H, post-pilot)
+- Phantom roller (5 adet, 0 user) → kaldırılabilir post-pilot
+- Procurement modülü dormant → activate kararı
+- ~2887 raw `console.log` → Sentry/Pino entegrasyonu
 
 ---
 
-## 📝 KARAR BEKLEYEN (DECISION)
+## 📝 KARAR BEKLEYEN
 
 ### DECISION-COWORK-OPTION
-Yeni şube açılış için A/B/C hangisi? (yukarıda detay var)
+Yeni şube açılış için A/B/C? (Vendor Portal / Cowork yorum / Gantt)
 
-### DECISION-PILOT-RAMPUP
-12 May pilot başlasın mı yoksa 1 hafta daha hazırlık mı?
-- Kod: HAZIR ✅
-- Aroma seed: %30 (32 aroma var, compat eksik)
-- Onboarding step content review: HQ Coach ekibinden bekleniyor
-- Pilot şube eğitimi: zamanlanmadı
+### DECISION-FABRIKA-MAAŞ
+Eren maaşı pilot sırasında manuel Excel mi, yoksa payroll-engine fabrika destek mi?
+**Tavsiye:** Manuel Excel pilot için. Post-pilot engine ekleme.
+
+### DECISION-F2-DASHBOARD
+Factory F2 dashboard kalsın mı? UI yapılır mı?
+**Tavsiye:** Pilot sonrası karar. Şimdilik dondur.

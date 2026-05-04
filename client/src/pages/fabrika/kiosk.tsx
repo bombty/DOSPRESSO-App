@@ -277,6 +277,16 @@ export default function FactoryKiosk() {
     refetchInterval: 30000,
   });
 
+  // P1 (4 May gece): QC yetkili kullanıcılar listesi
+  // qcMode aktifken kullanıcı seç ekranında "Eren, Atiye, Sema, Aslan" gibi
+  // text input yerine liste gösterilir.
+  const { data: qcUsers = [] } = useQuery<any[]>({
+    queryKey: ['/api/factory/kiosk/qc-users'],
+    queryFn: () => kioskFetchJson<any[]>('/api/factory/kiosk/qc-users', []),
+    enabled: qcMode && !selectedUser && step === 'enter-pin',
+    refetchInterval: 60000,
+  });
+
   const { data: activeWorkersData = [] } = useQuery<any[]>({
     queryKey: ['/api/factory/active-workers'],
     queryFn: () => kioskFetchJson<any[]>('/api/factory/active-workers', []),
@@ -716,6 +726,39 @@ export default function FactoryKiosk() {
     return () => document.removeEventListener('fullscreenchange', onFSChange);
   }, []);
 
+  // P1 (4 May gece): Auto-return — worker-home'da hareketsiz 30 saniye geçince
+  // personel seçim sayfasına otomatik dön. Aktivite varsa timer reset.
+  // Bu sayede bir personel vardıyayı açıp ana sayfadan çıkmazsa
+  // diğer personel kioska geldiğinde otomatik giriş ekranı görür.
+  useEffect(() => {
+    if (step !== 'worker-home') return;
+
+    const IDLE_TIMEOUT_MS = 30 * 1000; // 30 saniye
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    const resetTimer = () => {
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(() => {
+        // Eğer hala worker-home'daysa ve mola sırasında değilse, geri dön
+        setSelectedUser(null);
+        setPinInput("");
+        setStep('select-user');
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    // İlk timer başlat
+    resetTimer();
+
+    // Aktivite olduğunda timer'ı resetle
+    const events = ['mousedown', 'touchstart', 'keydown'];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [step]);
+
   const handlePhaseTransition = async (nextPhase: KioskPhase) => {
     const now = new Date();
     const elapsed = Math.floor((now.getTime() - phaseStartTime.getTime()) / 60000);
@@ -881,13 +924,20 @@ export default function FactoryKiosk() {
               size="sm"
               className="border-slate-600 text-slate-300"
               onClick={() => {
+                // Mola sırasında ise mola kaydını kapat
                 if (step === 'on-break' && currentBreakLogId) {
                   kioskFetch('/api/factory/kiosk/end-break', 'POST', { breakLogId: currentBreakLogId }).catch(() => {});
                   setBreakStartTime(null);
                   setBreakElapsed(0);
                   setCurrentBreakLogId(null);
                 }
-                setStep('worker-home');
+                // P1 (4 May gece): Ana Sayfa = personel seçim ekranına dön
+                // Mevcut personelin vardıyası backend'de açık kalır (status='active')
+                // Başka bir personel kiosk'a giriş yapabilir
+                // Yeni personel giriş yaparsa kendi vardıyasını başlatır
+                setSelectedUser(null);
+                setPinInput("");
+                setStep('select-user');
               }}
               data-testid="button-kiosk-home"
             >
@@ -1294,9 +1344,48 @@ export default function FactoryKiosk() {
                   <ClipboardCheck className="h-7 w-7 text-cyan-400" />
                 </div>
               ) : null}
-              <p className="text-sm text-slate-400 mb-2">{qcMode && !selectedUser ? 'Kullanıcı adınızı ve PIN kodunuzu girin' : 'PIN kodunuzu girin'}</p>
+              <p className="text-sm text-slate-400 mb-2">{qcMode && !selectedUser ? 'QC yapacak kullanıcıyı seçin' : 'PIN kodunuzu girin'}</p>
 
+              {/* P1 (4 May gece): QC kullanıcı listesi (text input yerine) */}
               {qcMode && !selectedUser && (
+                <div className="w-full max-w-md mb-4">
+                  {qcUsers.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-6">
+                      QC yetkili kullanıcı bulunamadı.<br />
+                      <span className="text-xs">Yetkili roller: kalite_yoneticisi, gida_muhendisi, admin, ceo</span>
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto">
+                      {qcUsers.map((qcUser: any) => (
+                        <Button
+                          key={qcUser.id}
+                          variant="outline"
+                          className="h-auto p-3 flex flex-col items-center gap-1 bg-slate-700/50 border-slate-600 hover:border-cyan-500 transition-all"
+                          onClick={() => {
+                            setSelectedUser(qcUser);
+                            setUsernameInput(qcUser.username || '');
+                            setPinInput('');
+                          }}
+                          data-testid={`qc-user-${qcUser.id}`}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-cyan-600/20 flex items-center justify-center">
+                            <span className="text-sm font-bold text-cyan-400">
+                              {(qcUser.firstName?.[0] || '')}{(qcUser.lastName?.[0] || '')}
+                            </span>
+                          </div>
+                          <span className="text-xs text-slate-200 font-medium text-center leading-tight">
+                            {qcUser.firstName} {qcUser.lastName}
+                          </span>
+                          <span className="text-[9px] text-slate-500 uppercase">{qcUser.role}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Eski text input — qcMode liste varsa gizle */}
+              {qcMode && !selectedUser && false && (
                 <Input
                   placeholder="Kullanıcı adı"
                   value={usernameInput}
@@ -1520,6 +1609,22 @@ export default function FactoryKiosk() {
                   <AlertTriangle className="h-8 w-8" />
                   Arıza Bildir
                 </Button>
+
+                {/* P1 (4 May gece): İstasyon Değiştir butonu — mola ekranından buraya taşındı.
+                    Sadece istasyon seçilmişse görünür (yani üretim modu) */}
+                {currentStationInfo && (
+                  <Button
+                    className="h-24 text-lg flex flex-col items-center gap-2 bg-purple-600 hover:bg-purple-700"
+                    onClick={() => {
+                      setSelectedStation(null);
+                      setStep('select-station');
+                    }}
+                    data-testid="button-change-station"
+                  >
+                    <Repeat className="h-8 w-8" />
+                    İstasyon Değiştir
+                  </Button>
+                )}
               </div>
 
               <Button
@@ -1828,41 +1933,9 @@ export default function FactoryKiosk() {
                   <span className="text-slate-200 font-semibold">Özel İhtiyaç</span>
                   <span className="text-slate-400 text-xs text-center">WC, kişisel ihtiyaç</span>
                 </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
-                  onClick={() => {
-                    setSelectedStation(null);
-                    setStep('select-station');
-                  }}
-                  data-testid="break-option-station-change"
-                >
-                  <div className="p-3 rounded-full bg-purple-600">
-                    <Repeat className="h-8 w-8 text-white" />
-                  </div>
-                  <span className="text-slate-200 font-semibold">İstasyon Değiştir</span>
-                  <span className="text-slate-400 text-xs text-center">Farklı istasyona geç</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
-                  onClick={() => {
-                    setFaultType(null);
-                    setFaultDescription('');
-                    setFaultStationId(currentStationInfo?.id || null);
-                    setStep('fault-report');
-                  }}
-                  data-testid="button-fault-report"
-                >
-                  <div className="p-3 rounded-full bg-yellow-600">
-                    <AlertTriangle className="h-8 w-8 text-white" />
-                  </div>
-                  <span className="text-slate-200 font-semibold">Arıza Bildir</span>
-                  <span className="text-slate-400 text-xs text-center">Makina arızası veya ürün hatası</span>
-                </Button>
               </div>
+              {/* P1 (4 May gece): "İstasyon Değiştir" + "Arıza Bildir" Worker Home'a taşındı.
+                  Mola ekranı sadece Mola + Özel İhtiyaç içerir — daha temiz mental model. */}
 
               <Button
                 className="w-full bg-green-600 hover:bg-green-700 h-14 text-lg"
