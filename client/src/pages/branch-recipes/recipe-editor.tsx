@@ -75,6 +75,35 @@ interface BranchRecipeStep {
   _isNew?: boolean;
 }
 
+interface AromaOption {
+  id: number;
+  name: string;
+  shortCode: string | null;
+  category: string;
+  colorHex: string | null;
+  iconEmoji: string | null;
+  formType: string;
+}
+
+interface AromaCompatibility {
+  id?: number;
+  aromaId: number;
+  slotName: string;
+  overridePumpsMassivo?: string | null;
+  overridePumpsLongDiva?: string | null;
+  overrideUnit?: string | null;
+  isDefault?: boolean;
+  displayNameOverride?: string | null;
+  isActive?: boolean;
+  // Detail (read-only join):
+  aromaName?: string;
+  aromaIconEmoji?: string | null;
+  aromaCategory?: string;
+  // Editor-only:
+  _localId?: string;
+  _isNew?: boolean;
+}
+
 interface RecipeDetail {
   product: { id: number; name: string; category: string };
   recipe: {
@@ -110,9 +139,10 @@ export default function BranchRecipeEditor() {
   const recipeId = params?.recipeId ? Number(params.recipeId) : null;
   const canEdit = user?.role && HQ_EDIT_ROLES.includes(user.role);
 
-  const [activeTab, setActiveTab] = useState<'ingredients' | 'steps'>('ingredients');
+  const [activeTab, setActiveTab] = useState<'ingredients' | 'steps' | 'aromas'>('ingredients');
   const [ingredients, setIngredients] = useState<BranchRecipeIngredient[]>([]);
   const [steps, setSteps] = useState<BranchRecipeStep[]>([]);
+  const [aromas, setAromas] = useState<AromaCompatibility[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
   const [pendingExitUrl, setPendingExitUrl] = useState<string | null>(null);
@@ -128,6 +158,31 @@ export default function BranchRecipeEditor() {
     enabled: !!recipeId && !!canEdit,
     staleTime: 0, // Editör için her zaman taze data
   });
+
+  // Mevcut aroma uyumlulukları (template ise)
+  const { data: aromaData } = useQuery<{ compatibilities: AromaCompatibility[] }>({
+    queryKey: ["/api/branch-recipes", recipeId, "aromas"],
+    queryFn: async () => {
+      const res = await fetch(`/api/branch-recipes/${recipeId}/aromas`, { credentials: "include" });
+      if (!res.ok) throw new Error("Aroma listesi yüklenemedi");
+      return res.json();
+    },
+    enabled: !!recipeId && !!canEdit && !!detail?.recipe.isTemplate,
+    staleTime: 0,
+  });
+
+  // Aroma seçenekleri (tüm)
+  const { data: aromaOptionsData } = useQuery<{ aromas: AromaOption[] }>({
+    queryKey: ["/api/branch-aroma-options"],
+    queryFn: async () => {
+      const res = await fetch(`/api/branch-aroma-options`, { credentials: "include" });
+      if (!res.ok) throw new Error("Aroma seçenekleri yüklenemedi");
+      return res.json();
+    },
+    enabled: !!canEdit,
+    staleTime: 600000,
+  });
+  const aromaOptions = useMemo(() => aromaOptionsData?.aromas || [], [aromaOptionsData]);
 
   // Detay yüklendiğinde state'i doldur
   useEffect(() => {
@@ -147,6 +202,18 @@ export default function BranchRecipeEditor() {
       setIsDirty(false);
     }
   }, [detail]);
+
+  // Aromalar yüklendiğinde state'i doldur
+  useEffect(() => {
+    if (aromaData?.compatibilities) {
+      setAromas(
+        aromaData.compatibilities.map(a => ({
+          ...a,
+          _localId: newLocalId(),
+        }))
+      );
+    }
+  }, [aromaData]);
 
   // beforeunload — kaydedilmemiş değişiklik uyarısı
   useEffect(() => {
@@ -200,6 +267,25 @@ export default function BranchRecipeEditor() {
     },
   });
 
+  const saveAromasMutation = useMutation({
+    mutationFn: async (payload: AromaCompatibility[]) => {
+      const cleaned = payload
+        .filter(a => a.aromaId && a.aromaId > 0) // Boş satırları filtrele
+        .map(({ _localId, _isNew, id, aromaName, aromaIconEmoji, aromaCategory, ...rest }) => rest);
+      const res = await fetch(`/api/branch-recipes/${recipeId}/aromas`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ compatibilities: cleaned }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || "Aromalar kaydedilemedi");
+      }
+      return res.json();
+    },
+  });
+
   const handleSaveAll = async () => {
     // Validation: boş malzeme/adım yoksa ve sıralama 1'den başlıyor
     const emptyIng = ingredients.find(i => !i.ingredientName.trim());
@@ -222,15 +308,33 @@ export default function BranchRecipeEditor() {
       setActiveTab('steps');
       return;
     }
+    // Aroma validation: aromaId boş olamaz
+    const invalidAroma = aromas.find(a => !a.aromaId || a.aromaId <= 0);
+    if (invalidAroma) {
+      toast({
+        title: "Aroma seçilmedi",
+        description: "Lütfen tüm satırlarda bir aroma seçin (boşları silebilirsiniz).",
+        variant: "destructive",
+      });
+      setActiveTab('aromas');
+      return;
+    }
 
     try {
-      await Promise.all([
+      const promises: Promise<any>[] = [
         saveIngredientsMutation.mutateAsync(ingredients),
         saveStepsMutation.mutateAsync(steps),
-      ]);
+      ];
+      // Aroma sadece template reçetelerde
+      if (detail?.recipe.isTemplate) {
+        promises.push(saveAromasMutation.mutateAsync(aromas));
+      }
+      await Promise.all(promises);
       toast({
         title: "Kaydedildi",
-        description: `${ingredients.length} malzeme + ${steps.length} adım güncellendi.`,
+        description: detail?.recipe.isTemplate
+          ? `${ingredients.length} malzeme + ${steps.length} adım + ${aromas.length} aroma güncellendi.`
+          : `${ingredients.length} malzeme + ${steps.length} adım güncellendi.`,
       });
       setIsDirty(false);
       // Cache'i temizle
@@ -330,6 +434,38 @@ export default function BranchRecipeEditor() {
     setIsDirty(true);
   };
 
+  // ── Aroma işlemleri ───────────────────────────────────────────
+  const addAroma = () => {
+    setAromas(prev => [
+      ...prev,
+      {
+        _localId: newLocalId(),
+        _isNew: true,
+        aromaId: 0,
+        slotName: 'primary',
+        overridePumpsMassivo: null,
+        overridePumpsLongDiva: null,
+        overrideUnit: 'pump',
+        isDefault: false,
+        displayNameOverride: null,
+        isActive: true,
+      },
+    ]);
+    setIsDirty(true);
+  };
+
+  const updateAroma = (localId: string, patch: Partial<AromaCompatibility>) => {
+    setAromas(prev =>
+      prev.map(a => (a._localId === localId ? { ...a, ...patch } : a))
+    );
+    setIsDirty(true);
+  };
+
+  const deleteAroma = (localId: string) => {
+    setAromas(prev => prev.filter(a => a._localId !== localId));
+    setIsDirty(true);
+  };
+
   // ── Geri butonu — dirty check ────────────────────────────────
   const handleBack = () => {
     if (isDirty) {
@@ -387,7 +523,7 @@ export default function BranchRecipeEditor() {
     );
   }
 
-  const isSaving = saveIngredientsMutation.isPending || saveStepsMutation.isPending;
+  const isSaving = saveIngredientsMutation.isPending || saveStepsMutation.isPending || saveAromasMutation.isPending;
 
   return (
     <div className="container mx-auto p-3 sm:p-4 max-w-4xl">
@@ -456,8 +592,8 @@ export default function BranchRecipeEditor() {
       </Card>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'ingredients' | 'steps')}>
-        <TabsList className="grid w-full grid-cols-2 mb-4">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'ingredients' | 'steps' | 'aromas')}>
+        <TabsList className={`grid w-full mb-4 ${detail.recipe.isTemplate ? 'grid-cols-3' : 'grid-cols-2'}`}>
           <TabsTrigger value="ingredients" data-testid="tab-ingredients">
             <ListChecks className="h-4 w-4 mr-2" />
             Malzemeler ({ingredients.length})
@@ -466,6 +602,12 @@ export default function BranchRecipeEditor() {
             <Coffee className="h-4 w-4 mr-2" />
             Adımlar ({steps.length})
           </TabsTrigger>
+          {detail.recipe.isTemplate && (
+            <TabsTrigger value="aromas" data-testid="tab-aromas">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Aromalar ({aromas.length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Malzemeler Tab */}
@@ -757,6 +899,228 @@ export default function BranchRecipeEditor() {
             <Plus className="h-4 w-4" /> Yeni Adım Ekle
           </Button>
         </TabsContent>
+
+        {/* Aromalar Tab — sadece template reçetelerde */}
+        {detail.recipe.isTemplate && (
+        <TabsContent value="aromas" className="space-y-3">
+          <Card className="border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-3 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+              <Sparkles className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p>
+                  <strong>Şablon reçete:</strong> Müşteri farklı aromalar seçebilir (ör: Mojito şablonu için Mango/Şeftali/Pinkberry).
+                </p>
+                <p>
+                  Her aroma için <strong>özel pump miktarı</strong> belirleyebilirsiniz. Boş bırakırsanız reçete varsayılanı kullanılır.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {aromas.length === 0 && (
+            <Card>
+              <CardContent className="p-6 text-center text-muted-foreground text-sm">
+                Henüz aroma eklenmedi. Aşağıdan ekleyin.
+              </CardContent>
+            </Card>
+          )}
+
+          {aromas.map((aroma, idx) => {
+            const aromaInfo = aromaOptions.find(o => o.id === aroma.aromaId);
+            const isUnique = aromas.filter(a => a.aromaId === aroma.aromaId && a.slotName === aroma.slotName).length === 1;
+            return (
+            <Card key={aroma._localId} data-testid={`aroma-card-${idx}`}>
+              <CardContent className="p-3 space-y-3">
+                {/* Aroma seçici + sil */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {aromaInfo?.iconEmoji && (
+                      <span className="text-2xl">{aromaInfo.iconEmoji}</span>
+                    )}
+                    <Badge variant="outline" className="font-mono text-xs">
+                      #{idx + 1}
+                    </Badge>
+                    {aroma.isDefault && (
+                      <Badge variant="secondary" className="gap-1 text-[10px]">
+                        <CheckCircle2 className="h-2.5 w-2.5" /> Varsayılan
+                      </Badge>
+                    )}
+                    {!isUnique && (
+                      <Badge variant="destructive" className="gap-1 text-[10px]">
+                        <AlertTriangle className="h-2.5 w-2.5" /> Tekrar
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive shrink-0"
+                    onClick={() => deleteAroma(aroma._localId!)}
+                    data-testid={`button-delete-aroma-${idx}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Aroma seçimi */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Aroma *</Label>
+                  <Select
+                    value={aroma.aromaId > 0 ? String(aroma.aromaId) : ''}
+                    onValueChange={(v) =>
+                      updateAroma(aroma._localId!, { aromaId: parseInt(v) })
+                    }
+                  >
+                    <SelectTrigger data-testid={`select-aroma-${idx}`}>
+                      <SelectValue placeholder="Aroma seç..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Kategoriye göre grupla */}
+                      {['fruit', 'herbal', 'dairy', 'sweet', 'topping'].map(cat => {
+                        const inCat = aromaOptions.filter(o => o.category === cat);
+                        if (inCat.length === 0) return null;
+                        const catLabel: Record<string, string> = {
+                          fruit: '🍓 Meyve', herbal: '🌿 Bitki', dairy: '🥛 Süt Ürünü',
+                          sweet: '🍯 Tatlı', topping: '✨ Süsleme',
+                        };
+                        return (
+                          <div key={cat}>
+                            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+                              {catLabel[cat] || cat}
+                            </div>
+                            {inCat.map(opt => (
+                              <SelectItem key={opt.id} value={String(opt.id)}>
+                                {opt.iconEmoji} {opt.name}
+                              </SelectItem>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Slot adı */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Slot</Label>
+                  <Select
+                    value={aroma.slotName}
+                    onValueChange={(v) => updateAroma(aroma._localId!, { slotName: v })}
+                  >
+                    <SelectTrigger data-testid={`select-aroma-slot-${idx}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="primary">Birincil Aroma</SelectItem>
+                      <SelectItem value="primary_fruit">Birincil Meyve</SelectItem>
+                      <SelectItem value="secondary">İkincil Aroma</SelectItem>
+                      <SelectItem value="secondary_fruit">İkincil Meyve</SelectItem>
+                      <SelectItem value="topping">Süsleme</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Pump miktarları */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Massivo Pump</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={aroma.overridePumpsMassivo ?? ''}
+                      onChange={(e) =>
+                        updateAroma(aroma._localId!, {
+                          overridePumpsMassivo: e.target.value || null,
+                        })
+                      }
+                      placeholder="Varsayılan"
+                      data-testid={`input-aroma-massivo-${idx}`}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Long Diva Pump</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.5}
+                      value={aroma.overridePumpsLongDiva ?? ''}
+                      onChange={(e) =>
+                        updateAroma(aroma._localId!, {
+                          overridePumpsLongDiva: e.target.value || null,
+                        })
+                      }
+                      placeholder="Varsayılan"
+                      data-testid={`input-aroma-longdiva-${idx}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Override unit + display name */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Birim</Label>
+                    <Select
+                      value={aroma.overrideUnit || 'pump'}
+                      onValueChange={(v) => updateAroma(aroma._localId!, { overrideUnit: v })}
+                    >
+                      <SelectTrigger data-testid={`select-aroma-unit-${idx}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pump">pump</SelectItem>
+                        <SelectItem value="ölçek">ölçek</SelectItem>
+                        <SelectItem value="adet">adet</SelectItem>
+                        <SelectItem value="dilim">dilim</SelectItem>
+                        <SelectItem value="parça">parça</SelectItem>
+                        <SelectItem value="serpiştir">serpiştir</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Pazarlama Adı (opsiyonel)</Label>
+                    <Input
+                      value={aroma.displayNameOverride || ''}
+                      onChange={(e) =>
+                        updateAroma(aroma._localId!, { displayNameOverride: e.target.value || null })
+                      }
+                      placeholder="ör: Moulin Rouge"
+                      data-testid={`input-aroma-display-name-${idx}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Varsayılan toggle */}
+                <div className="flex items-center justify-between p-2 rounded bg-muted/40">
+                  <div className="flex flex-col">
+                    <Label className="text-xs cursor-pointer">Varsayılan kombinasyon mu?</Label>
+                    <span className="text-[10px] text-muted-foreground">
+                      Aktifse müşteri ekranında önce gösterilir
+                    </span>
+                  </div>
+                  <Switch
+                    checked={!!aroma.isDefault}
+                    onCheckedChange={(checked) =>
+                      updateAroma(aroma._localId!, { isDefault: checked })
+                    }
+                    data-testid={`switch-aroma-default-${idx}`}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          );})}
+
+          {/* Yeni Aroma Ekle */}
+          <Button
+            variant="outline"
+            className="w-full gap-2 border-dashed"
+            onClick={addAroma}
+            data-testid="button-add-aroma"
+          >
+            <Plus className="h-4 w-4" /> Yeni Aroma Ekle
+          </Button>
+        </TabsContent>
+        )}
       </Tabs>
 
       {/* Sticky Save Button (mobile) */}

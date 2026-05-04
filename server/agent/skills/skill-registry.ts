@@ -92,6 +92,7 @@ export async function ensureSkillsLoaded(): Promise<void> {
   await import("./predictive-alert");
   await import("./action-plan-generator");
   await import("./financial-insight");
+  await import("./recipe-finder"); // TASK-DOBODY-001 (4 May 2026)
 }
 
 export function registerSkill(skill: AgentSkill): void {
