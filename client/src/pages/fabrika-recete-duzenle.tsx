@@ -64,12 +64,14 @@ export default function FabrikaReceteDuzenle() {
   // P7.2 (29 Nis 2026 — pilot rol matrisi):
   //   - ceo (Aslan) reçete tam yetkili (RECIPE_EDIT_ROLES'a EKLENDİ)
   //   - sef (Ümit) reçete editleyemez (RECIPE_EDIT_ROLES'tan ÇIKARILDI)
-  //   - gida_muhendisi (Sema) sadece besin/alerjen/gramaj alanında
+  //   - gida_muhendisi (Sema) sadece besin/alerjen/TGK alanlarını düzenler
+  //     → sayfaya erişebilir ama temel reçete alanları salt-okunur
   //   - fabrika_mudur (Eren) görür ama düzenleyemez
   const canEdit = ["admin", "recete_gm", "ceo"].includes(user?.role || "");
-  // Task #184 + P7.2: ceo besin/alerjen düzenleyebilir.
+  // Task #184 + P7.2 + TGK-340: gida_muhendisi besin/alerjen/TGK düzenleyebilir.
   const canEditNutrition = ["admin", "gida_muhendisi", "recete_gm", "ceo"].includes(user?.role || "");
-  if (!canEdit) {
+  // TGK-340 fix: gida_muhendisi sayfaya girebilmeli (TGK kartı için) — tam yetki olmadan
+  if (!canEdit && !canEditNutrition) {
     return <div className="p-8 text-center"><p>Düzenleme yetkiniz yok</p></div>;
   }
 
