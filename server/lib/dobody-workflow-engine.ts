@@ -63,7 +63,7 @@ export async function fireEvent(eventType: string, sourceModule: string, entityT
         generated += await wfTrainingExpiring(eventData || {});
         break;
       case 'system_health_issue':
-        generated += await wfSystemHealth(eventData || {});
+        generated += await wfSystemHealth(eventData || {}, entityType, entityId);
         break;
       // Dobody-8: CRM + Fabrika
       case 'nps_dropped':
@@ -553,7 +553,7 @@ async function wfTrainingExpiring(data: Record<string, any>): Promise<number> {
 // SİSTEM SAĞLIK İZLEME (Admin'e bildirir)
 // ──────────────────────────────────────────
 
-async function wfSystemHealth(data: Record<string, any>): Promise<number> {
+async function wfSystemHealth(data: Record<string, any>, entityType?: string, entityId?: number): Promise<number> {
   const { issueType, description, severity, affectedModule, affectedEndpoint } = data;
   const ok = await createProposal({
     workflowType: 'WF-SYSTEM', roleTarget: 'admin',
@@ -562,6 +562,9 @@ async function wfSystemHealth(data: Record<string, any>): Promise<number> {
     description: `${description || ''}${affectedModule ? ` — Modül: ${affectedModule}` : ''}${affectedEndpoint ? ` — Endpoint: ${affectedEndpoint}` : ''}`,
     sourceModule: 'sistem',
     suggestedActionType: 'send_message',
+    // Dedup: aynı entity için pending uyarı varsa yenisi eklenmesin
+    relatedEntityType: entityType,
+    relatedEntityId: entityId && entityId > 0 ? entityId : undefined,
   });
   return ok ? 1 : 0;
 }
