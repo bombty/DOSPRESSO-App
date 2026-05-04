@@ -716,6 +716,39 @@ export default function FactoryKiosk() {
     return () => document.removeEventListener('fullscreenchange', onFSChange);
   }, []);
 
+  // P1 (4 May gece): Auto-return — worker-home'da hareketsiz 30 saniye geçince
+  // personel seçim sayfasına otomatik dön. Aktivite varsa timer reset.
+  // Bu sayede bir personel vardıyayı açıp ana sayfadan çıkmazsa
+  // diğer personel kioska geldiğinde otomatik giriş ekranı görür.
+  useEffect(() => {
+    if (step !== 'worker-home') return;
+
+    const IDLE_TIMEOUT_MS = 30 * 1000; // 30 saniye
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    const resetTimer = () => {
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(() => {
+        // Eğer hala worker-home'daysa ve mola sırasında değilse, geri dön
+        setSelectedUser(null);
+        setPinInput("");
+        setStep('select-user');
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    // İlk timer başlat
+    resetTimer();
+
+    // Aktivite olduğunda timer'ı resetle
+    const events = ['mousedown', 'touchstart', 'keydown'];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+
+    return () => {
+      if (timerId) clearTimeout(timerId);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [step]);
+
   const handlePhaseTransition = async (nextPhase: KioskPhase) => {
     const now = new Date();
     const elapsed = Math.floor((now.getTime() - phaseStartTime.getTime()) / 60000);
@@ -881,13 +914,20 @@ export default function FactoryKiosk() {
               size="sm"
               className="border-slate-600 text-slate-300"
               onClick={() => {
+                // Mola sırasında ise mola kaydını kapat
                 if (step === 'on-break' && currentBreakLogId) {
                   kioskFetch('/api/factory/kiosk/end-break', 'POST', { breakLogId: currentBreakLogId }).catch(() => {});
                   setBreakStartTime(null);
                   setBreakElapsed(0);
                   setCurrentBreakLogId(null);
                 }
-                setStep('worker-home');
+                // P1 (4 May gece): Ana Sayfa = personel seçim ekranına dön
+                // Mevcut personelin vardıyası backend'de açık kalır (status='active')
+                // Başka bir personel kiosk'a giriş yapabilir
+                // Yeni personel giriş yaparsa kendi vardıyasını başlatır
+                setSelectedUser(null);
+                setPinInput("");
+                setStep('select-user');
               }}
               data-testid="button-kiosk-home"
             >
@@ -1520,6 +1560,22 @@ export default function FactoryKiosk() {
                   <AlertTriangle className="h-8 w-8" />
                   Arıza Bildir
                 </Button>
+
+                {/* P1 (4 May gece): İstasyon Değiştir butonu — mola ekranından buraya taşındı.
+                    Sadece istasyon seçilmişse görünür (yani üretim modu) */}
+                {currentStationInfo && (
+                  <Button
+                    className="h-24 text-lg flex flex-col items-center gap-2 bg-purple-600 hover:bg-purple-700"
+                    onClick={() => {
+                      setSelectedStation(null);
+                      setStep('select-station');
+                    }}
+                    data-testid="button-change-station"
+                  >
+                    <Repeat className="h-8 w-8" />
+                    İstasyon Değiştir
+                  </Button>
+                )}
               </div>
 
               <Button
@@ -1828,41 +1884,9 @@ export default function FactoryKiosk() {
                   <span className="text-slate-200 font-semibold">Özel İhtiyaç</span>
                   <span className="text-slate-400 text-xs text-center">WC, kişisel ihtiyaç</span>
                 </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
-                  onClick={() => {
-                    setSelectedStation(null);
-                    setStep('select-station');
-                  }}
-                  data-testid="break-option-station-change"
-                >
-                  <div className="p-3 rounded-full bg-purple-600">
-                    <Repeat className="h-8 w-8 text-white" />
-                  </div>
-                  <span className="text-slate-200 font-semibold">İstasyon Değiştir</span>
-                  <span className="text-slate-400 text-xs text-center">Farklı istasyona geç</span>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  className="h-auto p-6 flex flex-col items-center gap-3 bg-slate-700/50 border-slate-600 transition-all"
-                  onClick={() => {
-                    setFaultType(null);
-                    setFaultDescription('');
-                    setFaultStationId(currentStationInfo?.id || null);
-                    setStep('fault-report');
-                  }}
-                  data-testid="button-fault-report"
-                >
-                  <div className="p-3 rounded-full bg-yellow-600">
-                    <AlertTriangle className="h-8 w-8 text-white" />
-                  </div>
-                  <span className="text-slate-200 font-semibold">Arıza Bildir</span>
-                  <span className="text-slate-400 text-xs text-center">Makina arızası veya ürün hatası</span>
-                </Button>
               </div>
+              {/* P1 (4 May gece): "İstasyon Değiştir" + "Arıza Bildir" Worker Home'a taşındı.
+                  Mola ekranı sadece Mola + Özel İhtiyaç içerir — daha temiz mental model. */}
 
               <Button
                 className="w-full bg-green-600 hover:bg-green-700 h-14 text-lg"
