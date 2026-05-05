@@ -1,0 +1,72 @@
+Sprint 6 + Sprint 7 main'e merged. Pull yapıldı.
+
+Plan mode'a geç, isolated agent ile şunları sırayla yap:
+
+═══════════════════════════════════════════════════════════
+ADIM 1: SPRINT 7 MIGRATION'LARI (DRY-RUN ÖNCE)
+═══════════════════════════════════════════════════════════
+
+İki migration var (sırasıyla çalıştırılacak):
+
+1) migrations/2026-05-05-girdi-yonetimi-tgk.sql
+   ETKI:
+   - raw_materials'a 18 yeni kolon (TGK alanları, alerjen, besin değerleri)
+   - suppliers'a 7 yeni kolon (sertifikalar)
+   - 3 YENİ TABLO: supplier_quality_records, tgk_labels, turkomp_foods
+   - raw_materials.turkomp_food_id FK eklenir
+
+2) migrations/2026-05-05-girdi-data-import.sql
+   ETKI:
+   - 13 tedarikçi UPSERT (ON CONFLICT DO NOTHING)
+   - 67 hammadde INSERT (HAM001-HAM067, ON CONFLICT DO NOTHING)
+
+DRY-RUN ÖNCE:
+- Bana raporla:
+  * raw_materials kolon sayısı şu an: ?
+  * 67 hammadde HAM001-HAM067'nin hiçbiri zaten mevcut mu?
+  * 13 tedarikçi (TED-ICIM, TED-PURATOS, vs.) zaten var mı?
+  * Yeni tablolar (turkomp_foods vs.) zaten var mı?
+  * Foreign key constraint sorunu var mı?
+
+DRY-RUN raporundan sonra GO bekle, sonra EXECUTE.
+
+═══════════════════════════════════════════════════════════
+ADIM 2: BUILD + WORKFLOW RESTART
+═══════════════════════════════════════════════════════════
+
+- npx vite build → frontend OK?
+- npx esbuild server/index.ts → backend OK?
+- Workflow restart
+
+═══════════════════════════════════════════════════════════
+ADIM 3: SMOKE TEST (8 endpoint + 4 frontend kontrol)
+═══════════════════════════════════════════════════════════
+
+Admin login (admin / 133200) ile:
+
+API testleri:
+1. GET /api/girdi/list → 67+ hammadde dönmeli
+2. GET /api/girdi-stats/overview → totalGirdi:67+, withAllergen:30+
+3. GET /api/tedarikci-kalite/summary-all → 13 tedarikçi
+4. GET /api/turkomp/cache/list → boş (henüz manuel arama yok)
+5. POST /api/recipe-label/calculate-branch
+   body: {"branchProductId": 1}
+   → matched/unmatched listesi, nutrition objesi
+6. GET /api/personnel/<bir-id>/attendance-detail?startDate=2026-04-01&endDate=2026-04-30
+   (Sprint 6 Bölüm 3 endpoint'i çalışıyor mu?)
+
+Frontend testleri:
+7. /girdi-yonetimi → 5 tab (Liste/Alerjen/Etiket/Tedarikçi/Gap)
+   → Liste'de 67 hammadde
+   → Tedarikçi Performans tab → 13 tedarikçi tablosu
+8. /branch-recipes/<bir-id> → 'Etiket Hesapla (TGK)' butonu var mı?
+9. /etiket-hesapla?productId=1&productType=branch_product
+   → smart matching otomatik çalışıyor mu, PDF butonu çalışıyor mu?
+10. /personel-detay/<id> → 'Vardiya' tab → tarih aralığı + PDKS detay
+    (Sprint 6 Bölüm 3 frontend)
+
+PDF testi:
+11. /girdi-yonetimi → bir hammaddenin detay modalını aç → 'Etiket PDF İndir'
+    → A6 boyutta TGK formatında PDF inmeli
+
+Sonuçları raporla. Hata varsa screenshot.
