@@ -127,10 +127,11 @@ export default function EtiketHesaplaPage() {
   });
 
   const handleDownloadPDF = () => {
-    if (!calcResult?.nutrition) {
+    if (!calcResult) {
       toast({ title: 'Önce hesaplama yapın', variant: 'destructive' });
       return;
     }
+    const n = calcResult.nutrition;
     downloadTGKLabel({
       productName: calcResult.productName || calcResult.recipeName,
       ingredientsText: calcResult.ingredientsText,
@@ -140,18 +141,19 @@ export default function EtiketHesaplaPage() {
       storageConditions: labelData.storageConditions,
       shelfLifeDays: labelData.shelfLifeDays,
       countryOfOrigin: labelData.countryOfOrigin,
-      energyKcal: calcResult.nutrition.energyKcal,
-      energyKj: calcResult.nutrition.energyKj,
-      fat: calcResult.nutrition.fat,
-      saturatedFat: calcResult.nutrition.saturatedFat,
-      carbohydrate: calcResult.nutrition.carbohydrate,
-      sugar: calcResult.nutrition.sugar,
-      protein: calcResult.nutrition.protein,
-      salt: calcResult.nutrition.salt,
-      fiber: calcResult.nutrition.fiber,
+      energyKcal: n?.energyKcal ?? 0,
+      energyKj: n?.energyKj ?? 0,
+      fat: n?.fat ?? 0,
+      saturatedFat: n?.saturatedFat ?? 0,
+      carbohydrate: n?.carbohydrate ?? 0,
+      sugar: n?.sugar ?? 0,
+      protein: n?.protein ?? 0,
+      salt: n?.salt ?? 0,
+      fiber: n?.fiber ?? 0,
       version: 1,
     });
-    toast({ title: 'PDF indirildi', description: 'TGK 2017/2284 uyumlu etiket' });
+    const warn = !n ? ' (besin değeri eksik — hammadde veritabanı güncellenmeli)' : '';
+    toast({ title: 'PDF indirildi', description: `TGK 2017/2284 uyumlu etiket${warn}` });
   };
 
   if (!productId) {
@@ -318,18 +320,23 @@ export default function EtiketHesaplaPage() {
           )}
 
           {/* Hesaplanan Besin Değerleri */}
-          {calcResult.nutrition && (
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5 text-blue-600" />
-                  Hesaplanan Besin Değerleri (100g başına)
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  TGK Ek-13 uyumlu format
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-blue-600" />
+                Hesaplanan Besin Değerleri (100g başına)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                TGK Ek-13 uyumlu format
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!calcResult.nutrition ? (
+                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded p-3">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>Besin değeri hesaplanamadı — eşleşen hammaddeler için enerji verisi yok. PDF yine de indirilebilir (değerler 0 gösterilir).</span>
+                </div>
+              ) : (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   <div className="p-2 bg-white dark:bg-muted rounded">
                     <div className="text-muted-foreground">Enerji</div>
@@ -359,9 +366,9 @@ export default function EtiketHesaplaPage() {
                     <div className="font-bold text-base">{calcResult.nutrition.fiber} g</div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
 
           {/* Alerjen + Çapraz Bulaşma */}
           {(calcResult.allergenWarning || calcResult.crossContaminationWarning) && (
@@ -385,70 +392,67 @@ export default function EtiketHesaplaPage() {
           )}
 
           {/* Etiket meta bilgisi */}
-          {calcResult.nutrition && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Etiket Bilgileri</CardTitle>
-                <CardDescription className="text-xs">PDF için ek bilgiler</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div>
-                    <Label className="text-xs">Net Miktar (g)</Label>
-                    <Input 
-                      type="number" 
-                      value={labelData.netQuantityG}
-                      onChange={(e) => setLabelData({...labelData, netQuantityG: Number(e.target.value)})}
-                      data-testid="input-net-quantity"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Raf Ömrü (gün)</Label>
-                    <Input 
-                      type="number" 
-                      value={labelData.shelfLifeDays}
-                      onChange={(e) => setLabelData({...labelData, shelfLifeDays: Number(e.target.value)})}
-                      data-testid="input-shelf-life"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">Saklama Koşulları</Label>
-                    <Input 
-                      value={labelData.storageConditions}
-                      onChange={(e) => setLabelData({...labelData, storageConditions: e.target.value})}
-                      placeholder="örn: Soğuk zincirde 4°C altında saklayınız"
-                      data-testid="input-storage"
-                    />
-                  </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Etiket Bilgileri</CardTitle>
+              <CardDescription className="text-xs">PDF için ek bilgiler</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-xs">Net Miktar (g)</Label>
+                  <Input 
+                    type="number" 
+                    value={labelData.netQuantityG}
+                    onChange={(e) => setLabelData({...labelData, netQuantityG: Number(e.target.value)})}
+                    data-testid="input-net-quantity"
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div>
+                  <Label className="text-xs">Raf Ömrü (gün)</Label>
+                  <Input 
+                    type="number" 
+                    value={labelData.shelfLifeDays}
+                    onChange={(e) => setLabelData({...labelData, shelfLifeDays: Number(e.target.value)})}
+                    data-testid="input-shelf-life"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs">Saklama Koşulları</Label>
+                  <Input 
+                    value={labelData.storageConditions}
+                    onChange={(e) => setLabelData({...labelData, storageConditions: e.target.value})}
+                    placeholder="örn: Soğuk zincirde 4°C altında saklayınız"
+                    data-testid="input-storage"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Aksiyonlar */}
-          {calcResult.nutrition && (
-            <Card className="border-blue-300">
-              <CardContent className="p-4 flex flex-wrap gap-2 justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={handleDownloadPDF}
-                  data-testid="button-download-pdf"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  PDF İndir
-                </Button>
-                <Button 
-                  onClick={() => saveMutation.mutate()}
-                  disabled={saveMutation.isPending}
-                  data-testid="button-save-label"
-                >
-                  {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Etiketi Kaydet
-                  {!canApprove && <span className="text-xs ml-1">(taslak)</span>}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          <Card className="border-blue-300">
+            <CardContent className="p-4 flex flex-wrap gap-2 justify-end">
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadPDF}
+                data-testid="button-download-pdf"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                PDF İndir
+              </Button>
+              <Button 
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending || !calcResult.nutrition}
+                data-testid="button-save-label"
+                title={!calcResult.nutrition ? 'Besin değeri olmadan kayıt yapılamaz' : undefined}
+              >
+                {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Etiketi Kaydet
+                {!canApprove && <span className="text-xs ml-1">(taslak)</span>}
+              </Button>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

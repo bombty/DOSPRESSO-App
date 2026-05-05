@@ -59,22 +59,21 @@ async function smartMatchIngredient(ingredientName: string): Promise<any | null>
     .limit(1);
   if (exact.length > 0) return { ...exact[0], matchType: 'exact', matchScore: 1.0 };
   
-  // 2) İçeren (CONTAINS)
+  // 2) İçeren (CONTAINS) — energy_kcal olan önce gelsin
   const contains = await db.select()
     .from(rawMaterials)
     .where(and(
       ilike(rawMaterials.name, `%${cleaned}%`),
       eq(rawMaterials.isActive, true),
     ))
+    .orderBy(sql`CASE WHEN ${rawMaterials.energyKcal} IS NOT NULL THEN 0 ELSE 1 END, length(${rawMaterials.name})`)
     .limit(3);
   if (contains.length === 1) return { ...contains[0], matchType: 'contains', matchScore: 0.85 };
   if (contains.length > 1) {
-    // En kısa eşleşmeyi seç (genelde daha spesifik)
-    const sorted = contains.sort((a, b) => a.name.length - b.name.length);
-    return { ...sorted[0], matchType: 'contains_multiple', matchScore: 0.7, alternatives: sorted.slice(1, 3) };
+    return { ...contains[0], matchType: 'contains_multiple', matchScore: 0.7, alternatives: contains.slice(1, 3) };
   }
   
-  // 3) İlk kelime eşleşmesi (örn. "Beyaz çikolata para" → "Beyaz çikolata")
+  // 3) İlk kelime eşleşmesi — energy_kcal olan önce gelsin
   const firstWord = cleaned.split(/\s+/)[0];
   if (firstWord.length >= 3) {
     const wordMatch = await db.select()
@@ -83,6 +82,7 @@ async function smartMatchIngredient(ingredientName: string): Promise<any | null>
         ilike(rawMaterials.name, `%${firstWord}%`),
         eq(rawMaterials.isActive, true),
       ))
+      .orderBy(sql`CASE WHEN ${rawMaterials.energyKcal} IS NOT NULL THEN 0 ELSE 1 END, length(${rawMaterials.name})`)
       .limit(2);
     if (wordMatch.length > 0) {
       return { ...wordMatch[0], matchType: 'first_word', matchScore: 0.5 };
