@@ -49,28 +49,36 @@ async function smartMatchIngredient(ingredientName: string): Promise<any | null>
   if (!ingredientName) return null;
   const cleaned = ingredientName.trim().toLowerCase();
   
-  // 1) Tam eşleşme (lowercase)
+  // 1) Tam eşleşme (lowercase) — energy_kcal dolu olanları önce seç
+  // (T-* ambalaj malzemeleri yerine besin değeri olan HAM* hammaddeleri tercih)
   const exact = await db.select()
     .from(rawMaterials)
     .where(and(
       sql`LOWER(${rawMaterials.name}) = ${cleaned}`,
       eq(rawMaterials.isActive, true),
     ))
+    .orderBy(sql`${rawMaterials.energyKcal} IS NULL`)  // NULL'lar sona
     .limit(1);
   if (exact.length > 0) return { ...exact[0], matchType: 'exact', matchScore: 1.0 };
   
-  // 2) İçeren (CONTAINS)
+  // 2) İçeren (CONTAINS) — energy_kcal dolu olanları önce
   const contains = await db.select()
     .from(rawMaterials)
     .where(and(
       ilike(rawMaterials.name, `%${cleaned}%`),
       eq(rawMaterials.isActive, true),
     ))
+    .orderBy(sql`${rawMaterials.energyKcal} IS NULL`)
     .limit(3);
   if (contains.length === 1) return { ...contains[0], matchType: 'contains', matchScore: 0.85 };
   if (contains.length > 1) {
-    // En kısa eşleşmeyi seç (genelde daha spesifik)
-    const sorted = contains.sort((a, b) => a.name.length - b.name.length);
+    // Önce besin değeri olanları, sonra ad uzunluğuna göre sırala
+    const sorted = contains.sort((a, b) => {
+      const aHas = a.energyKcal !== null && a.energyKcal !== undefined;
+      const bHas = b.energyKcal !== null && b.energyKcal !== undefined;
+      if (aHas !== bHas) return aHas ? -1 : 1;  // besin değerli önde
+      return a.name.length - b.name.length;     // sonra kısa olan
+    });
     return { ...sorted[0], matchType: 'contains_multiple', matchScore: 0.7, alternatives: sorted.slice(1, 3) };
   }
   
@@ -83,6 +91,7 @@ async function smartMatchIngredient(ingredientName: string): Promise<any | null>
         ilike(rawMaterials.name, `%${firstWord}%`),
         eq(rawMaterials.isActive, true),
       ))
+      .orderBy(sql`${rawMaterials.energyKcal} IS NULL`)  // NULL'lar sona
       .limit(2);
     if (wordMatch.length > 0) {
       return { ...wordMatch[0], matchType: 'first_word', matchScore: 0.5 };
