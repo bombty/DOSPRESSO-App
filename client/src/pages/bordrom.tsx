@@ -4,8 +4,9 @@ import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import { Banknote, CalendarDays, Clock, UserX, AlertCircle, Calculator, ArrowRight, Info } from "lucide-react";
+import { Banknote, CalendarDays, Clock, UserX, AlertCircle, Calculator, ArrowRight, Info, Download, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const MONTHS = [
   { value: "1", label: "Ocak" }, { value: "2", label: "Şubat" }, { value: "3", label: "Mart" },
@@ -26,9 +27,11 @@ function formatCurrency(kurus: number): string {
 export default function BordromPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1));
   const [selectedYear] = useState(String(now.getFullYear()));
+  const [downloading, setDownloading] = useState(false);
 
   const isHQPayrollRole = user && HQ_PAYROLL_ROLES.includes(user.role);
 
@@ -41,7 +44,51 @@ export default function BordromPage() {
     },
   });
 
+  // İK Redesign Faz 3: Son 12 ay bordro geçmişi (grafik için)
+  const historyQuery = useQuery<{
+    list: Array<{ year: number; month: number; netPay: number; workedDays: number; status: string }>;
+    summary: { count: number; avgNet: number; lastMonth: any };
+  }, Error>({
+    queryKey: ['/api/me/payroll-history', 12],
+    queryFn: async () => {
+      const res = await fetch('/api/me/payroll-history?limit=12', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed');
+      return res.json();
+    },
+  });
+
   const payroll = payrollQuery.data?.[0];
+
+  // PDF indirme
+  const downloadPDF = async () => {
+    setDownloading(true);
+    try {
+      const url = `/api/me/payroll/${selectedYear}/${selectedMonth}/pdf`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'PDF üretilemedi');
+      }
+      const blob = await res.blob();
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `bordro-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(downloadUrl);
+      toast({ title: "✅ PDF indirildi" });
+    } catch (err: any) {
+      toast({
+        title: "PDF indirilemedi",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="p-4 max-w-6xl mx-auto space-y-4">
@@ -155,6 +202,55 @@ export default function BordromPage() {
                 <span className="text-lg font-bold">NET ÖDEME</span>
               </div>
               <span className="text-2xl font-bold" data-testid="text-my-net">{formatCurrency(payroll.netPay)}</span>
+            </div>
+
+            {/* İK Redesign Faz 3: PDF indirme */}
+            <div className="flex justify-end pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadPDF}
+                disabled={downloading}
+                data-testid="button-download-pdf"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {downloading ? 'İndiriliyor…' : 'Detaylı Bordro PDF'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* İK Redesign Faz 3: Son 12 ay bordro geçmişi */}
+      {historyQuery.data && historyQuery.data.list.length > 0 && (
+        <Card data-testid="card-payroll-history">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <History className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Bordro Geçmişim ({historyQuery.data.summary.count} ay)</h2>
+              {historyQuery.data.summary.avgNet > 0 && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Ortalama net: {formatCurrency(historyQuery.data.summary.avgNet)}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1">
+              {historyQuery.data.list.map(h => (
+                <button
+                  key={`${h.year}-${h.month}`}
+                  onClick={() => setSelectedMonth(String(h.month))}
+                  className="w-full flex items-center justify-between text-sm py-1.5 px-2 rounded hover:bg-muted/50 transition-colors"
+                  data-testid={`button-history-${h.year}-${h.month}`}
+                >
+                  <span className="text-muted-foreground">
+                    {MONTHS[h.month - 1]?.label} {h.year}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {h.workedDays} gün
+                  </span>
+                  <span className="font-medium">{formatCurrency(h.netPay)}</span>
+                </button>
+              ))}
             </div>
           </CardContent>
         </Card>
