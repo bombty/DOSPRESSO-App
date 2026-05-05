@@ -251,18 +251,114 @@ Aksi: yarın Claude eksik bilgiyle çalışır.
 
 ---
 
-## 📊 İSTATİSTİK (5 May 2026 sonu itibarıyla)
+### D-31: Skor Parametreleri Admin Tarafından Düzenlenebilir (Sprint 8 - 5 May 2026)
+**Karar:** Performans skor kriterleri sabit hardcoded değil, DB tablosundan okunur.  
+**Tablo:** `score_parameters` (schema-25, 5 default kriter, totalMaxPoints=90)  
+**Yetki:** sadece admin + ceo düzenleyebilir (`/admin/skor-parametreleri`)  
+**Audit:** her değişiklik `score_parameters_history` tablosuna kayıt edilir.  
+**API:** GET/POST/PUT/DELETE `/api/score-parameters`
+
+---
+
+### D-32: Performans 5 Kategori = 90 Puan (Sprint 8/10 - 5 May 2026)
+**5 Kategori:**
+- **Devam** (max 20): PDKS uyum oranı (planlanan vs kayıtlı)
+- **Checklist** (max 20): Tamamlanan / Toplam atanan
+- **Görev** (max 15): Zamanında tamamlanan / Toplam atanan
+- **Müşteri** (max 15): Şube ortalama müşteri puanı (5 üzerinden)
+- **Yönetici** (max 20): Manager rating (manuel, monthlyEmployeePerformance.managerRatingScore)
+
+**Hesaplama:** `server/services/performance-calculator.ts`  
+**Endpoint:** GET `/api/performance/personnel?branchId=&role=&year=&month=`  
+**UI:** `/performans-yonetim` (HQ + manager/supervisor için filtreli)
+
+---
+
+### D-33: Bordro Merkezi Hub - 3 Kart (Sprint 11 - 5 May 2026)
+**Karar:** 3 farklı bordro sayfası karışıktı, tek hub yapıldı.  
+**Sayfa:** `/bordro-merkezi`  
+**Kartlar:**
+1. Kişisel Bordrom (HERKES) → `/bordrom`
+2. Toplu Hesaplama (HQ Muhasebe) → `/maas`
+3. Şube Özeti (HQ + Şube Yönetici) → `/sube-bordro-ozet`
+
+Mevcut sayfalar bozulmadan kaldı (link ile yönlendirme).
+
+---
+
+### D-34: İK Merkezi Hub - 4 Kategori Role Bazlı (Sprint 13 - 5 May 2026)
+**Karar:** 12+ İK giriş noktası karışıktı, tek hub yapıldı.  
+**Sayfa:** `/ik-merkezi`  
+**Kategoriler:**
+1. **Kişisel:** Bordrom, Performansım, İzin, Mesai
+2. **Yönetici:** Personel Puanla, Şube Bordrosu, Vardiya
+3. **HQ:** Performans Yönetim, İK Raporları, Personel, Onboarding
+4. **Admin:** Toplu Bordro, Skor Parametreleri
+
+Bekleyen işler banner (izin/mesai talepleri).
+
+---
+
+### D-35: monthly_payroll vs monthly_payrolls - Pilot Sonrası Karar (Sprint 16 - 5 May 2026)
+**Sorun:** İki tablo aynı domain (bordro), kafa karıştırıyor.  
+**Pilot Süresince (12 May - 15 Haz):** Hiçbir tablo değişmez.  
+**Aktif Tablo:** `monthly_payroll` (schema-12) — 51 kayıt korunur.  
+**Pilot Sonrası:** Seçenek A (önerim) — `monthly_payrolls` (schema-07) ana yap, 51 kayıt taşı, eski tablo Q3'te DROP.  
+**Detay:** `docs/DECISIONS-MONTHLY-PAYROLL.md`
+
+---
+
+### D-36: payroll_parameters 2026 Seed Migration (Sprint 16 - 5 May 2026)
+**Karar:** Bordro 0 dönmemesi için payroll_parameters tablosu seed edildi.  
+**Migration:** `migrations/2026-05-05-payroll-parameters-2026-seed.sql`  
+**Seed Değerleri (TAHMİN — Mahmut doğrulayacak):**
+- Asgari ücret brüt 33.030 TL / net 28.075,50 TL
+- SGK işçi %14, işveren %20.5
+- 5 vergi dilimi (%15 → %40)
+- Yemek vergi muafiyeti 300 TL/gün
+- Mesai çarpanı 1.5x
+
+⚠️ **Mahmut sorumlu:** Resmi Gazete + GİB yayınlarına göre UPDATE atacak.
+
+---
+
+### D-37: Scheduler Bildirim 24h Dedup (Sprint 16 - 5 May 2026)
+**Karar:** Aynı task için max 1 bildirim/24h. Önceki davranış: kullanıcı bildirimi okudukça yeni bildirim oluşturuluyordu (1 task → 751 bildirim/24h spam).  
+**Fix:** `server/reminders.ts upsertOverdueNotification`  
+**Yeni Mantık:** 24 saat içinde aynı task+user için bildirim varsa SESSİZ SKİP (UPDATE bile yok).  
+**Etki:** Notification tablo büyümesi yavaşlar, kullanıcı UX iyileşir.  
+**Referans:** debug-guide §19
+
+---
+
+### D-38: Hotfix Branch + PR Mecburi (5 May 2026 incident sonrası)
+**Sorun:** 5 May gecesi git pull conflict çıktı, marker'lı dosyalar `git add -A && git commit && git push` ile direkt main'e push'landı (30 marker). Esbuild parse hatası → beyaz ekran.  
+**Karar:** Bundan sonra **hiçbir conflict çözümü doğrudan main'e gitmez.**  
+**Süreç:**
+1. `git checkout -b hotfix/<kebab-case>`
+2. Conflict resolve (Replit Resolve UI VEYA `git checkout <hash> -- <files>`)
+3. `grep -c '<<<<<<<' <files>` → hepsi 0 doğrula
+4. Commit + push hotfix branch
+5. PR aç + Squash merge
+
+**Skill Güncellemesi:** `dospresso-git-safety` L4 yeni kural eklendi.  
+**Quality Gate:** QG-28 (marker count) + QG-29 (token kontrol) eklendi.
+
+---
+
+## 📊 İSTATİSTİK (5 May 2026 sonu itibarıyla — Sprint 16 + Hotfix sonrası)
 
 - **Toplam tablo:** 478+
-- **Toplam endpoint:** 1.963+
-- **Toplam sayfa:** 324+
+- **Toplam endpoint:** 1.985+ (Sprint 8-16: +22 yeni endpoint)
+- **Toplam sayfa:** 336+ (Sprint 8-16: +12 yeni sayfa)
 - **Aktif rol:** 23 (8 phantom)
-- **Bilinen bug:** 31 (debug-guide §1-31)
-- **Schema dosyası:** 25 (schema-01 → schema-25)
-- **Migration:** 14 (en yenisi 2026-05-05)
+- **Bilinen bug:** 33 (debug-guide §1-§33, hotfix §32 + payroll §33 eklendi)
+- **Schema dosyası:** 25 (schema-01 → schema-25-score-parameters)
+- **Migration:** 16 (en yenisi 2026-05-05-payroll-parameters-2026-seed.sql)
+- **Quality Gate:** 29 madde (QG-28 marker, QG-29 token eklendi)
 
 ---
 
 **Bu dosya değişmez kararları içerir.** Yeni karar eklenirse yeni satır olarak ekle, eski karar silinmez. Audit trail önemli.
 
-**Son güncelleme:** 5 May 2026, 23:30 (Sprint 16 sonrası)
+**Son güncelleme:** 5 May 2026, 23:55 (Sprint 16 + Hotfix #21 + Devir Teslim sonrası)
