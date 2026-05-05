@@ -495,11 +495,16 @@ async function upsertOverdueNotification(
 ) {
   const key = `${type}:${userId}:${link}`;
   const existingId = existingMap.get(key);
+  
+  // Sprint 16 fix (debug-guide §19): 24 saat içinde aynı task+user için bildirim varsa
+  // YENİ bildirim YARATMA, mevcut bildirimi de UPDATE etme (sessiz devam et).
+  // Kullanıcı 24 saat sonra tekrar görecek (eski overdue task hâlâ aktifse).
   if (existingId) {
-    await db.update(notifications)
-      .set({ message, createdAt: new Date() })
-      .where(eq(notifications.id, existingId));
+    // 24 saat içinde zaten bildirim var → ATLAMAYI YAP (UPDATE bile yok)
+    // Eski davranış: createdAt güncelleniyordu → kullanıcı okur okumaz tekrar görüyordu
+    return; // sessiz skip
   } else {
+    // 24 saat sıfırı: yeni bildirim oluştur
     const newNotif = await storage.createNotification({ userId, type, title, message, link, branchId });
     if (newNotif.id > 0) {
       existingMap.set(key, newNotif.id);
@@ -508,6 +513,11 @@ async function upsertOverdueNotification(
 }
 
 // Uses DB-based deduplication — updates existing unread notifications instead of creating duplicates
+// Sprint 16 fix (5 May 2026, debug-guide §19): 1 task → 751 bildirim/24h spam fix
+//   KÖK NEDEN: existingMap sadece isRead=false bildirimleri içeriyor.
+//   Kullanıcı bildirimi okur okumaz dedup map'ten düşüyor, sonraki 10-min tick
+//   yeni bildirim oluşturuyor. Sonuç: kullanıcı her okuduğunda spam.
+//   FIX: 24 saat içinde aynı task için bildirim varsa (read/unread fark etmez) atla.
 async function checkOverdueTaskNotifications() {
   try {
     const tasks = await storage.getTasks();
@@ -521,23 +531,27 @@ async function checkOverdueTaskNotifications() {
 
     if (overdueTasks.length === 0) return;
 
-    const existingUnread = await db.select({
+    // Sprint 16 fix: 24 saat içindeki TÜM bildirimleri al (okundu/okunmadı fark etmez)
+    // Eski: sadece isRead=false → kullanıcı okur okumaz spam başlıyor
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const existingRecent = await db.select({
       id: notifications.id,
       link: notifications.link,
       userId: notifications.userId,
       type: notifications.type,
+      createdAt: notifications.createdAt,
     }).from(notifications)
       .where(and(
         or(
           eq(notifications.type, 'task_overdue'),
           eq(notifications.type, 'task_overdue_assigner')
         ),
-        eq(notifications.isRead, false),
-        eq(notifications.isArchived, false)
+        gte(notifications.createdAt, oneDayAgo)
       ));
 
+    // existingMap: 24 saat içinde aynı task+user için bildirim varsa atla
     const existingMap = new Map<string, number>(
-      existingUnread.map(n => [`${n.type}:${n.userId}:${n.link}`, n.id])
+      existingRecent.map(n => [`${n.type}:${n.userId}:${n.link}`, n.id])
     );
 
     for (const task of overdueTasks) {

@@ -29,6 +29,7 @@ export interface ModuleMenuConfig {
 const IK_MENU: ModuleMenuConfig = {
   title: "İK & Personel",
   items: [
+    { id: "ik-merkezi", label: "İK Merkezi", path: "/ik-merkezi", icon: Users },
     { id: "personel", label: "Personel", path: "/ik", icon: Users },
     { id: "vardiya", label: "Vardiya Planlama", path: "/vardiya-planlama", icon: Clock },
     { id: "pdks", label: "PDKS & Devam", path: "/pdks", icon: Calendar },
@@ -38,7 +39,11 @@ const IK_MENU: ModuleMenuConfig = {
     { id: "mesai", label: "Mesai Talepleri", path: "/mesai-talepleri", icon: Clock },
     { id: "onboarding", label: "Onboarding", path: "/personel-onboarding-akisi", icon: UserPlus, allowedRoles: ["admin","ceo","cgo","muhasebe_ik","mudur","supervisor","coach","trainer","fabrika_mudur"] },
     { id: "performans", label: "Performans", path: "/performansim", icon: TrendingUp },
+    { id: "performans-yonetim", label: "Yönetici Performans", path: "/performans-yonetim", icon: TrendingUp, allowedRoles: ["admin","ceo","cgo","coach","trainer","muhasebe","muhasebe_ik","manager","supervisor"] },
+    { id: "yonetici-puanlama", label: "Yönetici Puanlama", path: "/yonetici-puanlama", icon: Star, allowedRoles: ["admin","ceo","cgo","manager","supervisor","fabrika_mudur"] },
+    { id: "pdks-manuel", label: "PDKS Manuel Giriş", path: "/pdks-manuel-giris", icon: Clock, allowedRoles: ["admin","ceo","cgo","muhasebe","muhasebe_ik","manager","supervisor"] },
     { id: "ik-raporlar", label: "İK Raporları", path: "/ik-raporlari", icon: BarChart2 },
+    { id: "bordro-merkezi", label: "Bordro Merkezi", path: "/bordro-merkezi", icon: Wallet, allowedRoles: ["admin","ceo","cgo","muhasebe","muhasebe_ik","manager","supervisor"] },
     { id: "sube-bordro", label: "Bordro Özeti", path: "/sube-bordro-ozet", icon: CreditCard },
   ],
 };
@@ -67,6 +72,11 @@ const FABRIKA_MENU: ModuleMenuConfig = {
     { id: "lot", label: "Lot İzleme", path: "/fabrika/lot-izleme", icon: Package },
     { id: "maliyet", label: "Maliyet", path: "/fabrika/maliyet-yonetimi", icon: CreditCard },
     { id: "gida", label: "Gıda Güvenliği", path: "/fabrika/gida-guvenligi", icon: Shield },
+    // Sprint 7-9 (5 May 2026): Girdi Yönetimi + TGK Etiket + Tedarikçi QC + TÜRKOMP
+    { id: "girdi", label: "Girdi Yönetimi (TGK)", path: "/girdi-yonetimi", icon: Package, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
+    { id: "etiket", label: "Etiket Hesapla", path: "/etiket-hesapla", icon: FileBarChart, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite","sef","recete_gm","coach","trainer"] },
+    { id: "tedarikci-kalite", label: "Tedarikçi Kalite QC", path: "/tedarikci-kalite", icon: Shield, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
+    { id: "turkomp", label: "TÜRKOMP", path: "/turkomp", icon: Beaker, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
   ],
 };
 
@@ -152,6 +162,8 @@ const FINANS_MENU: ModuleMenuConfig = {
     { id: "mali", label: "Mali Yönetim", path: "/mali-yonetim", icon: CreditCard },
     { id: "bordro", label: "Bordro", path: "/bordrom", icon: CreditCard },
     { id: "muhasebe-rapor", label: "Muhasebe Rapor", path: "/muhasebe-raporlama", icon: BarChart2 },
+    // Sprint 14 (5 May 2026): Mali Rapor Hızlı Veri Girişi
+    { id: "mali-giris", label: "Mali Rapor Giriş", path: "/mali-rapor-giris", icon: FileBarChart, allowedRoles: ["admin","ceo","cgo","muhasebe","muhasebe_ik"] },
   ],
 };
 
@@ -199,6 +211,12 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/pdks-excel-import": IK_MENU,
   "/ik-raporlari": IK_MENU,
   "/sube-vardiya-takibi": IK_MENU,
+  "/performans-yonetim": IK_MENU,
+  "/admin/skor-parametreleri": IK_MENU,
+  "/bordro-merkezi": IK_MENU,
+  "/yonetici-puanlama": IK_MENU,
+  "/ik-merkezi": IK_MENU,
+  "/pdks-manuel-giris": IK_MENU,
   "/ekipman": EKIPMAN_MENU,
   "/ariza": EKIPMAN_MENU,
   "/ariza-yeni": EKIPMAN_MENU,
@@ -208,6 +226,10 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/fabrika/keyblend-yonetimi": FABRIKA_MENU,
   "/kalite-kontrol-dashboard": FABRIKA_MENU,
   "/gida-guvenligi-dashboard": FABRIKA_MENU,
+  "/girdi-yonetimi": FABRIKA_MENU,
+  "/etiket-hesapla": FABRIKA_MENU,
+  "/tedarikci-kalite": FABRIKA_MENU,
+  "/turkomp": FABRIKA_MENU,
   "/misafir-memnuniyeti": CRM_MENU,
   "/sikayetler": CRM_MENU,
   "/hq-destek": CRM_MENU,
@@ -239,6 +261,7 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/muhasebe": FINANS_MENU,
   "/mali-yonetim": FINANS_MENU,
   "/muhasebe-raporlama": FINANS_MENU,
+  "/mali-rapor-giris": FINANS_MENU,
   "/ajanda": YONETIM_MENU,
   "/banner-editor": YONETIM_MENU,
   "/pilot-baslat": YONETIM_MENU,

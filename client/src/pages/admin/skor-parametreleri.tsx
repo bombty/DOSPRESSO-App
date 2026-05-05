@@ -69,6 +69,13 @@ export default function SkorParametreleri() {
   const [editingParam, setEditingParam] = useState<ScoreParameter | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [reason, setReason] = useState('');
+  // Sprint 15: Yeni kriter form state
+  const [newParam, setNewParam] = useState<Partial<ScoreParameter>>({
+    category: 'devam',
+    maxPoints: 10,
+    weight: '1.0',
+    sortOrder: 100,
+  });
 
   const { data, isLoading, refetch } = useQuery<{ parameters: ScoreParameter[]; totalMaxPoints: number }>({
     queryKey: ['/api/score-parameters'],
@@ -80,9 +87,11 @@ export default function SkorParametreleri() {
   const createMutation = useMutation({
     mutationFn: (body: any) => apiRequest('POST', '/api/score-parameters', body),
     onSuccess: () => {
-      toast({ title: 'Parametre eklendi' });
+      toast({ title: '✓ Parametre eklendi', description: 'Toplam max puan güncellendi' });
       refetch();
       setIsAddOpen(false);
+      // Reset form
+      setNewParam({ category: 'devam', maxPoints: 10, weight: '1.0', sortOrder: 100 });
     },
     onError: (e: any) => toast({ title: 'Hata', description: e.message, variant: 'destructive' }),
   });
@@ -286,21 +295,140 @@ export default function SkorParametreleri() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Dialog */}
-      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+      {/* Add Dialog (Sprint 15: Full form) */}
+      <Dialog open={isAddOpen} onOpenChange={(o) => { 
+        setIsAddOpen(o); 
+        if (!o) setNewParam({ category: 'devam', maxPoints: 10, weight: '1.0', sortOrder: (params.length + 1) * 10 });
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Yeni Kriter Ekle</DialogTitle>
+            <DialogDescription>
+              Bu kriter tüm aktif kriterlerin yanına eklenir. Toplam max puan değişir.
+            </DialogDescription>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground">
-            Yeni bir performans kriteri ekleyebilirsiniz. Bu kriter tüm personel skoruna 
-            <strong> {data?.totalMaxPoints || 0} + max_points </strong> şeklinde eklenir.
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Yakında: form alanları (şu an POST endpoint hazır, full UI Sprint 9'da).
-          </p>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Kategori *</Label>
+              <select
+                className="w-full p-2 border rounded text-sm"
+                value={newParam.category || 'devam'}
+                onChange={(e) => setNewParam({...newParam, category: e.target.value})}
+                data-testid="select-new-category"
+              >
+                {CATEGORY_OPTIONS.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Görüntüleme Adı *</Label>
+              <Input 
+                value={newParam.displayName || ''}
+                onChange={(e) => setNewParam({...newParam, displayName: e.target.value})}
+                placeholder="Örn: Üretkenlik"
+                data-testid="input-new-display-name"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Açıklama</Label>
+              <Textarea 
+                value={newParam.description || ''}
+                onChange={(e) => setNewParam({...newParam, description: e.target.value})}
+                rows={2}
+                placeholder="Bu kriter ne ölçüyor?"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Max Puan *</Label>
+                <Input 
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={newParam.maxPoints || 10}
+                  onChange={(e) => setNewParam({...newParam, maxPoints: Number(e.target.value)})}
+                  data-testid="input-new-max-points"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Ağırlık</Label>
+                <Input 
+                  type="number"
+                  step="0.1"
+                  value={newParam.weight || '1.0'}
+                  onChange={(e) => setNewParam({...newParam, weight: e.target.value})}
+                  data-testid="input-new-weight"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Formül Kodu *</Label>
+              <select
+                className="w-full p-2 border rounded text-sm"
+                value={newParam.formulaCode || ''}
+                onChange={(e) => setNewParam({...newParam, formulaCode: e.target.value})}
+                data-testid="select-new-formula-code"
+              >
+                <option value="">Seçin...</option>
+                {FORMULA_CODES.map(f => (
+                  <option key={f.value} value={f.value}>{f.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Formül Açıklaması (insan-okur)</Label>
+              <Input 
+                value={newParam.formula || ''}
+                onChange={(e) => setNewParam({...newParam, formula: e.target.value})}
+                placeholder="Örn: Üretkenlik puanı × max_points"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Sıralama (UI'da)</Label>
+              <Input 
+                type="number"
+                value={newParam.sortOrder || (params.length + 1) * 10}
+                onChange={(e) => setNewParam({...newParam, sortOrder: Number(e.target.value)})}
+                placeholder="100, 200, 300..."
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Hangi Rollere Uygulanır (boş=hepsine)</Label>
+              <Input 
+                value={newParam.applicableRoles || ''}
+                onChange={(e) => setNewParam({...newParam, applicableRoles: e.target.value})}
+                placeholder="barista,bar_buddy,supervisor (CSV)"
+              />
+            </div>
+
+            {/* Önizleme */}
+            <Card className="bg-purple-50 dark:bg-purple-950/30">
+              <CardContent className="p-2 text-xs">
+                <strong>Önizleme:</strong>
+                <div>{newParam.displayName || '(ad gir)'} - {newParam.maxPoints || 0} puan</div>
+                <div className="text-muted-foreground">
+                  Yeni toplam: {(data?.totalMaxPoints || 0) + (newParam.maxPoints || 0)} puan
+                </div>
+              </CardContent>
+            </Card>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddOpen(false)}>Tamam</Button>
+            <Button variant="outline" onClick={() => setIsAddOpen(false)}>İptal</Button>
+            <Button 
+              onClick={() => {
+                if (!newParam.displayName || !newParam.maxPoints || !newParam.formulaCode) {
+                  toast({ title: 'Eksik alan', description: 'Ad, Max Puan ve Formül Kodu zorunlu', variant: 'destructive' });
+                  return;
+                }
+                createMutation.mutate(newParam);
+              }}
+              disabled={createMutation.isPending || !newParam.displayName || !newParam.maxPoints || !newParam.formulaCode}
+              data-testid="button-confirm-add-param"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Kaydet
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
