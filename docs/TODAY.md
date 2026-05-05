@@ -1,100 +1,96 @@
-# 📅 TODAY — 5 Mayıs 2026, Salı (Pilot T-7)
+# 📅 TODAY — 6 Mayıs 2026, Çarşamba
 
-> **Bugün ne yapıldı, ne yarın devam edecek.** Yeni oturum başında oku.
-
----
-
-## 🎯 BUGÜN NE YAPILDI (Özet)
-
-**Çalışma süresi:** ~33 saat (12:00 → 23:30, Aslan + Claude maraton)  
-**Üretilen kod:** ~5000 satır, 14 commit, 19 yeni dosya  
-**Mergelendi:** PR #15, #17, #18, #19, #20 (Sprint 7-16)  
-**Bekleniyor:** Hotfix PR (conflict marker temizliği), Sprint 8 EXECUTE migration
+> **Bugün ne yapıldı, ne sırada bekliyor.** Yeni oturum başında oku.
 
 ---
 
-## ✅ TAMAMLANAN (Sprint 7-16 + Hotfix)
+## 🎯 BUGÜN NE YAPILDI
 
-| Sprint | İçerik | PR |
-|---|---|---|
-| Sprint 7 v3 | TGK 2017/2284 etiket sistemi (smart matching, TÜRKOMP cache) | #15, #17 |
-| Sprint 8 | 329-satır migration, /performans-yonetim, /admin/skor-parametreleri, TGK onay UI | #18, #19, #20 |
-| Sprint 9 | /tedarikci-kalite, /turkomp, Mahmut bordro yetki | #20 |
-| Sprint 10 | performance-calculator.ts (5 kategori), endpoint hardening | #20 |
-| Sprint 11 | /bordro-merkezi (3 sayfa hub) | #20 |
-| Sprint 12 | manager-rating backend + /yonetici-puanlama | #20 |
-| Sprint 13 | /ik-merkezi + /pdks-manuel-giris | #20 |
-| Sprint 14 | /mali-rapor-giris | #20 |
-| Sprint 15 | Skor admin Yeni Kriter form (8 alan) | #20 |
-| Sprint 16 | payroll_parameters seed + monthly_payroll DECISION + scheduler spam fix | #20 |
-| Hotfix | Merge conflict marker temizliği (3 dosya, 30→0) | ✅ PR #21 mergelendi |
+**Çalışma:** Aslan + Claude (1 oturum, ~5 saat)
+**Üretilen:** 5 yeni commit (3 docs + 2 kod), bugün toplam 9 commit'lik İK redesign branch'i hazır
 
----
+**Mergelendi (sabah):**
+- PR #25: `fix(payroll): 2026 resmi kaynaklar + yanlış oranlar düzeltildi` (D-21/D-36 doğrulandı)
 
-## 🔄 ŞU AN AKTİF DURUM (6 May 00:30)
-
-### Origin/Main
-- HEAD: `6e82044` (Hotfix #21 mergelendi - PR #21 sonrası)
-- ✅ Marker count: 3 dosyada 0/0/0 (temiz)
-- Hotfix #21 mergelendi ✅
-
-### Devir Teslim
-- Branch: `claude/devir-teslim-2026-05-05-temiz` ✅ Push'ta
-- 3 commit: 901980c + 972d42a + fd7e8bb
-- PR #22 (açık) - Aslan mergeleyecek
-
-### Replit
-- Plan mode'da
-- `.local/tasks/sprint-8-execute.md` plan dosyası hazır
-- Lokal'de hotfix uygulandı, beyaz ekran düzeldi
-- Sprint 8 EXECUTE bekliyor (isolated agent)
-
-### Token Durumu
-- Eski token GitHub Push Protection algıladı (5 May incident)
-- Muhtemelen revoke edildi → yarın test gerekir
-
-### Aslan'ın Tek İşi (Şu An)
-PR aç + mergele: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/devir-teslim-2026-05-05-temiz
+**Üretildi:**
+- İK Redesign master plan (`docs/IK-REDESIGN-PLAN-2026-05-06.md`, 309 satır)
+- position_salaries Lara matrisi seed migration (5 pozisyon, 2026-01-01)
+- PR description hazırlığı (`docs/PR-DESCRIPTION-IK-REDESIGN.md`)
+- hr.ts:2187 orphan `});` fix (origin/main'den miras kalan syntax hatası)
+- 6. perspektif eklendi (D-39: End User Persona-Specific)
+- 3 yeni karar: D-39, D-40, D-41 + D-20 pause notu
 
 ---
 
-## 🚦 YARIN (6 Mayıs) DEVAM EDECEK
+## 📋 İK Redesign Branch — `claude/ik-redesign-2026-05-06`
 
-1. **Aslan** → Hotfix PR mergele
-2. **Replit** → `git pull origin main` + workflow restart
-3. **Aslan** → Mode'u **Plan**'a çevir
-4. **Replit isolated agent** → Backup + 2 Migration EXECUTE + Smoke test (~45 dk)
-   - Migration 1: `2026-05-05-sprint-8-data-cleanup-personnel-sync.sql` (35 personel)
-   - Migration 2: `2026-05-05-payroll-parameters-2026-seed.sql` (2026 vergi/SGK)
-5. **Aslan** → PR mergele → Mode'u **Build**'e
-6. **Mahmut** → payroll_parameters 2026 değerleri doğrula (Resmi Gazete + GİB)
-7. **Replit** → docs/SISTEM-RAPORU-5-MAYIS.md güncelle
+**9 commit, 14 dosya, +2880/-220 satır:**
 
----
+| # | Commit | İçerik | Tarih |
+|---|---|---|---|
+| 1 | 35b80edd9 | docs: master plan v1 — 4 faz tek sprint | Bugün |
+| 2 | d9c57051b | fix: position_salaries Lara matrisi seed (2026) | Bugün |
+| 3 | 3d0cc7a87 | feat: /ik-merkezi v2 — Mahmut-first dashboard | 5 May 21:00 |
+| 4 | 0eb6508d9 | feat: payroll-engine dual-model + asgari ücret | 5 May 21:22 |
+| 5 | 5cbc8b477 | feat: payroll-bridge dual-model sync | 5 May 21:25 |
+| 6 | cac6cd34a | feat: bireysel bordro 3 endpoint | 5 May 21:30 |
+| 7 | a74aaa12a | feat: Faz 3 self-service akışları | 5 May 21:35 |
+| 8 | 2bdcd5ba3 | feat: Faz 4 yönetici dashboardu | 5 May 21:40 |
+| 9 | f6eba09be | fix(hr): orphan `});` sil — esbuild build fix | Bugün |
 
-## 📊 PILOT 12 MAYIS HAZIRLIK
-
-| Kategori | Status |
-|---|---|
-| Backend kod | ✅ Hazır |
-| Frontend sayfalar | ✅ Hazır |
-| DB migration'lar | ⏳ EXECUTE bekliyor |
-| Marker temizliği | ✅ Hotfix PR #21 mergelendi |
-| Bordro parametreleri | ⏳ Mahmut doğrulama |
-| Devir teslim | ⏳ PR #22 mergelenecek |
-
-**Bloker:** Sprint 8 EXECUTE. Mahmut doğrulaması paralel yapılabilir.
+**Bugünkü 5 commit:** #1, #2, #9 ben yazdım, #3-#8 önceki "ben" 5 May gece yapmış (kompakte özetinde tam yansımadı, bugün keşfettim).
 
 ---
 
-## 💡 KRİTİK HATIRLATMALAR
+## 🎓 Bugünkü 4 Karar Özeti
 
-- **Feature Freeze:** 18 Apr - 15 Jun. Yeni feature → "Sprint 17+ pilot sonrası"
-- **Triangle workflow:** Aslan biz / Claude code / Replit DB
-- **Mode kuralı:** DB write = Plan mode + isolated + backup + GO. Esnetme.
-- **Schema tuzakları:** users.firstName+lastName, monthlyPayroll (schema-12), tgkLabels.rejectedReason
+### D-39: 6. perspektif — End User (Persona-Specific)
+5 perspektif review (Eng/F&B/QA/PM/Compliance) → **6'ya çıkarıldı**. End User personalarıyla: Aslan, Mahmut, Berkan (Lara), Andre (Lara mudur), Yavuz (coach), Eren (fabrika), Sema. Cihaz + bağlam + fiili deneyim sorgulanır.
+
+### D-40: Lara Stajyer Excel Sadakati + Sistem Fallback
+Lara duyuru rakamları DB'de aynen kalır. payroll-engine bordro hesabında asgari ücret kontrolü: `MAX(positionSalary, minimum_wage_gross)`. Stajyer 33.000 TL → bordroya 33.030 TL yazılır + audit log.
+
+### D-41: Hub-First Sidebar
+İK redesign'da 5 yeni sayfa sidebar'a girmez. `/ik-merkezi` tek dominant link, alt sayfalar hub'tan erişilir. "Akademi rota patlaması" hatasının tekrarı önlendi.
+
+### D-20 NOTU: Feature Freeze Pause
+Aslan: "tüm işleri aynı anda bitir." Feature Freeze (18 Apr - 15 Haz) pause edildi. Pilot 12 May ertelendi → TBD.
 
 ---
 
-**Son güncelleme:** 6 May 2026, 00:30 (Hotfix #21 mergelendi + Devir teslim PR #22 açık)  
-**Sonraki güncelleme:** Sprint 8 EXECUTE bittikten sonra
+## ⚠️ Bonus Bulgular
+
+### hr.ts:2187 — main'de syntax hatası
+Git blame: `123dd983eb` commit'i (5 May 18:25, origin/main'de var) orphan `});` ekledi. Esbuild build geçmiyordu. Vite + dev tsx tolerant olduğu için runtime crash olmamıştı. PR mergedikten sonra main de düzelir.
+
+### position_salaries — DB'de zaten 19 pozisyon
+Replit DB raporu 19 pozisyon (önceki seed). Migration idempotent (ON CONFLICT DO NOTHING), zarar yok. Lara'nın 5 pozisyonu + HQ/Fabrika 14 rol (CEO 100K, fabrika_mudur 80K, vb.).
+
+### Sprint 8 — score_parameters DDL eksik
+Replit raporundan: `score_parameters` tablosu DB'de YOK (CREATE TABLE eksik). Sprint 8 EXECUTE şu an çalıştırılırsa fail eder.
+
+---
+
+## 🔄 Şu an bekleyen iş — Replit build re-run
+
+`f6eba09be` push edildi. Replit `npm run build && npx tsc --noEmit` çalıştırıyor (~3 dk). Beklenen:
+- ✅ vite (zaten geçiyordu)
+- ✅ esbuild (orphan silindi)
+- ✅ tsc (5 hata silindi)
+- ✅ marker (temiz)
+- ✅ workflow restart (yeni bundle)
+
+---
+
+## 📍 Sırada (PR'ya kadar)
+
+1. ⏳ Replit build re-run sonucu
+2. ⏳ PR aç (Aslan, GitHub UI 4 tık) — title + description hazır
+3. ⏳ Aslan tarayıcı smoke test (4 sayfa: ik-merkezi, izin-talep, onay-kuyrugu, takim-takvimi)
+4. ⏳ Squash and merge
+5. ⏳ Migration EXECUTE (Replit Plan mode + pg_dump backup)
+6. ⏳ Mahmut Mayıs 2026 bordro doğrulama (Excel ↔ sistem diff)
+
+---
+
+**Son güncelleme:** 6 May 2026, 01:00 (İK redesign branch hazır, build re-run bekleniyor)

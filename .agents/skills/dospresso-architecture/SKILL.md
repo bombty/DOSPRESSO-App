@@ -1,11 +1,49 @@
 ---
 name: dospresso-architecture
-description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 31-role system, module connections, CI colors, app layout, agent system, kiosk auth, and coding conventions. Use when adding new features, routes, components, or tables.
+description: Complete architecture reference for DOSPRESSO franchise management platform. Covers tech stack, database schema, API patterns, 23 active + 8 phantom role system (31 total), module connections, CI colors, app layout, agent system, kiosk auth, payroll dual-model, and coding conventions. Use when adding new features, routes, components, or tables.
 ---
 
 # DOSPRESSO Architecture Map
 
-## 🆕 Son Değişiklik Özeti (5 May 2026 Gece — Sprint 8-16 + Hotfix)
+## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
+
+> **Yeni Claude için hızlı bağlam:** Bu skill 5 May'den 6 May'e Sprint 17 (İK Redesign) ile güncellendi. Branch: `claude/ik-redesign-2026-05-06`, 9 commit, 14 dosya, +2880/-220.
+
+**Sprint 17 — İK Redesign (6 May 2026):**
+- **payroll-engine dual-model salary resolution** (`server/lib/payroll-engine.ts`):
+  - 3-aşamalı fallback chain: position_salaries → users.netSalary → minimum_wage_gross (4857 SK m.39)
+  - Yeni alan: `salarySource: 'position_matrix' | 'individual_net_salary' | 'minimum_wage_fallback'`
+  - `originalSalary` + `legalNote` audit alanları (asgari ücret fallback log)
+- **payroll-bridge engine ile sync** (`server/services/payroll-bridge.ts`):
+  - UnifiedPayrollResult interface aynı alanlarla genişletildi
+  - calculateBranchUnifiedPayroll WHERE genişletildi: tüm aktif user (sadece şube rolleri değil)
+- **/ik-merkezi v2 Mahmut-first dashboard** (478 satır, eski 295 satır menü hub'ı yerine)
+- **5 yeni İK sayfası** (`client/src/pages/ik/`):
+  - `izin-talep.tsx` — 4 izin tipi, balance check, 365 cap
+  - `mesai-talep.tsx` — HH:MM, 270 saat yıllık limit
+  - `takim-takvimi.tsx` — vardiya+izin+mesai branch scope (KVKK)
+  - `bordro-onay.tsx` — 3 katmanlı onay (mudur→muhasebe→ceo)
+  - `onay-kuyrugu.tsx` — izin+mesai tek kuyruk, reject reason zorunlu
+- **3 yeni endpoint** (`server/routes/me-self-service.ts`):
+  - `GET /api/me/payroll/:year/:month`
+  - `GET /api/me/payroll/:year/:month/pdf` (Lara format)
+  - `GET /api/me/payroll-history`
+- **migrations/2026-05-06-position-salaries-lara-seed.sql** — Lara 5 pozisyon (Stajyer/BarBuddy/Barista/SupBuddy/Sup) seed
+
+**Yeni kararlar (DECIDED.md):**
+- **D-39:** 6. perspektif End User (Persona-Specific) — 5 perspektif review 6'ya çıkarıldı
+- **D-40:** Lara Stajyer Excel sadakati + sistem fallback (33.000 TL DB'de, 33.030 TL bordroya)
+- **D-41:** Hub-first sidebar (5 yeni sayfa sidebar'a girmez, /ik-merkezi tek dominant link)
+- **D-20 NOTU:** Feature Freeze pause (Aslan, 6 May)
+
+**Bonus fix:** `server/routes/hr.ts:2187` orphan `});` — origin/main'den miras kalan syntax hatası, esbuild build'i kırıyordu. PR mergedikten sonra main de düzelir.
+
+**Önceki (5 May 2026 Gece — Sprint 8-16 + Hotfix):**
+> Bu kısım önceki update'ten kaldı, yeni Claude için aşağıda ayrıntı var.
+
+---
+
+## 🆕 Önceki Değişiklik (5 May 2026 Gece — Sprint 8-16 + Hotfix)
 
 > **Yeni Claude için hızlı bağlam:** Bu skill 4 May'den 5 May'e Sprint 7→16 + 1 hotfix ile güncellendi.
 
@@ -39,7 +77,13 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 
 ---
 
-## Platform Metrics (4 Mayıs 2026 — Branch Recipe System eklendi)
+---
+
+## 📚 Audit Trail (Geçmiş Versiyonlar)
+
+> **Yeni Claude için:** Aşağıdaki bölümler **eskimiş ama silinmedi** — geçmiş sprint'ler için referans değeri var. Güncel sayılar ve sistem durumu için yukarıdaki "Son Değişiklik Özeti" + "Project Structure" bölümlerine bak.
+
+### Platform Metrics Arşivi (4 Mayıs 2026 — Branch Recipe System eklendi)
 - **Database tablosu (kodda):** **465 pgTable** tanımı (4 May: +9 branch_* + +1 schema-24, Sprint 3'te 13 tablo + 4 UNIQUE + 83 index + 47 FK eklendi, Task #255)
 - **Database tablosu (DB'de gerçek):** ~466 (drift = 0, baseline `migrations/0000_baseline.sql`)
 - **Backend endpoint:** **~1,854** (119 route dosyası × ortalama 15 endpoint)
@@ -118,50 +162,56 @@ DOSPRESSO uses a Navy Blue + Light Blue Gradient + Red Accent corporate palette.
 - Sidebar primary matches the main primary red
 - All color vars defined in `client/src/index.css` using HSL space-separated format
 
-## Project Structure
+## Project Structure (Sprint 17 sonrası — 6 May 2026)
 ```
 client/src/
-├── pages/          # 313 page components
+├── pages/          # 322 page components (+5 İK redesign: ik/* namespace)
 ├── components/     # 148 components (custom + Shadcn UI)
 ├── contexts/       # DobodyFlow, Theme, Auth
 ├── hooks/          # Custom React hooks
 ├── lib/            # Utilities, role-routes.ts
-└── App.tsx         # Root with providers + 155 lazy route definitions
+└── App.tsx         # Root with providers + 160+ lazy route definitions
 
 server/
-├── routes/         # 111 route files, ~1800+ endpoints
+├── routes/         # 113 route files, ~1985+ endpoints
 ├── agent/          # Mr. Dobody agent system
 │   ├── skills/     # 29 agent skills + 2 utilities
 │   └── routing.ts  # Smart notification routing
 ├── services/       # agent-scheduler, data-lock, change-tracking, business-hours, payroll-bridge
-├── lib/            # Business logic (pdks-engine, payroll-engine)
+├── lib/            # Business logic (pdks-engine, payroll-engine - dual-model salary resolution)
 ├── menu-service.ts # Sidebar blueprint + RBAC menu config
 ├── seed-sla-rules.ts # SLA defaults seeded on startup
-└── shared/schema/  # 468 tables across 23 modular schema files (barrel: shared/schema.ts)
+└── shared/schema/  # 478+ tables across 25 modular schema files (barrel: shared/schema.ts)
 ```
 
-## Role System (30 Roles)
+## Role System — 23 Aktif + 8 Phantom (31 Total)
 
-### System:
-admin
+> **Önemli (5 May Replit DB doğrulaması):** Tanımlı 31 rol var, ama sadece **23'ü aktif kullanıcıya sahip**. 8 phantom rol DB'de hiç kullanıcı yok — kullanıma hazır ama atanmamış.
 
-### Executive:
-ceo, cgo
+### Aktif Roller (DB'de kullanıcı var)
 
-### HQ Department Roles:
-muhasebe_ik, satinalma, coach, marketing, trainer, kalite_kontrol, gida_muhendisi, fabrika_mudur
+**System (1):** admin (3 user)
 
-### Legacy HQ Roles:
-muhasebe, teknik, destek, fabrika, yatirimci_hq
+**Executive (2):** ceo (2), cgo (2)
 
-### Branch Roles (lowest → highest):
-stajyer, bar_buddy, barista, supervisor_buddy, supervisor, mudur, yatirimci_branch
+**HQ Department Roles (8 aktif):**
+muhasebe_ik (2), satinalma (2), coach (3), marketing (2), trainer (1), gida_muhendisi (2), recete_gm (1), destek (1), teknik (1)
 
-### Factory Floor Roles:
-fabrika_operator, fabrika_sorumlu, fabrika_personel, sef, recete_gm, uretim_sefi
+**Branch Roles (5 aktif):**
+stajyer (3), bar_buddy (3), barista (77), supervisor_buddy (1), supervisor (17), mudur (18)
 
-### Kiosk Roles:
-sube_kiosk — auto-created kiosk account per branch, used for PDKS check-in/out at branch kiosks
+**Factory Floor Roles (3 aktif):**
+fabrika_operator (10), fabrika_mudur (1), sef (1)
+
+**Kiosk:** sube_kiosk (19) — auto-created kiosk account per branch
+
+**Other:** yatirimci_branch (4), yatirimci_hq (1)
+
+### Phantom Roller (Tanımlı Ama Kullanıcı Yok — 8 rol)
+
+`fabrika_pisman`, `fabrika_kalite`, `fabrika_sorumlu`, `fabrika_personel`, `fabrika`, `kalite_kontrol`, `muhasebe`, `uretim_sefi`
+
+**Karar:** Pilot sonrası temizlik (Sprint E - rol konsolidasyonu, 27→18 hedef).
 
 ### Role Groupings (shared/schema.ts):
 - `HQ_ROLES` — admin + ceo + cgo + all HQ department + legacy roles
@@ -169,6 +219,18 @@ sube_kiosk — auto-created kiosk account per branch, used for PDKS check-in/out
 - `BRANCH_ROLES` — stajyer through yatirimci_branch
 - `FACTORY_FLOOR_ROLES` — fabrika_operator, fabrika_sorumlu, fabrika_personel
 - `DEPARTMENT_DASHBOARD_ROUTES` — maps roles to dedicated dashboard paths
+
+### Role-Position Mapping (Sprint 17 — payroll dual-model)
+
+`server/lib/payroll-engine.ts:115` — `ROLE_TO_POSITION`:
+```typescript
+{ stajyer: 'intern', bar_buddy: 'bar_buddy', barista: 'barista',
+  supervisor_buddy: 'supervisor_buddy', supervisor: 'supervisor',
+  mudur: 'supervisor' }  // mudur = supervisor seviyesi
+```
+
+Lara modeli (position_salaries) için kullanılır. HQ + Fabrika rolleri users.netSalary fallback kullanır.
+
 
 ## App Layout
 - SidebarProvider wraps the app (Shadcn sidebar primitives)

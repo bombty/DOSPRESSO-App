@@ -16,7 +16,7 @@
 import { db } from "../db";
 import { eq, and, sql } from "drizzle-orm";
 import { getMonthClassification, type PdksMonthSummary, type DayClassification } from "../lib/pdks-engine";
-import { getPositionSalary, loadPayrollConfig, type PayrollMonthConfig } from "../lib/payroll-engine";
+import { getPositionSalary, loadPayrollConfig, getMinimumWageGross, type PayrollMonthConfig } from "../lib/payroll-engine";
 import { calculatePayroll as calculateDetailed, type PayrollInput, type PayrollResult as DetailedResult } from "./payroll-calculation-service";
 import { users, monthlyPayroll, pdksDailySummary, pdksExcelImports, publicHolidays, leaveRequests } from "@shared/schema";
 
@@ -116,12 +116,17 @@ export interface UnifiedPayrollResult {
   dataSource: DataSource;
   sourceImportId: number | null;
   cumulativeTaxBase: number;
+  // ─── İK Redesign 6 May 2026 — Dual-Model Tracking ───
+  salarySource: 'position_matrix' | 'individual_net_salary' | 'minimum_wage_fallback';
+  originalSalary?: number;  // asgari ücret fallback öncesi orjinal değer (audit)
+  legalNote?: string;       // compliance açıklaması (UI rozet için)
 }
 
 // ─── Rol → Pozisyon Kodu ──────────────────────────────────────────
 
+// İK Redesign 6 May 2026: 'stajyer' role → 'intern' position_code (DB seed ile uyum)
 const ROLE_TO_POSITION: Record<string, string> = {
-  stajyer: "stajyer",
+  stajyer: "intern",
   bar_buddy: "bar_buddy",
   barista: "barista",
   supervisor_buddy: "supervisor_buddy",
@@ -392,6 +397,8 @@ export async function calculateUnifiedPayroll(
     role: users.role,
     branchId: users.branchId,
     isActive: users.isActive,
+    netSalary: users.netSalary,    // İK Redesign — custom-individual fallback için
+    bonusBase: users.bonusBase,    // İK Redesign — bonus split için
   })
   .from(users)
   .where(eq(users.id, userId))
@@ -401,13 +408,32 @@ export async function calculateUnifiedPayroll(
 
   const u = userResult[0];
   const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ") || "Bilinmiyor";
-  const positionCode = ROLE_TO_POSITION[u.role] || "barista";
+  const positionCode = ROLE_TO_POSITION[u.role] || u.role;
 
-  const salary = await getPositionSalary(positionCode, year, month);
+  // ─── İK Redesign — Dual-Model Salary Resolution ───
+  // 1. Position lookup (Lara matrisi)
+  let salary = await getPositionSalary(positionCode, year, month);
+  let salarySource: UnifiedPayrollResult['salarySource'] = 'position_matrix';
+
+  // 2. Custom-individual fallback (HQ/Fabrika/Ofis için users.netSalary)
+  if (!salary && u.netSalary && u.netSalary > 0) {
+    salary = {
+      id: 0,
+      positionCode: 'custom',
+      positionName: 'Kişiye Özel Hakediş',
+      totalSalary: u.netSalary,
+      bonus: u.bonusBase ?? 0,
+      baseSalary: Math.max(u.netSalary - (u.bonusBase ?? 0), 0),
+      effectiveFrom: '',
+      effectiveTo: null,
+      createdAt: new Date(),
+    } as any;
+    salarySource = 'individual_net_salary';
+  }
+
+  // 3. Hala bulunamadı — F27 null guard (eski davranış korunuyor)
   if (!salary) {
-    // F27 ✅ KAPANDI (3 May 2026): null guard + structured warn.
-    // Daha önce sessizce null dönerdi → bordro üretmez + alarm yok.
-    console.warn('[payroll-bridge] getPositionSalary null — bordro üretilmedi', {
+    console.warn('[payroll-bridge] Bordro üretilmedi: ne position_salaries ne users.netSalary var', {
       userId,
       year,
       month,
@@ -415,11 +441,34 @@ export async function calculateUnifiedPayroll(
       positionCode,
       fullName,
       branchId: u.branchId,
+      netSalary: u.netSalary,
       source: effectiveSource,
-      reason: 'NO_POSITION_SALARY_FOR_PERIOD',
-      hint: 'positionSalaries tablosuna bu pozisyon + tarih için kayıt eklenmeli',
+      reason: 'NO_SALARY_RESOLUTION',
+      hint: 'Ya position_salaries\'a kayıt ekle ya da users.netSalary güncelle',
     });
     return null;
+  }
+
+  // 4. Asgari ücret koruması (4857 SK m.39)
+  const minWageGross = await getMinimumWageGross(year, month);
+  let originalSalary: number | undefined;
+  let legalNote: string | undefined;
+  if (salary.totalSalary < minWageGross) {
+    originalSalary = salary.totalSalary;
+    legalNote = `Hakediş ${(salary.totalSalary/100).toFixed(2)} TL asgari ücretin altındaydı; ` +
+                `4857 SK m.39 uyarınca asgari ücrete (${(minWageGross/100).toFixed(2)} TL) yükseltildi.`;
+    console.warn('[payroll-bridge] Asgari ücret fallback uygulandı', {
+      userId, year, month, role: u.role, positionCode, fullName, branchId: u.branchId,
+      originalSalary: salary.totalSalary,
+      adjustedSalary: minWageGross,
+      legalBasis: '4857 SK m.39',
+    });
+    salary = {
+      ...salary,
+      totalSalary: minWageGross,
+      baseSalary: Math.max(minWageGross - salary.bonus, 0),
+    };
+    salarySource = 'minimum_wage_fallback';
   }
 
   // Kaynağa göre PDKS verisi
@@ -481,6 +530,10 @@ export async function calculateUnifiedPayroll(
     totalEmployerCost: detailed.totalEmployerCost,
     isTerminated, calculationMode: "unified", dataSource: effectiveSource,
     sourceImportId: resolvedImportId, cumulativeTaxBase,
+    // İK Redesign — Dual-Model tracking
+    salarySource,
+    originalSalary,
+    legalNote,
   };
 }
 
@@ -498,11 +551,14 @@ export async function calculateBranchUnifiedPayroll(
 ): Promise<UnifiedPayrollResult[]> {
   const effectiveConfig = { ...(await loadPayrollConfig(branchId, year, month)), ...config };
 
+  // İK Redesign 6 May 2026: tüm aktif personel (eskiden sadece 6 şube rolü)
+  // HQ + Fabrika + Ofis personeli artık dual-model bordro alabilir
   const branchUsers = await db.select({ id: users.id })
     .from(users)
     .where(and(
       eq(users.branchId, branchId),
-      sql`${users.role} IN ('stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'mudur')`
+      eq(users.isActive, true),
+      sql`${users.deletedAt} IS NULL`
     ));
 
   const results: UnifiedPayrollResult[] = [];

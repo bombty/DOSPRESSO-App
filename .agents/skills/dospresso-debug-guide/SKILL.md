@@ -1,11 +1,83 @@
 ---
 name: dospresso-debug-guide
-description: DOSPRESSO-specific debugging procedures for common issues. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, TypeScript req.user pattern, kiosk auth failures, SLA business hours issues, delegation system issues, and Drizzle schema vs DB column mismatches. Use when investigating any bug or unexpected behavior.
+description: DOSPRESSO-specific debugging procedures for 39 documented bug patterns. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, TypeScript req.user pattern, kiosk auth failures, SLA business hours issues, delegation system issues, Drizzle schema vs DB column mismatches, conflict marker push (5 May incident), scheduler bildirim spam (Sprint 16), payroll_parameters boş (Sprint 16), build mode DB write block, sidebar new page invisible, orphan `});` esbuild fail (§37), vite+esbuild build farkı (§38), compaction branch drift (§39). Use when investigating any bug or unexpected behavior.
 ---
 
-# DOSPRESSO Debug Checklist
+# DOSPRESSO Debug Checklist (39 Documented Patterns)
 
-## 🆕 Son Değişiklik Özeti (5 May 2026 Gece)
+## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
+
+> **Yeni Claude için:** §37-§39 yeni eklendi. 36 → 39 dokümante bug.
+
+**Yeni bölümler (Sprint 17 sırasında ortaya çıktı):**
+- **§37** — Orphan `});` Merge Artığı: Esbuild Build Fail Eder, Dev Mode Tolerant
+- **§38** — Vite + Esbuild Build Farkı: Vite Geçer Ama Esbuild Fail Edebilir
+- **§39** — Compaction Sonrası Branch State Drift: Önceki Oturum Commit'leri Memo'da Yansımayabilir
+
+### §37 — Orphan `});` Merge Artığı (CRİTİCAL)
+**Belirti:** Esbuild backend build fail eder: `Expected "finally" but found ")"` veya benzer JSX/TS bracket hataları.
+TypeScript'te 5 hata aynı satır çevresinden: TS1472, TS1128, TS1005.
+
+**Kök neden:** Merge conflict çözümünde fazladan `});` blok kapanış ekleniyor. Genelde `res.json({...})` zaten kapatılmış, ardından bir tane daha gelmiş.
+
+**Tespit:**
+```bash
+grep -n '^      });' server/routes/*.ts | head -20
+# ardışık aynı seviye `});` satırları şüpheli
+```
+
+**Görünen örnek (5 May, hr.ts:2187):**
+```ts
+2186 │       });        ← res.json() doğru kapanış
+2187 │       });        ← FAZLA (orphan, sil)
+2188 │     } catch (error: unknown) {
+```
+
+**Çözüm:** Tek satır sil. Esbuild + tsc 5 hata gider.
+
+**Önlem:** Her commit öncesi `npm run build` çalıştır. Vite ✅ olsa bile esbuild ❌ olabilir (dev mode tsx tolerant ama prod fail).
+
+---
+
+### §38 — Vite + Esbuild İkili Build Kontrolü
+**Belirti:** `npm run dev` ile uygulama ayağa kalkıyor (workflow RUNNING), ama `npm run build` esbuild aşamasında crash ediyor.
+
+**Kök neden:** Dev mode tsx (`NODE_ENV=development tsx server/index.ts`) TypeScript'i runtime parse eder, bazı syntax hatalarını tolere eder. Esbuild prod build'te sıkı parse, fail eder.
+
+**Çözüm:** **İkisi de zorunlu** (D-29 + QG-32):
+```bash
+npm run build  # ← vite + esbuild ikisi de çalışır
+npx tsc --noEmit  # ← TS strict check
+```
+
+**Quality Gate:** Sadece "uygulama ayakta" yetmez, build verify zorunlu (QG-32).
+
+---
+
+### §39 — Compaction Sonrası Branch State Drift
+**Belirti:** Yeni Claude oturumu, kompakt özette "X yapılmamış" der ama branch'te commit'i mevcut.
+
+**Kök neden:** Önceki oturum 5 May gece marathon yaptı, kompakte özetinde son commit'ler kayıt yok ya da güncel değil. Yeni oturum aynı işi yeniden başlatmaya kalkışıyor.
+
+**Tespit (oturum başı zorunlu):**
+```bash
+git fetch origin
+git log --oneline origin/main..HEAD  # branch'te kaç commit var
+git log -10 --oneline                # son 10 commit ne hakkında
+```
+
+**Çözüm:** Önce mevcut state'i tara, sonra plan yap. "Sıfırdan yazma" tuzağına düşme.
+
+**Önlem:** Master plan dosyasında "Mevcut Durum" tablosu (her commit + ne içerir) — yeni Claude bunu okuyup farkı net görür. (Örn. `docs/IK-REDESIGN-PLAN-2026-05-06.md` 18-31 satırları).
+
+---
+
+**Önceki Bölümler (5 May ve öncesi):**
+> Aşağıda §1-§36 detayları var.
+
+---
+
+## 🆕 Önceki Değişiklik (5 May 2026 Gece)
 
 > **Yeni Claude için:** §32-§36 yeni eklendi. 31 → 36 dokümante bug.
 

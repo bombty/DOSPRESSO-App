@@ -1,21 +1,36 @@
 ---
 name: dospresso-quality-gate
-description: DOSPRESSO 36-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, mobile compactness, F33 route guard wrap (#306/#325 CI coverage), F36 PIN seed coverage (#324), F15 dynamic late tolerance (per-branch settings vs hardcoded), and Five-Role Mental Review (Engineer/Operations/QA/PM/Compliance — owner-approved 3 May 2026). Run after every sprint build or code change.
+description: DOSPRESSO 34-point quality checklist with PASS/FAIL output. Covers auth middleware, Turkish UI, null safety, Drizzle ORM, data locks, soft delete, dark mode, role access, endpoints vs DB tables, TypeScript patterns, kiosk auth, bcrypt security, SLA consistency, CRM endpoint auth, kiosk role safety, module flag consistency, mobile compactness, F33 route guard wrap, F36 PIN seed coverage, F15 dynamic late tolerance, vite+esbuild dual build (QG-32), tsc strict check (QG-33), branch state drift detection (QG-34), and Six-Role Mental Review (Engineer/Operations/QA/PM/Compliance/End-User — D-39 6 May 2026). Run after every sprint build or code change.
 ---
 
-# DOSPRESSO Quality Gate — 35-Point Checklist
+# DOSPRESSO Quality Gate — 34-Point Checklist
 
-## 🆕 Son Değişiklik Özeti (5 May 2026 Gece — Sprint 8-16 + Hotfix)
+## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
-> **Yeni Claude için:** QG 27 → 31 madde. 4 yeni check eklendi.
+> **Yeni Claude için:** QG 31 → 34 madde + 5 perspektif → 6 perspektif. 3 yeni check.
 
 **Yeni Quality Gate maddeleri:**
-- **QG-28** — Conflict marker count = 0 (push öncesi grep zorunlu)
-- **QG-29** — Sidebar mapping çift kontrol (App.tsx + module-menu-config.ts)
-- **QG-30** — Schema kolon assume yok (Replit DB sorgu zorunlu)
-- **QG-31** — Token kontrol (5 May incident — `grep ghp_|gho_|github_pat`)
+- **QG-32** — Vite + Esbuild İkili Build (vite OK yetmez, esbuild de geçmeli — §38)
+- **QG-33** — `npx tsc --noEmit` ayrı kontrol (build geçse bile TS hatası olabilir)
+- **QG-34** — Branch state tarama (oturum başı `git log --oneline origin/main..HEAD` zorunlu — §39)
 
-**5-Perspektif Review** (PE/F&B/QA/PM/Compliance) zorunlu kalır — major change'lerde.
+**6-Perspektif Review** (D-39 ile genişletildi):
+1. Principal Engineer
+2. Franchise F&B Ops
+3. Senior QA
+4. Product Manager
+5. Compliance
+6. **End User (Persona-Specific)** ← YENİ (D-39, 6 May)
+
+**End User personas:** Aslan (CEO), Mahmut (muhasebe), Berkan (Lara barista), Andre (Lara mudur), Yavuz (coach 19 şube), Eren (fabrika), Sema (recete_gm).
+
+**Her major change'te 6 perspektif tablosu zorunlu** (DECIDED.md D-07 + D-39). Schema/API minor değişikliklerde mental check yeterli.
+
+**Önceki:**
+- QG-28 — Conflict marker count = 0 (push öncesi grep)
+- QG-29 — Sidebar mapping çift kontrol
+- QG-30 — Schema kolon assume yok
+- QG-31 — Token kontrol
 
 ---
 
@@ -605,7 +620,9 @@ grep -A 2 "productionSafeGuard" server/routes/seed.ts | head -10
 - `feat:` commit'inde yeni modül/tablo/sayfa var → Sprint I (Hafta 9) backlog'una al
 - Cinnaboom/cheesecake/brownie gibi yeni maliyet analiz feature'ı → DURDUR
 
-Referans: `docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`
+> **D-20 NOTU (6 May 2026):** Feature Freeze **PAUSE** edildi (Aslan: "tüm işleri aynı anda bitir"). Şu an yeni feature yasağı aktif değil. Pilot tarihi tekrar set edilince bu kontrol yeniden aktive olur.
+
+Referans: `docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`, DECIDED.md D-20
 
 ---
 
@@ -1162,18 +1179,108 @@ git push "https://x-access-token:TOKEN@github.com/..." BRANCH
 const TOKEN = "ghp_xxx"
 ```
 
-Gate execution sıra:
-1. Frontend build (`npx vite build`) - 0 error
-2. Backend build (`npx esbuild ...`) - 0 error
-3. **YENİ:** Conflict marker scan (#28)
-4. Schema-Migration uyum (#30)
-5. Manifest + Permission map sync
-6. Sidebar mapping (#29)
-7. **YENİ:** Token kontrol (#31)
-8. 5-perspektif review (PE/F&B/QA/PM/Compliance)
-9. Replit local fix → GitHub yansıt
-10. Test data temizliği
-11. ... (mevcut 27)
+Gate execution sıra (Sprint 17 — 6 May 2026 güncel):
+1. Frontend build (`npx vite build`) - 0 error (#32 ile aynı zamanda esbuild de zorunlu)
+2. **YENİ #32:** Backend build (`npx esbuild ...`) - 0 error (vite OK olsa bile esbuild fail edebilir)
+3. **YENİ #33:** TypeScript check (`npx tsc --noEmit`) - 0 error (build geçse bile TS hatası olabilir)
+4. Conflict marker scan (#28)
+5. **YENİ #34:** Branch state drift check (`git log --oneline origin/main..HEAD`) — oturum başı zorunlu
+6. Schema-Migration uyum (#30)
+7. Manifest + Permission map sync
+8. Sidebar mapping (#29)
+9. Token kontrol (#31)
+10. **6-perspektif review** (PE/F&B/QA/PM/Compliance/**End-User** — D-39)
+11. Replit local fix → GitHub yansıt
+12. Test data temizliği
 
 Tümü ✅ olmadan commit yok.
+
+---
+
+## QG-32 — Vite + Esbuild İkili Build (D-29 + §38)
+
+**Sorun:** Dev mode tsx (`NODE_ENV=development tsx server/index.ts`) TS'i runtime parse eder, syntax hatalarını tolere eder. Esbuild prod build sıkı, fail eder.
+
+**5 May vakası:** `hr.ts:2187` orphan `});` — workflow RUNNING olarak görünüyordu (dev mode tolerant), ama esbuild build crash ediyordu. Vite ✅ olsa bile esbuild ❌ olabilir.
+
+**Kontrol:**
+```bash
+npm run build  # vite + esbuild paralel — ikisinin de geçmesi şart
+```
+
+**FAIL durumunda:**
+- "Expected 'finally' but found ')'" — orphan bracket
+- "Expected ';' but found '}'" — eksik noktalı virgül
+- Diğer ESBuild syntax hataları
+
+**ÇÖZÜM:** Hatanın olduğu satıra git, orphan/eksik bracket düzelt, tek satır fix commit. (Örnek: §37 debug-guide)
+
+---
+
+## QG-33 — TypeScript Strict Check (`tsc --noEmit`)
+
+**Sorun:** Build geçse bile TypeScript tip hatası olabilir. Özellikle:
+- Implicit `any` (strict mode'da yakalanır)
+- Kullanılmayan import (TS6192)
+- Unhandled promise (TS2304)
+- Schema interface uyumsuzluğu
+
+**Kontrol:**
+```bash
+npx tsc --noEmit
+```
+
+**Beklenen:** 0 hata.
+
+**Ek:** Sprint 17'de `hr.ts:2187` ile birlikte 5 TS hatası gitmesi bu kontrolün önemini gösterdi.
+
+---
+
+## QG-34 — Branch State Drift Detection
+
+**Sorun:** Compaction sonrası veya yeni Claude oturumu başlatırken: branch'te commit'ler var ama Claude bilmiyor. Aynı işi yeniden başlatma riski.
+
+**Kontrol (oturum başı zorunlu):**
+```bash
+git fetch origin
+git log --oneline origin/main..HEAD     # branch'te kaç commit
+git log -10 --oneline                   # son 10 ne hakkında
+git status -sb                          # ahead/behind
+```
+
+**Beklenti:**
+- "Your branch is up to date with 'origin/...'" görünmeli
+- ahead/behind 0 olmalı (ya da aktif çalışılan branch'te)
+- Compaction sonrası: önceki commit'leri tara, ne yapılmış anla, sonra yeni iş başlat
+
+**Bağlantı:** §39 debug-guide — Compaction Drift detayları.
+
+---
+
+## 6-PERSPEKTIF MENTAL REVIEW (D-07 + D-39)
+
+> **D-39 (6 May 2026):** 5 perspektif → **6 perspektif** olarak genişletildi.
+
+Her major commit/karar için 6 perspektif tablosu zorunlu:
+
+| # | Perspektif | Bakış | Örnek Soru |
+|---|---|---|---|
+| 1 | **Principal Engineer** | Kod kalitesi, mimari | Test edilebilir mi? Type-safe mi? |
+| 2 | **Franchise F&B Ops** | Operasyonel etki | Şube/fabrika işine ne katar? |
+| 3 | **Senior QA** | Test stratejisi | Edge case yakalanır mı? |
+| 4 | **Product Manager** | UX stratejisi | Kullanıcı yolculuğu net mi? |
+| 5 | **Compliance** | İş Kanunu, KVKK, SGK, vergi | 4857 SK m.39 uyumlu mu? KVKK scope? |
+| 6 | **End User (Persona)** | Gerçek kullanıcının yaşadığı an | Mahmut/Berkan/Andre/Yavuz/Eren bunu kullanır mı? |
+
+**End User personas:** Aslan (CEO), Mahmut (muhasebe), Berkan (Lara barista), Andre (Lara mudur), Yavuz (coach 19 şube), Eren (fabrika), Sema (recete_gm).
+
+**Uygulama:**
+- UI/UX değişikliği: 6 perspektif tablosu zorunlu (yazılı)
+- API/schema değişikliği: 5 perspektif yeterli + End User mental check
+- Bug fix tek satır: Mental check yeterli
+
+---
+
+**Son güncelleme:** 6 May 2026, 02:00 (QG-32/33/34 + 6 perspektif detay)
+
 

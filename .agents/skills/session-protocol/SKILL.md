@@ -1,449 +1,333 @@
 ---
 name: session-protocol
-description: DOSPRESSO oturum sonu zorunlu protokolü (Çalışma Sistemi v2.0). Her oturum sonunda 5 adım sırasıyla uygulanmalıdır. "Bu oturumda hiçbir skill değişmedi" demek neredeyse imkansızdır.
+description: DOSPRESSO oturum sonu zorunlu protokolü (Çalışma Sistemi v2.1). Triangle Workflow (Aslan + Claude + Replit), 5 zorunlu adım, 6 perspektif review, mode geçişi, compaction davranışı. "Bu oturumda hiçbir skill değişmedi" demek neredeyse imkansızdır.
 ---
 
-# DOSPRESSO Çalışma Sistemi v2.0 — Oturum Sonu Protokolü
+# DOSPRESSO Çalışma Sistemi v2.1 — Oturum Sonu Protokolü
 
-## 🆕 Son Değişiklik Özeti (5 May 2026 Gece)
+## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
-> **Yeni Claude için:** V2.0 finalize edildi. Bu skill **/mnt/skills/user/'da yok**, Aslan açılış mesajında yolu vermeli: `.agents/skills/session-protocol/SKILL.md`
-
-**5 Zorunlu Adım (her oturum sonu):**
-1. 4 skill dosyasını güncelle (architecture/debug/quality + bu)
-2. `docs/TODAY.md` güncelle
-3. `docs/PENDING.md` güncelle
-4. `docs/DECIDED.md` yeni karar varsa ekle
-5. `docs/DEVIR-TESLIM-X-MAYIS-2026.md` yeni dosya yaz
-
-**Triangle Workflow:**
-- Aslan = Owner (karar, business, GitHub PR merge)
-- Replit = Main agent (build, plan/build mode, isolated task agent)
-- Claude (ben) = Architecture, code, GitHub push, skill update
-
-**Plan/Build Mode:**
-- DB write/schema/migration → Plan mode + isolated agent + backup
-- Docs/UI/code edit → Build mode OK
-- Plan mode'da git mutating yasak (push/commit/checkout)
-
-**5 May Incident Dersi:**
-- Conflict resolve → Replit Resolve UI VEYA `git checkout <hash> -- <files>` (asla `git add -A && git commit` conflict varken)
-- Token → asla dosyaya yazma (D-05), sadece konuşmada
+> **v2.1 update — 6 May 2026 itibarıyla.** v2.0'dan farklar:
+> - **6. perspektif eklendi** (D-39: End User Persona-Specific) — 5 perspektif → 6
+> - **Triangle Workflow netleşti**: Aslan IT uzmanı **değil** prensibi explicit
+> - **Compaction Drift Prevention** bölümü eklendi (§39 debug-guide ile bağlantılı)
+> - **Feature Freeze NOT pause** (D-20 NOTU, Aslan 6 May)
 
 ---
 
-## ZORUNLU — Her Oturum Sonunda (5 Adım, Sırasıyla)
+## ⚙️ TRIANGLE WORKFLOW (D-01 + 6 May netleşmiş)
 
-"Bu oturumda hiçbir skill değişmedi" demek neredeyse **IMKANSIZDIR**.
-- Kod yazdıysan → en az `dospresso-architecture` güncellenmeli (sayılar değişti)
-- Bug çözdüysen → `dospresso-debug-guide` güncellenmeli
-- Yeni kontrol gerekiyorsa → `dospresso-quality-gate` güncellenmeli
-- Workflow değiştiyse → bu dosya (`session-protocol`) güncellenmeli
+DOSPRESSO geliştirme **3 taraflı**:
+
+### 🧑‍💼 Aslan = Owner
+**Rol:** Karar, business, GitHub PR merge, UX, öncelik
+**ÖNEMLİ:** Aslan **IT uzmanı değildir**. Bu prensip her etkileşimi şekillendirir:
+- Komutlar net, kopyala-yapıştır şeklinde verilmeli
+- Çok seçenek = paraliz; net öneri ile karar kolaylaştır
+- Teknik jargon az, business dili çok
+- Karar gereken sorular **explicit ask_user_input_v0** ile sun, yorumda saklı kalmasın
+- Şu an Excel/WhatsApp/kağıt kullanıyor — sistem bunlara geçişi kolaylaştırmalı
+
+### 🤖 Claude = Mimari + Kod + GitHub
+**Rol:** Replit'in yapamadığı her şey
+**Özellikle:**
+- Plan dökümanı + sprint planlama
+- Mimari kararlar + schema tasarımı
+- Kod yazımı + GitHub branch + PR push (Replit branch switch yapamaz, Claude veya Aslan yapar)
+- Skill update + dokümantasyon
+- Replit'e prompt hazırlama
+- 6 perspektif review (her major karar)
+
+### 🔧 Replit Agent = DB + Build + Test
+**Rol:** Sandbox-restricted işler
+**Özellikle:**
+- **Plan mode + isolated agent:** DB write, schema, migration, env değişiklikleri (pg_dump backup zorunlu)
+- **Build mode:** kod editi (limited), doc, test, build verification, smoke test
+- **Sandbox kısıtı:** Git destructive komutlar (`stash`, `checkout`, `reset`, `pull`) Replit'te yasak — Aslan Shell'den manuel yapar
 
 ---
 
-## Adım 1 — Devir Teslim Yaz + Push
+## 📋 6-PERSPEKTİF REVIEW (D-07 + D-39 GENİŞLEDİ)
 
-```bash
-git add -A
-git commit -m "fix/feat: [konu] — [özet]"
-git push origin main
-```
+Her major commit/karar için **6 perspektif tablosu** zorunlu:
 
-> Not: Token gerektiren durumlarda AGENTS.md §1 "Push Komutu" bölümüne bakın.
-> Token'ı doğrudan komuta gömmeyin — repo push reject eder.
-
-Commit mesajı formatı:
-- `fix:` → hotfix (typo, import, SQL ALTER TABLE)
-- `feat:` → yeni özellik (IT sprint commit pull)
-- `docs:` → sadece skill/döküman güncelleme
-
----
-
-## Adım 2 — 4 Skill Dosyasını Güncelle
-
-| Skill | Ne Zaman Güncellenir? | Örnek Değişiklik |
+| # | Perspektif | Bakış |
 |---|---|---|
-| `dospresso-architecture` | Tablo/endpoint/rol/sayfa sayısı değişti | "29 Roles" → "31 Roles" |
-| `dospresso-debug-guide` | Yeni bug tespit edilip çözüldü | §17 Drizzle kolon uyuşmazlığı |
-| `dospresso-quality-gate` | Yeni kontrol maddesi gerekti | Madde 19: Schema-DB sync |
-| `session-protocol` | Workflow'un kendisi değişti | Bu adımlar güncellenirse |
+| 1 | **Principal Engineer** | Kod kalitesi, mimari tutarlılık, performans, test edilebilirlik |
+| 2 | **Franchise F&B Ops** | Operasyonel etki — şube, fabrika, müdür, çalışan akışı |
+| 3 | **Senior QA** | Test stratejisi, edge case, validation, smoke senaryolar |
+| 4 | **Product Manager** | UX stratejisi, kullanıcı yolculuğu, ürün yönelimi |
+| 5 | **Compliance** | İş Kanunu (4857), KVKK, SGK, vergi, gıda mevzuatı |
+| 6 | **End User (Persona-Specific)** | YENİ (D-39): Gerçek kullanıcının yaşadığı an |
 
-### Güncelleme Kontrol Listesi:
+### 6. Perspektif Personas
 
-**dospresso-architecture:**
-- [ ] Rol sayısı doğru mu? (şu an: 29)
-- [ ] `pages/` sayısı doğru mu? (şu an: 311)
-- [ ] `routes/` sayısı doğru mu? (şu an: 110)
-- [ ] Schema dosyası sayısı doğru mu? (şu an: 16)
-- [ ] Yeni tablolar "New Tables" bölümünde mi?
-- [ ] Yeni route dosyaları "New Route Files" bölümünde mi?
-- [ ] Yeni modül "Completed Modules" bölümünde mi?
+| Persona | Rol | Cihaz | Bağlam | Kritik Sorular |
+|---|---|---|---|---|
+| **Aslan** | CEO | Bilgisayar/iPad | Genel yönetim, IT uzmanı değil | Komut net mi? Karar gerek mi? |
+| **Mahmut** | muhasebe_ik | Bilgisayar | Ay sonu, Excel'den geçiş | Yeni sistem 30 dk eğitimle öğrenilir mi? |
+| **Berkan** | barista (Lara) | Cep telefonu | Mola arası 5 dk | Form 4 tıkta mı bitiyor? |
+| **Andre** | mudur (Lara) | Telefon+tablet | Sabah açılış | Bugün kim izinde 1 ekranda mı? |
+| **Yavuz** | coach (19 şube) | Bilgisayar | Haftalık review | 19 şube tek ekran sıkışık mı? |
+| **Eren** | fabrika_mudur | Tablet | Üretim arası | Personel + bordro 1 yerde mi? |
+| **Sema** | gida_muhendisi/recete_gm | Bilgisayar | Reçete + besin | Gizli formül role'u doğru mu? |
 
-**dospresso-debug-guide:**
-- [ ] Yeni hata tipi Quick Triage tablosuna eklendi mi?
-- [ ] İlgili §N bölümü yazıldı mı?
-
-**dospresso-quality-gate:**
-- [ ] Yeni madde eklendi mi?
-- [ ] Başlık ve description'daki rakam güncellendi mi?
-- [ ] Rapor şablonundaki sıra güncellendi mi?
+### Uygulama
+- **UI/UX değişikliği:** 6 perspektif tablosu zorunlu (yazılı)
+- **API/schema değişikliği:** 5 perspektif yeterli + End User mental check
+- **Bug fix tek satır:** Mental check yeterli (commit mesajına 1 cümle)
 
 ---
 
-## Adım 3 — GitHub docs/ Güncelle
+## 🔄 MODE GEÇİŞİ (D-26)
+
+| İş | Mode | Açıklama |
+|---|---|---|
+| Kod editi, lint, doc | **Build** | Replit Build mode'da OK |
+| DB write, schema, migration | **Plan** | Replit Plan mode + isolated agent + pg_dump backup |
+| GitHub branch + PR | **Aslan Shell** | Sandbox git destructive komutları engelliyor |
+| Skill + MD update | **Build** | Claude veya Replit Build mode |
+
+**Build mode'da DB yazma YASAK** — kuralı esnetme.
+
+---
+
+## 🚨 5 ZORUNLU ADIM (HER OTURUM SONU)
+
+> "Bu oturumda hiçbir skill değişmedi" demek **NEREDEYSE İMKANSIZDIR**:
+> - Kod yazdıysan → en az `dospresso-architecture` güncellenmeli
+> - Bug çözdüysen → `dospresso-debug-guide` güncellenmeli
+> - Yeni kontrol gerekiyorsa → `dospresso-quality-gate` güncellenmeli
+> - Workflow değiştiyse → bu dosya (`session-protocol`) güncellenmeli
+
+### Adım 1 — 4 Skill Dosyasını Güncelle
+
+| Skill | Ne Zaman? | Örnek |
+|---|---|---|
+| `dospresso-architecture` | Tablo/endpoint/rol/sayfa sayısı veya yeni modül | "23 → 24 aktif rol", payroll dual-model bölümü |
+| `dospresso-debug-guide` | Yeni bug tespit + çözüldü | §37 Orphan `});` merge artığı |
+| `dospresso-quality-gate` | Yeni kontrol maddesi | QG-32 Vite + esbuild ikili |
+| `session-protocol` | Workflow değişti | 6. perspektif eklendi (bu dosya) |
+
+**Format:** Her skill'in üstünde "🆕 Son Değişiklik Özeti (X tarih — Sprint Y)" kutusu. Eski içerik silinmez (audit trail), yeni özet üste eklenir.
+
+### Adım 2 — `docs/TODAY.md` Güncelle
+
+- Bugün ne yapıldı (commit listesi tablo)
+- Yeni kararlar (D-X)
+- Bonus bulgular (varsa)
+- Şu an bekleyen iş + sırada ne
+
+### Adım 3 — `docs/PENDING.md` Güncelle
+
+- Tamamlananları çıkar
+- Yeni bekleyen işleri ekle (P-X)
+- Öncelik sırası: 🔥 aktif → 🔴 sonraki → 🟡 sonra → 🟢 backlog
+
+### Adım 4 — `docs/DECIDED.md` Yeni Karar Varsa
+
+- D-X numarası art arda (D-39 → D-40 → D-41 ...)
+- Format: Karar + Detay + Neden
+- Asla silinmez — yeni karar eski karara not olarak eklenir
+
+### Adım 5 — Devir Teslim Dosyası (Büyük Oturumlar İçin)
+
+5+ commit yapıldıysa, **`docs/DEVIR-TESLIM-{DD-AY-YYYY}-{SABAH/AKSAM/GECE}.md`** yaz:
+- 🎯 EN ÖNEMLİ DURUM (tek bakışta özet)
+- 🚦 SONRAKİ CLAUDE'UN İLK İŞİ (numbered list)
+- 📊 BUGÜN NE YAPILDI (sprint × commit tablosu)
+- 🔴 BEKLEYEN İŞLER
+- 🛠️ TEKNİK STACK + KIMLIK DEĞERLERİ
+- 🔑 SCHEMA TUZAKLARI
+- 🤝 SONRAKI OTURUM AÇILIŞ KONUŞMASI ÖRNEĞİ
+
+---
+
+## 🌀 COMPACTION DRIFT PREVENTION
+
+Yeni Claude oturumu açılırsa veya transkript kompaktlanmışsa **ÖNCE bağlamı doğrula**:
+
+### Açılış protokolü (yeni Claude için)
 
 ```bash
-# Değişiklik varsa:
-git add docs/
-git commit -m "docs: [konu] güncellendi"
-git push origin main
+# 1. Branch state — önceki oturum commit'leri var mı?
+git fetch origin
+git log --oneline origin/main..HEAD  # branch'te kaç commit
+git log -10 --oneline                # son 10 ne hakkında
+
+# 2. Marker check (D-38)
+grep -rE '^<<<<<<<|^=======$|^>>>>>>>' \
+  client/src/pages/ server/routes/ shared/schema/ 2>/dev/null | head -10
+# 0 olmalı
+
+# 3. Devir teslim dosyası varsa öncelikli oku
+ls -t docs/DEVIR-TESLIM-*.md 2>/dev/null | head -1
 ```
 
-| Dosya | Ne Zaman? |
-|---|---|
-| `docs/CALISMA-SISTEMI.md` | Süreç/workflow değişikliği |
-| `docs/BUSINESS-RULES.md` | Yeni iş kuralı keşfi |
-| `docs/sprint-planlar/` | Sprint tamamlandı veya değişti |
+### Kompakt Sonrası Davranış
+
+1. Compaction summary'yi oku (sistem otomatik gösterir)
+2. **DEVIR-TESLIM dosyasını oku** (en güncel)
+3. **Branch state'i tara** (`git log --oneline origin/main..HEAD`)
+4. **Sonra** kullanıcının mesajına cevap ver
+5. Eksik bağlam varsa transkript dosyasından incremental oku
+
+### Compaction Drift Sinyalleri
+
+- "X yapılması lazım" demeden önce branch'i kontrol et — belki zaten yapılmış
+- "Önceki ben" yapmış olabilir, kompakte özetinde tam yansımamış olabilir
+- §39 debug-guide: Branch State Drift detayları
 
 ---
 
-## Adım 4 — Memory Güncelle (replit.md)
+## 💰 REPLIT ↔ CLAUDE MALIYET OPTIMIZASYONU
 
-`replit.md` dosyasına şunları yaz:
-- Son başarılı commit hash
-- Kritik keşifler (DB mismatch, route sorunu, yeni kural)
-- Bekleyen maddeler listesi
-
----
-
-## Adım 5 — Replit Talimatı Hazırla
-
-Bir sonraki oturum başına bağlam notu:
-
-```
-Sprint: R-X
-Son commit: [hash]
-Bekleyen sorunlar:
-  - [sorun 1]
-  - [sorun 2]
-Test edilmesi gereken endpoint'ler:
-  - POST /api/factory/[endpoint]
-  - GET /api/[module]/[endpoint]
-Önemli dosyalar:
-  - server/routes/[router].ts
-  - client/src/pages/[page].tsx
-```
-
----
-
-## Sık Atlanan Hatalar
-
-1. **Architecture sayıları güncellenmez** → Bir sonraki oturum yanlış bilgiyle başlar
-2. **Debug-guide'a §N eklenmez** → Aynı bug sonraki sprintte tekrar zaman alır
-3. **Quality-gate madde eklenmez** → Aynı kontrol atlanmaya devam eder
-4. **Commit mesajı genel kalır** → IT danışman ne yapıldığını anlamaz
-5. **Bekleyen maddeler yazılmaz** → Oturum kapandığında kaybolur
-
----
-
-## Güncel Sistem Durumu (03.05.2026 itibarıyla)
-
-| Metrik | Değer |
-|---|---|
-| Roller | 31 |
-| Sayfalar | 311 |
-| Route dosyaları | 110 |
-| Schema dosyaları | 16 |
-| Quality Gate maddeleri | 19 |
-| Debug guide bölümleri | §24 |
-| Son Sprint | TASK #117 (tamamlandı — Donut seed + senaryo API) |
-| Son commit | ce3635317 (hotfix: seed-donut-recipe-v2 ref_id + expected_unit_weight_unit) |
-| Bekleyen | Task #92 fabrika_depo erişim sorunu (HR_ACCESS_DENIED leftovers/inventory), Task #93 düşük stok→satınalma, Task #94 LOT&SKT girişi |
-| Güncel Değerler | 31 rol, 305 sayfa, 262 route (App.tsx), 23 schema, 455 pgTable, §24 debug, 35 quality-gate |
-
----
-
-## Feature Freeze Politikası (18.04.2026 — 8 haftalık pilot hazırlık)
-
-**18 Nisan 2026 → 15 Haziran 2026** arasında **yeni özellik geliştirilmez**. Sadece:
-- ✅ Kırık bug fix
-- ✅ Veri konsolidasyonu
-- ✅ Test yazma
-- ✅ Observability ekleme
-- ❌ Yeni modül / yeni tablo / yeni özellik
-
-### Aslan'dan Yeni Özellik İsteği Geldiğinde:
-
-Örnek: "Cinnaboom maliyet hesabı", "Yeni CRM widget", "Brownie reçete ekle"
-
-**Cevap şablonu:**
-> "Bu istek Sprint I (9. hafta, 16 Haziran sonrası) backlog'una eklendi. Şu an Sprint [X] kapsamında [konu] üzerinde çalışıyoruz. Feature Freeze politikası gereği yeni özellik sırada bekliyor."
-
-### İstisnalar (Freeze'e aykırı değil):
-- **Kritik güvenlik fix** (A4 seed safeguard gibi)
-- **Kırık link düzeltmesi** (A1)
-- **Veri konsolidasyon** (Sprint B — 3 puantaj → 1)
-- **Mevcut veri kalibrasyonu** (fatura fiyat senkronizasyonu gibi)
-
-### Commit Mesajı Ön Ekleri (Freeze döneminde):
-- ✅ `fix(security):` — güvenlik patch
-- ✅ `fix:` — bug fix
-- ✅ `chore(data):` — veri senkronizasyon/migration
-- ✅ `docs:` — dokümantasyon
-- ✅ `refactor:` — kod temizliği
-- ✅ `test:` — test yazma
-- ❌ `feat:` — yeni özellik **YASAK** (istisnalar: Sprint hedefi + roadmap referansı)
-
-### Her Commit Öncesi Check:
-```bash
-# Son commit mesajını kontrol et
-git log -1 --pretty=%s | grep -E "^(fix|chore|docs|refactor|test)" || echo "⚠️ FEATURE FREEZE İHLALİ — prefix değişti mi?"
-```
-
----
-
-## 8 Haftalık Yol Haritası Referansı
-
-**Her oturum başında ilk okunacak:**
-`docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`
-
-**Mevcut sprint durumu:**
-- **Sprint A** (21-27 Nisan): Stop the Bleeding — 🟡 %33 (A2, A4 tamam)
-- **Sprint B** (28 Nisan-4 Mayıs): Veri konsolidasyon
-- **Sprint C** (5-11 Mayıs): Akademi + CRM
-- **Sprint D** (12-18 Mayıs): Satınalma + Bordro
-- **Sprint E** (19-25 Mayıs): Dashboard + Rol temizliği
-- **Sprint F** (26 Mayıs-1 Haziran): Test + CI/CD
-- **Sprint G** (2-8 Haziran): Performans
-- **Sprint H** (9-15 Haziran): Observability
-
-**12 KPI Hedef** (şu an 2/12 yeşil, final: 12/12)
-
----
-
-## İletişim Modu — "SANA + REPLIT'E" Formatı (18.04.2026)
-
-Aslan, Claude'un yazdıklarını **doğrudan Replit Agent'a kopyalıyor.** Bu nedenle her yanıt **iki bölümlü** olmalı:
-
-### 🧑‍💼 SANA (Aslan'a) özet:
-- Kısa Türkçe özet
-- Ne oldu, hangi kararı vermesi gerekiyor
-- Teknik detaylar (ama özlü)
-
-### 🤖 REPLIT'E GÖNDERİLECEK:
-- Kod bloğu içinde (``` ile çevrili)
-- Net komutlar, net soru
-- Kopyala-yapıştır hazır, yorum yok
-- Acceptance kriterleri dahil
-
-**Örnek:**
-```
-🤖 REPLIT'E GÖNDERİLECEK:
-
-[Task adı]
-cd /home/runner/workspace && git pull --rebase && \
-npx tsx server/scripts/X.ts && \
-echo "Beklenen: ..."
-
-Acceptance: ...
-```
-
-### Task Planı Sunulduğunda:
-- Replit **doğru task planı** hazırladıysa → Aslan doğrudan butona basar, metin göndermeye gerek yok
-- Task planı **yanlış/eksikse** → Claude düzeltme metni hazırlar, Aslan Replit'e yapıştırır
-
----
-
-## Replit ↔ Claude Maliyet Optimizasyonu (18.04.2026)
-
-**Replit'e gönderilecek:** Sadece **DB migration + build + API test + frontend open test** (~30 satır max).
+**Replit'e gönder:** Sadece DB migration + build + API test + smoke test (~30 satır prompt).
 
 **Claude yapar (Replit'e gitmez):**
 - Kod validation (manifest vs schema)
 - Skill güncellemeleri
 - Audit raporları analizi
-- Numerical check (tablolar, rakamlar)
+- Numerical check
 - Dokümantasyon
 - Sprint planlama
+- 6 perspektif review tablosu
 
-**Hesaplama:** Replit'e giden iş ~%40-50 azalır, agent maliyeti düşer, Claude daha etkin kullanılır.
-
----
-
-## Oturum Sonu Kontrol Listesi (Güncellenmiş)
-
-```bash
-# 1. Tüm skill güncellemeleri commit edildi mi?
-git status --short .agents/skills/
-
-# 2. Skill'ler aynı tarihte mi?
-for s in dospresso-architecture dospresso-debug-guide dospresso-quality-gate session-protocol; do
-  stat -c "%y %n" .agents/skills/$s/SKILL.md
-done
-
-# 3. Son commit Feature Freeze uyumlu mu?
-git log -1 --pretty=%s | grep -E "^(fix|chore|docs|refactor|test)"
-
-# 4. Push tamam mı?
-git status  # "up to date with origin/main" olmalı
-```
-
-4/4 ✅ olmadan oturum kapanmaz.
+**Sonuç:** Replit'e giden iş %40-50 azalır, Claude daha etkin kullanılır.
 
 ---
 
-## 18.04.2026 Güncellemesi — Feature Freeze Politikası + Replit Task Pattern
+## 📐 FEATURE FREEZE — D-20 NOTU (6 May 2026)
 
-### Feature Freeze (18 Nisan → 15 Haziran 2026)
+**Statu:** PAUSE EDİLDİ.
 
-**8 haftalık sprint boyunca yeni özellik geliştirilmez.** Sadece:
-- ✅ Kırık bug fix (P0/P1)
-- ✅ Veri konsolidasyonu (3→1 tablolar)
-- ✅ Test yazma
-- ✅ Observability ekleme
-- ❌ Yeni modül / yeni tablo / yeni sayfa / yeni endpoint
+Aslan kararı (6 May 2026): "Birkaç gün içinde her şeyi bitirelim, pilot tarihi ben belirleyeceğim."
 
-**Aslan'dan gelen yeni özellik isteği** (ör. Cinnaboom maliyet analizi, yeni dashboard widget) → nazikçe "Sprint I (9. hafta) backlog'una ekliyorum" de.
+- 18 Apr - 15 Haz Feature Freeze politikası **şu an aktif değil**
+- Yeni özellik talepleri reddedilmeyecek
+- Pilot tarihi tekrar set edilince Feature Freeze tekrar aktif olabilir
 
-**İstisna:** Kritik güvenlik fix (A4 seed guards gibi), mevcut özellik bug fix (kırık link), veri düzeltme (recipe↔product mapping). Bunlar Sprint A-H kapsamında zaten var.
+**Pilot tarihi belirlendiğinde:** Feature Freeze yeniden aktive edilir, yeni özellik istekleri "Sprint I (pilot+1) backlog" yanıtı verilir.
 
-Referans: `docs/PILOT-HAZIRLIK-8-HAFTA-YOL-HARITASI.md`
+---
 
-### Replit Task İş Akışı (18 Nisan pratiği)
+## 📨 İLETİŞİM FORMATI — "SANA + REPLIT'E"
 
-Replit'e büyük iş gönderirken:
+Aslan'a yazılan teknik mesajlar **iki bölümlü** olabilir:
 
-1. **Claude → Net plan yazar** (mesajın içinde "REPLIT'E GÖNDERİLECEK" bölümü)
-2. **Aslan → Kopyala-yapıştır** Replit Agent'a gönderir
-3. **Replit Agent → Plan mode'da task hazırlar** (Done looks like + Steps + Out of scope + Acceptance)
-4. **Aslan → Build butonuna basar** (metin yapıştırmadan, sadece onaylar)
-5. **Replit → Sırayla uygular** + rapor döner
-6. **Aslan → Raporu Claude'a iletir**
-7. **Claude → Değerlendirir**, commit + skill güncellemesi yapar
-
-**Kritik:** Task planı mükemmelse, metin yapıştırmak yerine doğrudan Build butonuna basılır. Replit Agent'ın kendi task planı Claude'unkinden iyi olabilir — pattern match et.
-
-### İletişim Formatı (Aslan Tercihi)
-
-Mesajlar **iki bölüm** halinde hazırlanır:
+### Format
 
 ```
 🧑‍💼 SANA (Aslan'a) özet
-(Kısa Türkçe özet — karar gereken noktalar, durum)
+- Kısa Türkçe özet
+- Ne oldu, hangi kararı vermesi gerekiyor
+- Teknik detaylar (özlü)
 
 🤖 REPLIT'E GÖNDERİLECEK
-(Net komut + blok kod + kopyala-yapıştır hazır)
+- Kod bloğu içinde (``` ile çevrili)
+- Net komutlar
+- Kopyala-yapıştır hazır
+- Acceptance kriterleri dahil
 ```
 
-Aslan Replit'e iletmek için benim yazdıklarımı direkt kopyalar, o yüzden **Replit'e hitap eden kısım metin temiz** olmalı.
+### Ne zaman bu format?
 
-### Bu Oturumdaki Örnek Disiplin İhlali ve Düzeltmesi
+- ✅ Replit'e DB sorgusu/migration prompt'u verirken
+- ✅ Replit'e build/test komut zinciri verirken
+- ❌ Aslan'a sadece bilgi/karar sunarken (basit cevap yeterli)
 
-**İhlal:** Recipe↔Product mapping tamamlandıktan sonra Cinnaboom maliyet hesabına geçtim — "mevcut özellik, yeni değil" bahanesiyle.
+### Task Plan Sunumu
 
-**Aslan'ın müdahalesi:** Replit audit raporunu tekrar gönderdi, hatırlattı.
-
-**Düzeltme:** Cinnaboom Sprint I'ya ertelendi. Sprint A maddeleriyle devam edildi (A4 seed security tamamlandı).
-
-**Ders:** Feature Freeze = sadece yeni tablo/route eklememek değil, **yeni hesaplama/doküman/feature de** eklememek. Mevcut sprintin kapsamı neyse ona sadık kal.
+- Replit **doğru task planı** hazırladıysa → Aslan doğrudan butona basar
+- Task planı **yanlış/eksikse** → Claude düzeltme metni hazırlar
 
 ---
 
-## Oturum Sonu Kontrol Listesi — 18 Nisan Revizyon
+## 🔑 5 May Incident Dersleri (5 May 2026 hotfix)
+
+### Conflict Resolution Disiplini
+
+- **YASAK:** `git checkout --theirs .` (toptan), `git add -A && git commit` (conflict varken)
+- **DOĞRU:** GitHub Resolve UI VEYA hotfix branch + PR
+- **CLI conflict:** `git checkout <hash> -- <files>` (specific dosyalar için)
+
+### Token Disiplini (D-05)
+
+- Asla dosyaya yazma (md, comment, config dahil)
+- Sadece konuşmada paylaş
+- Push komutu format: `git push "https://x-access-token:TOKEN@github.com/bombty/DOSPRESSO-App.git" BRANCH`
+
+### Pre-commit Kontrol (D-38)
+
+```bash
+# Marker check
+grep -rE '^<<<<<<<|^=======$|^>>>>>>>' \
+  $(git diff --name-only) 2>/dev/null
+# 0 satır olmalı
+
+# Token check  
+git diff | grep -E '(ghp|gho|ghu|ghs|github_pat)_[A-Za-z0-9_]+'
+# 0 satır olmalı
+```
+
+---
+
+## 📋 OTURUM SONU KONTROL LİSTESİ
 
 ```bash
 # 1. Skill tarihleri son 1 saat içinde mi?
 for s in dospresso-architecture dospresso-debug-guide dospresso-quality-gate session-protocol; do
-  echo "=== $s ==="
-  stat -c "%y" .agents/skills/$s/SKILL.md
+  stat -c "%y %n" .agents/skills/$s/SKILL.md
 done
 
-# 2. 4/4 skill güncellendi mi? (eğer bu oturumda kod yazıldıysa)
-git log -1 --name-only | grep -E "SKILL\.md$" | wc -l  # ≥1 olmalı (sadece docs-only oturumu ise 0 OK)
+# 2. 4 skill güncellendi mi? (kod yazıldıysa)
+git log -1 --name-only | grep -E "SKILL\.md$" | wc -l  # ≥1 olmalı
 
-# 3. Commit mesajı Feature Freeze uyumlu?
-git log -1 --pretty=%s | grep -vE "^feat:" || echo "⚠️ feat: commit — Feature Freeze ihlal riski"
+# 3. 3 MD güncellendi mi?
+git log -1 --name-only | grep -E "docs/(TODAY|PENDING|DECIDED)\.md" | wc -l
 
-# 4. Push tamam?
-git fetch && git status  # up to date with origin/main
+# 4. Marker + token kontrol
+grep -rE '^<<<<<<<' . 2>/dev/null | wc -l  # 0 olmalı
+git diff | grep -cE '(ghp|gho|github_pat)_'  # 0 olmalı
 
-# 5. Bugünkü oturum transkripti journaled mi?
-ls /mnt/transcripts/ | tail -3
+# 5. Push tamam?
+git status -sb  # "## branch ...origin/branch" olmalı, ahead/behind yok
+
+# 6. Devir teslim varsa yazıldı mı? (5+ commit'lik oturumlar için)
+ls -lt docs/DEVIR-TESLIM-*.md 2>/dev/null | head -1
 ```
 
-5/5 ✅ = oturum temiz kapanır.
+6/6 ✅ olmadan oturum kapanmaz.
 
 ---
 
-## 🆕 UPDATE (5 Mayıs 2026, Gece) — Sprint 7-16 Mega Maraton Sonrası
+## 🔁 SIK ATLANAN HATALAR
 
-### YENİ KURAL: DEVIR-TESLIM Dosyası ÖNCELİKLİ
+1. **Architecture sayıları güncellenmez** → Bir sonraki oturum yanlış bilgiyle başlar
+2. **Debug-guide'a §N eklenmez** → Aynı bug sonraki sprintte tekrar zaman alır
+3. **Quality-gate madde eklenmez** → Aynı kontrol atlanmaya devam eder
+4. **DECIDED.md karar eklenmez** → Aynı sorun tekrar tartışılır (örn. D-22 bordro tablo karar)
+5. **Compaction sonrası branch tarama yapılmadan iş başlanır** → Mevcut commit'ler kaybolur (5 May vakası)
+6. **PR description hazırlamadan PR açılır** → 6 perspektif review eksik kalır
 
-Yeni oturum açıldığında, **kullanıcı bir şey yazmadan ÖNCE**, eğer mevcut ise:
+---
 
-```
-docs/DEVIR-TESLIM-{tarih}-{vakit}.md
-```
+## 📚 ÖNCEKİ VERSİYONLAR (Audit Trail)
 
-dosyasını **OKU**. Bu dosya:
-- Önceki oturumun tam özeti
-- Aktif sprint durumu
-- Bekleyen işler
-- Kritik tuzaklar
-- Aslan'a sorulacak ilk soru
+### v2.0 (5 May 2026 Gece) — Sprint 7-16 Mega Maraton
+- 5 zorunlu adım (skill + MD + DECIDED + DEVIR-TESLIM)
+- 5-perspektif review (PE/F&B/QA/PM/Compliance)
+- Triangle Workflow temelleri
+- Conflict resolution + token disiplin
 
-şeklinde **100% hafıza** sağlar. TODAY/PENDING/DECIDED'tan önce gelir.
+### v1.x (Mart - 18 Apr 2026)
+- Feature Freeze politikası (18 Apr - 15 Haz)
+- "SANA + REPLIT'E" iki bölümlü iletişim
+- Replit/Claude maliyet optimizasyonu
+- Sprint A-H 8 haftalık yol haritası
 
-### Devir Teslim Yazma Kuralları (Session End)
+**Audit kuralı:** Eski versiyonlar silinmez, yeni versiyon en üste eklenir. v2.1 = v2.0 + (D-39 6. perspektif + Compaction Drift + Aslan IT uzmanı değil prensibi).
 
-Her büyük oturum sonunda (özellikle 5+ commit yapıldığında):
+---
 
-1. **`docs/DEVIR-TESLIM-{DD-AY-YYYY}-{SABAH/AKSAM/GECE}.md`** yaz
-2. İçerik şablonu:
-   - 🎯 EN ÖNEMLİ DURUM (tek bakışta özet)
-   - 🚦 SONRAKİ CLAUDE'UN İLK İŞİ (numbered list)
-   - 📊 BUGÜN NE YAPILDI (sprint × commit tablosu)
-   - 🎯 ASLAN'IN TÜM TALEPLERİ KARŞILIĞI (✅/⏳ tablo)
-   - 🔴 BEKLEYEN İŞLER (kritik / önemli / backlog)
-   - 🛠️ TEKNİK STACK + KIMLIK DEĞERLERİ (her seferinde tekrar)
-   - 📋 PLATFORM METRİKLERİ
-   - 🔑 SCHEMA TUZAKLARI (UNUTMA!)
-   - 👥 ROL TANIMLARI
-   - ⚙️ ÇALIŞMA SİSTEMİ KURALLARI
-   - 🚨 SON 24 SAATTE ÖĞRENİLEN DERSLER
-   - 📁 ÖNEMLİ DOSYA YOLLARI
-   - 🤝 SONRAKI OTURUM AÇILIŞ KONUŞMASI ÖRNEĞİ
-   - 🔚 KAPANIŞ KONTROL LİSTESİ
-3. TODAY.md, PENDING.md, DECIDED.md güncellemelerini de aynı oturumda yap
-4. Hepsi tek commit'te git push
-
-### Compaction Sonrası Davranış
-
-Eğer transkript compact edilmişse (`/mnt/transcripts/...txt`):
-1. Compaction summary'yi oku (sistem otomatik gösterir)
-2. DEVIR-TESLIM dosyasını oku (en güncel)
-3. **Sonra** kullanıcının mesajına cevap ver
-4. Eksik bağlam varsa transkript dosyasından detay çek (`view` tool ile incremental)
-
-### Triangle Workflow Hatırlatması
-
-Her oturum başında sun: "Önceki oturumda Replit ne yaptı?" Çünkü:
-- Replit local commit'leri remote'ta görünmeyebilir (push yapmadıysa)
-- Replit conflict resolve sırasında bir şeyler bozmuş olabilir (5 May vakası: 30 marker)
-- `git fetch` + `git log --oneline origin/main..HEAD` ile **HER SESSION BAŞINDA** doğrula
-
-### Yeni Risk Sinyalleri (5 May Vakası Sonrası)
-
-Aşağıdakilerden biri varsa ÖNCE `git status` + marker kontrolü yap:
-
-```bash
-# Her oturum başında (Replit'in commit yaptığı gün):
-grep -rE '^<<<<<<<|^=======$|^>>>>>>>' \
-  client/src/pages/ \
-  server/routes/ \
-  shared/schema/ 2>/dev/null | head -10
-
-# 0 satır çıkmalı. 1+ satır varsa ESBUILD CRASH RİSKİ var, hotfix gerekli.
-```
-
+**Son güncelleme:** 6 May 2026, 01:30 (v2.1 finalize)

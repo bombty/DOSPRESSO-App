@@ -113,6 +113,13 @@ const SubeGorevler = lazyWithRetry(() => import("@/pages/sube-gorevler"));
 const IK = lazyWithRetry(() => import("@/pages/ik"));
 const LeaveRequests = lazyWithRetry(() => import("@/pages/leave-requests"));
 const OvertimeRequests = lazyWithRetry(() => import("@/pages/overtime-requests"));
+
+// İK Redesign Faz 3+4 (6 May 2026): Self-service + yönetici sayfaları
+const IzinTalep = lazyWithRetry(() => import("@/pages/ik/izin-talep"));
+const MesaiTalep = lazyWithRetry(() => import("@/pages/ik/mesai-talep"));
+const TakimTakvimi = lazyWithRetry(() => import("@/pages/ik/takim-takvimi"));
+const BordroOnay = lazyWithRetry(() => import("@/pages/ik/bordro-onay"));
+const OnayKuyrugu = lazyWithRetry(() => import("@/pages/ik/onay-kuyrugu"));
 const Attendance = lazyWithRetry(() => import("@/pages/attendance"));
 const HRReports = lazyWithRetry(() => import("@/pages/hr-reports"));
 const HQSupport = lazyWithRetry(() => import("@/pages/hq-support"));
@@ -544,6 +551,12 @@ function Router() {
           <Route path="/ik/:tab?">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","coach","trainer","muhasebe_ik","muhasebe","satinalma","mudur","supervisor"]}><IK /></ProtectedRoute>}</Route>
           <Route path="/izin-talepleri">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","coach","mudur","supervisor","fabrika_mudur","uretim_sefi"]}><LeaveRequests /></ProtectedRoute>}</Route>
           <Route path="/mesai-talepleri">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","coach","mudur","supervisor","fabrika_mudur","uretim_sefi"]}><OvertimeRequests /></ProtectedRoute>}</Route>
+          {/* İK Redesign Faz 3+4 (6 May 2026): yeni self-service + yönetici sayfaları */}
+          <Route path="/izin-talep">{() => <IzinTalep />}</Route>
+          <Route path="/mesai-talep">{() => <MesaiTalep />}</Route>
+          <Route path="/takim-takvimi">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","muhasebe","coach","mudur","supervisor","fabrika_mudur","uretim_sefi"]}><TakimTakvimi /></ProtectedRoute>}</Route>
+          <Route path="/bordro-onay">{() => <ProtectedRoute allowedRoles={["admin","ceo","muhasebe_ik","muhasebe","mudur","supervisor","fabrika_mudur","uretim_sefi"]}><BordroOnay /></ProtectedRoute>}</Route>
+          <Route path="/onay-kuyrugu">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","muhasebe","coach","mudur","supervisor","fabrika_mudur","uretim_sefi"]}><OnayKuyrugu /></ProtectedRoute>}</Route>
           <Route path="/ik-raporlari">{() => <ExecutiveOnly><HRReports /></ExecutiveOnly>}</Route>
           <Route path="/kasa-raporlari">{() => <ExecutiveOnly><CashReports /></ExecutiveOnly>}</Route>
           <Route path="/e2e-raporlar">{() => <ExecutiveOnly><E2EReports /></ExecutiveOnly>}</Route>
