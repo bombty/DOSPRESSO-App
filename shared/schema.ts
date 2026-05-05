@@ -22,3 +22,4 @@ export * from './schema/schema-21-dobody-proposals';
 export * from './schema/schema-22-factory-recipes';
 export * from './schema/schema-23-mrp-light';
 export * from './schema/schema-24-branch-recipes';
+export * from './schema/schema-25-score-parameters';
