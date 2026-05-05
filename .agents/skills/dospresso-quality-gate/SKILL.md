@@ -1111,13 +1111,42 @@ echo "Replit Shell: SELECT column_name FROM information_schema.columns WHERE tab
 
 ## 🆕 5 May 2026 Sprint 8-16 Sonrası Yeni Check'ler
 
-### Yeni 27→30 Check Listesi (Quality Gate v2.1)
+### Yeni 27→31 Check Listesi (Quality Gate v2.2)
 
 | # | Check | Komut |
 |---|---|---|
 | 28 | Conflict marker yok | `grep -rE '^<<<<<<<\|^=======$\|^>>>>>>>' .` |
 | 29 | Sidebar mapping çift kontrol | App.tsx + module-menu-config.ts grep |
 | 30 | Schema kolon assume yok | grep schema dosyaları + Replit DB sorgu |
+| 31 | **Token kontrol (5 May incident sonrası)** | `grep -rE '(ghp\|gho\|ghu\|ghs\|github_pat)_[A-Za-z0-9_]+' .` |
+
+### QG-31: Token Kontrol — 5 May 2026 Incident Sonrası
+
+**Kök Neden:** 5 May gecesi DECIDED.md:43 satırına git push token'ı yanlışlıkla yazıldı. GitHub Push Protection algıladı, push reddedildi. Token muhtemelen revoke edildi.
+
+**Zorunlu Kural:**
+```bash
+# Her commit ÖNCESİ:
+grep -rE '(ghp|gho|ghu|ghs|github_pat)_[A-Za-z0-9_]+' . \
+  --include='*.md' --include='*.ts' --include='*.tsx' --include='*.json' \
+  --include='*.yml' --include='*.sql'
+# Çıktı boş olmalı. Aksi: dosyadan SİL, commit yapma.
+```
+
+**Etkilenen Dosya Tipleri:**
+- ❌ `*.md` (dokümanlar) — D-05 kuralı, asla token yazma
+- ❌ `*.ts/*.tsx` (kod) — env'den oku
+- ❌ `*.json` (config) — gitignore'a ekle
+- ❌ `*.yml` (CI/CD) — GitHub Secrets kullan
+
+**Doğru Pattern:**
+```bash
+# ✅ DOĞRU - konuşmada söyle, dosyaya yazma
+git push "https://x-access-token:TOKEN@github.com/..." BRANCH
+
+# ❌ YANLIŞ - token dosyada
+const TOKEN = "ghp_xxx"
+```
 
 Gate execution sıra:
 1. Frontend build (`npx vite build`) - 0 error
@@ -1126,10 +1155,11 @@ Gate execution sıra:
 4. Schema-Migration uyum (#30)
 5. Manifest + Permission map sync
 6. Sidebar mapping (#29)
-7. 5-perspektif review (PE/F&B/QA/PM/Compliance)
-8. Replit local fix → GitHub yansıt
-9. Test data temizliği
-10. ... (mevcut 27)
+7. **YENİ:** Token kontrol (#31)
+8. 5-perspektif review (PE/F&B/QA/PM/Compliance)
+9. Replit local fix → GitHub yansıt
+10. Test data temizliği
+11. ... (mevcut 27)
 
 Tümü ✅ olmadan commit yok.
 
