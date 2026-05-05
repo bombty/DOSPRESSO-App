@@ -127,10 +127,14 @@ export default function EtiketHesaplaPage() {
   });
 
   const handleDownloadPDF = () => {
-    if (!calcResult?.nutrition) {
+    if (!calcResult || calcResult.matchedCount === 0) {
       toast({ title: 'Önce hesaplama yapın', variant: 'destructive' });
       return;
     }
+    
+    // Nutrition null olsa bile PDF üret (alerjen + ingredient listesi yine kullanılabilir)
+    const hasNutrition = !!calcResult.nutrition;
+    
     downloadTGKLabel({
       productName: calcResult.productName || calcResult.recipeName,
       ingredientsText: calcResult.ingredientsText,
@@ -140,18 +144,25 @@ export default function EtiketHesaplaPage() {
       storageConditions: labelData.storageConditions,
       shelfLifeDays: labelData.shelfLifeDays,
       countryOfOrigin: labelData.countryOfOrigin,
-      energyKcal: calcResult.nutrition.energyKcal,
-      energyKj: calcResult.nutrition.energyKj,
-      fat: calcResult.nutrition.fat,
-      saturatedFat: calcResult.nutrition.saturatedFat,
-      carbohydrate: calcResult.nutrition.carbohydrate,
-      sugar: calcResult.nutrition.sugar,
-      protein: calcResult.nutrition.protein,
-      salt: calcResult.nutrition.salt,
-      fiber: calcResult.nutrition.fiber,
+      energyKcal: hasNutrition ? calcResult.nutrition.energyKcal : undefined,
+      energyKj: hasNutrition ? calcResult.nutrition.energyKj : undefined,
+      fat: hasNutrition ? calcResult.nutrition.fat : undefined,
+      saturatedFat: hasNutrition ? calcResult.nutrition.saturatedFat : undefined,
+      carbohydrate: hasNutrition ? calcResult.nutrition.carbohydrate : undefined,
+      sugar: hasNutrition ? calcResult.nutrition.sugar : undefined,
+      protein: hasNutrition ? calcResult.nutrition.protein : undefined,
+      salt: hasNutrition ? calcResult.nutrition.salt : undefined,
+      fiber: hasNutrition ? calcResult.nutrition.fiber : undefined,
       version: 1,
     });
-    toast({ title: 'PDF indirildi', description: 'TGK 2017/2284 uyumlu etiket' });
+    
+    toast({ 
+      title: 'PDF indirildi', 
+      description: hasNutrition 
+        ? 'TGK 2017/2284 uyumlu etiket' 
+        : 'PDF indirildi (besin değeri eksik — hammadde veritabanı güncellenmeli)',
+      variant: hasNutrition ? 'default' : 'destructive',
+    });
   };
 
   if (!productId) {
@@ -318,7 +329,7 @@ export default function EtiketHesaplaPage() {
           )}
 
           {/* Hesaplanan Besin Değerleri */}
-          {calcResult.nutrition && (
+          {calcResult.nutrition ? (
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
@@ -361,6 +372,22 @@ export default function EtiketHesaplaPage() {
                 </div>
               </CardContent>
             </Card>
+          ) : (
+            // Nutrition null — eşleşen hammaddelerin besin değeri eksik
+            <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-300">
+              <CardContent className="p-3 flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs">
+                  <strong>Besin değeri hesaplanamadı.</strong>
+                  <p className="text-muted-foreground mt-1">
+                    Eşleşen hammaddelerin energy_kcal değerleri NULL. PDF yine indirilebilir 
+                    (içindekiler + alerjen ile) ama besin değeri tablosu boş çıkar. 
+                    Çözüm: Girdi Yönetimi'nden bu hammaddelere besin değerlerini ekle 
+                    (TÜRKOMP'tan getir veya manuel gir).
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Alerjen + Çapraz Bulaşma */}
@@ -384,8 +411,8 @@ export default function EtiketHesaplaPage() {
             </Card>
           )}
 
-          {/* Etiket meta bilgisi */}
-          {calcResult.nutrition && (
+          {/* Etiket meta bilgisi — matchedCount > 0 ise göster (PDF için gerekli) */}
+          {calcResult.matchedCount > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm">Etiket Bilgileri</CardTitle>
@@ -425,8 +452,8 @@ export default function EtiketHesaplaPage() {
             </Card>
           )}
 
-          {/* Aksiyonlar */}
-          {calcResult.nutrition && (
+          {/* Aksiyonlar — PDF her zaman, Save sadece nutrition varsa (Sprint 7 hotfix) */}
+          {calcResult.matchedCount > 0 && (
             <Card className="border-blue-300">
               <CardContent className="p-4 flex flex-wrap gap-2 justify-end">
                 <Button 
@@ -436,16 +463,19 @@ export default function EtiketHesaplaPage() {
                 >
                   <Download className="h-4 w-4 mr-2" />
                   PDF İndir
+                  {!calcResult.nutrition && <span className="text-xs ml-1 text-orange-500">(eksik)</span>}
                 </Button>
-                <Button 
-                  onClick={() => saveMutation.mutate()}
-                  disabled={saveMutation.isPending}
-                  data-testid="button-save-label"
-                >
-                  {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Etiketi Kaydet
-                  {!canApprove && <span className="text-xs ml-1">(taslak)</span>}
-                </Button>
+                {calcResult.nutrition && (
+                  <Button 
+                    onClick={() => saveMutation.mutate()}
+                    disabled={saveMutation.isPending}
+                    data-testid="button-save-label"
+                  >
+                    {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    Etiketi Kaydet
+                    {!canApprove && <span className="text-xs ml-1">(taslak)</span>}
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
