@@ -25,8 +25,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Package, Search, Plus, Filter, AlertTriangle, ShieldCheck, 
   FileText, Tag, Building2, Edit, Trash2, Download, Upload, 
-  CheckCircle2, XCircle, Beaker, Eye, Pencil
+  CheckCircle2, XCircle, Beaker, Eye, Pencil, Globe, Sparkles
 } from "lucide-react";
+import { downloadTGKLabel } from "@/lib/tgk-label-pdf";
 
 const READ_ROLES = ['admin', 'ceo', 'cgo', 'satinalma', 'gida_muhendisi', 'kalite_kontrol', 'fabrika_mudur', 'fabrika_sorumlu', 'kalite'];
 const WRITE_ROLES = ['admin', 'ceo', 'satinalma', 'gida_muhendisi'];
@@ -570,6 +571,35 @@ export default function GirdiYonetimiPage() {
             </div>
           )}
           <DialogFooter>
+            {selectedGirdi && (
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  downloadTGKLabel({
+                    productName: selectedGirdi.name,
+                    ingredientsText: selectedGirdi.contentInfo || selectedGirdi.name,
+                    allergenWarning: selectedGirdi.allergenDetail,
+                    crossContaminationWarning: selectedGirdi.crossContamination,
+                    storageConditions: selectedGirdi.storageConditions,
+                    countryOfOrigin: selectedGirdi.countryOfOrigin,
+                    energyKcal: selectedGirdi.energyKcal ? Number(selectedGirdi.energyKcal) : undefined,
+                    fat: selectedGirdi.fat ? Number(selectedGirdi.fat) : undefined,
+                    saturatedFat: selectedGirdi.saturatedFat ? Number(selectedGirdi.saturatedFat) : undefined,
+                    carbohydrate: selectedGirdi.carbohydrate ? Number(selectedGirdi.carbohydrate) : undefined,
+                    sugar: selectedGirdi.sugar ? Number(selectedGirdi.sugar) : undefined,
+                    protein: selectedGirdi.protein ? Number(selectedGirdi.protein) : undefined,
+                    salt: selectedGirdi.salt ? Number(selectedGirdi.salt) : undefined,
+                    fiber: selectedGirdi.fiber ? Number(selectedGirdi.fiber) : undefined,
+                    version: 1,
+                  });
+                  toast({ title: "PDF indirildi", description: "TGK 2017/2284 uyumlu etiket" });
+                }}
+                data-testid="button-download-pdf-detail"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Etiket PDF İndir
+              </Button>
+            )}
             {canWrite && selectedGirdi && (
               <Button onClick={() => { handleEdit(selectedGirdi); setIsDetailOpen(false); }}>
                 <Pencil className="h-4 w-4 mr-2" />
@@ -654,7 +684,52 @@ export default function GirdiYonetimiPage() {
 
             {/* Besin Değerleri */}
             <div>
-              <Label className="text-base">Besin Değerleri (100g başına)</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-base">Besin Değerleri (100g başına)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const query = editForm.name || '';
+                    if (!query) { toast({ title: 'Önce ürün adı girin' }); return; }
+                    
+                    try {
+                      const res = await fetch(`/api/turkomp/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
+                      const data = await res.json();
+                      
+                      if (data.results?.length > 0) {
+                        const item = data.results[0]; // İlk eşleşen
+                        setEditForm({
+                          ...editForm,
+                          energyKcal: item.energyKcal,
+                          protein: item.protein,
+                          fat: item.fat,
+                          carbohydrate: item.carbohydrate,
+                          turkompFoodId: item.id,
+                          nutritionSource: 'turkomp',
+                        });
+                        toast({ 
+                          title: `TÜRKOMP'tan getirildi: ${item.name}`, 
+                          description: `${item.energyKcal} kcal, ${item.protein}g protein` 
+                        });
+                      } else {
+                        toast({ 
+                          title: 'TÜRKOMP\'ta bulunamadı', 
+                          description: `${data.message || ''} ${data.turkompUrl ? '— manuel arama: ' + data.turkompUrl : ''}`,
+                          variant: 'destructive',
+                        });
+                      }
+                    } catch (e) {
+                      toast({ title: 'TÜRKOMP arama hatası', variant: 'destructive' });
+                    }
+                  }}
+                  data-testid="button-fetch-turkomp"
+                >
+                  <Globe className="h-3 w-3 mr-1" />
+                  TÜRKOMP'tan Getir
+                </Button>
+              </div>
               <div className="grid grid-cols-4 gap-2 mt-2">
                 <div><Label className="text-xs">Enerji (kcal)</Label><Input type="number" step="0.01" value={editForm.energyKcal || ""} onChange={(e) => setEditForm({...editForm, energyKcal: e.target.value})} data-testid="input-kcal" /></div>
                 <div><Label className="text-xs">Yağ (g)</Label><Input type="number" step="0.001" value={editForm.fat || ""} onChange={(e) => setEditForm({...editForm, fat: e.target.value})} data-testid="input-fat" /></div>

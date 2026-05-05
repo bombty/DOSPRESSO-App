@@ -1461,3 +1461,72 @@ export const insertTgkLabelSchema = createInsertSchema(tgkLabels).omit({
 
 export type InsertTgkLabel = z.infer<typeof insertTgkLabelSchema>;
 export type TgkLabel = typeof tgkLabels.$inferSelect;
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 7 (5 May 2026) - TÜRKOMP Cache Tablosu
+// Türkiye Tarım ve Orman Bakanlığı resmi gıda kompozisyon veri tabanı
+// turkomp.tarimorman.gov.tr - 645 gıda, 100 bileşen
+// 
+// ⚠️ YASAL UYARI: TÜRKOMP verileri ticari kullanım için ücretli lisans gerektirir.
+// Bu cache tablo SADECE kullanıcının manuel arama sonucunu önbellekler.
+// Toplu scraping/veri satışı YASAKTIR.
+// ═══════════════════════════════════════════════════════════════════
+
+export const turkompFoods = pgTable("turkomp_foods", {
+  id: serial("id").primaryKey(),
+  
+  // TÜRKOMP referansı
+  turkompId: integer("turkomp_id").notNull().unique(), // turkomp.gov.tr food ID
+  turkompCode: varchar("turkomp_code", { length: 20 }), // 09.01.0012 gibi
+  slug: varchar("slug", { length: 200 }), // 'cilek-377' URL slug
+  
+  // Gıda bilgisi
+  name: varchar("name", { length: 255 }).notNull(),
+  scientificName: varchar("scientific_name", { length: 255 }),
+  foodGroup: varchar("food_group", { length: 100 }),
+  langualCode: text("langual_code"),
+  
+  // Çevirme faktörleri
+  nitrogenFactor: numeric("nitrogen_factor", { precision: 6, scale: 4 }),
+  fatConversionFactor: numeric("fat_conversion_factor", { precision: 6, scale: 4 }),
+  
+  // Besin değerleri (100g başına ortalama) - sadece TGK ile alakalı 8 kritik
+  energyKcal: numeric("energy_kcal", { precision: 10, scale: 2 }),
+  energyKj: numeric("energy_kj", { precision: 10, scale: 2 }),
+  water: numeric("water", { precision: 10, scale: 3 }),
+  protein: numeric("protein", { precision: 10, scale: 3 }),
+  fat: numeric("fat", { precision: 10, scale: 3 }),
+  saturatedFat: numeric("saturated_fat", { precision: 10, scale: 3 }),
+  carbohydrate: numeric("carbohydrate", { precision: 10, scale: 3 }),
+  sugar: numeric("sugar", { precision: 10, scale: 3 }),
+  fiber: numeric("fiber", { precision: 10, scale: 3 }),
+  salt: numeric("salt", { precision: 10, scale: 3 }),
+  sodium: numeric("sodium", { precision: 10, scale: 3 }),
+  
+  // Tüm bileşenler (100+ değer JSON olarak)
+  allComponents: jsonb("all_components"), // { "WATER": {min,max,avg,unit}, ... }
+  
+  // Cache yönetimi
+  source: varchar("source", { length: 50 }).default("turkomp"), // 'turkomp' | 'manual' | 'estimate'
+  fetchedAt: timestamp("fetched_at").defaultNow(),
+  fetchedById: varchar("fetched_by_id").references(() => users.id),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("turkomp_id_idx").on(table.turkompId),
+  index("turkomp_name_idx").on(table.name),
+  index("turkomp_code_idx").on(table.turkompCode),
+  index("turkomp_group_idx").on(table.foodGroup),
+]);
+
+export const insertTurkompFoodSchema = createInsertSchema(turkompFoods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTurkompFood = z.infer<typeof insertTurkompFoodSchema>;
+export type TurkompFood = typeof turkompFoods.$inferSelect;
+
+// rawMaterials.turkompFoodId ile cross-reference olabilir

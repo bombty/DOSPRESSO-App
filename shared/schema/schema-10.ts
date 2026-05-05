@@ -378,6 +378,11 @@ export const rawMaterials = pgTable("raw_materials", {
   minimumShelfLifeDays: integer("minimum_shelf_life_days"),
   countryOfOrigin: varchar("country_of_origin", { length: 100 }),
   
+  // Sprint 7 v2 (5 May 2026) - TÜRKOMP referansı (devlet onaylı veri kaynağı)
+  // Eğer set edilirse: besin değerleri turkomp_foods.id'den çekilebilir
+  turkompFoodId: integer("turkomp_food_id"), // turkomp_foods.id (FK migration'da eklenir)
+  nutritionSource: varchar("nutrition_source", { length: 30 }).default("manual"), // 'manual' | 'turkomp' | 'supplier_doc' | 'estimated'
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

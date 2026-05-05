@@ -181,3 +181,58 @@ ALTER TABLE suppliers
 -- SELECT count(*) FROM supplier_quality_records;
 -- SELECT count(*) FROM tgk_labels;
 -- ═══════════════════════════════════════════════════════════════════
+
+-- ─────────────────────────────────────────────────────────────────
+-- 5) TÜRKOMP cache tablosu (Sprint 7 v2)
+-- Türkiye Tarım ve Orman Bakanlığı resmi gıda veri tabanı
+-- ⚠️ Ticari kullanım için TÜRKOMP'tan ücretli lisans alınmalıdır
+-- ─────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS turkomp_foods (
+  id SERIAL PRIMARY KEY,
+  
+  turkomp_id INTEGER NOT NULL UNIQUE,
+  turkomp_code VARCHAR(20),
+  slug VARCHAR(200),
+  
+  name VARCHAR(255) NOT NULL,
+  scientific_name VARCHAR(255),
+  food_group VARCHAR(100),
+  langual_code TEXT,
+  
+  nitrogen_factor NUMERIC(6, 4),
+  fat_conversion_factor NUMERIC(6, 4),
+  
+  energy_kcal NUMERIC(10, 2),
+  energy_kj NUMERIC(10, 2),
+  water NUMERIC(10, 3),
+  protein NUMERIC(10, 3),
+  fat NUMERIC(10, 3),
+  saturated_fat NUMERIC(10, 3),
+  carbohydrate NUMERIC(10, 3),
+  sugar NUMERIC(10, 3),
+  fiber NUMERIC(10, 3),
+  salt NUMERIC(10, 3),
+  sodium NUMERIC(10, 3),
+  
+  all_components JSONB,
+  
+  source VARCHAR(50) DEFAULT 'turkomp',
+  fetched_at TIMESTAMP DEFAULT NOW(),
+  fetched_by_id VARCHAR REFERENCES users(id),
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS turkomp_id_idx ON turkomp_foods (turkomp_id);
+CREATE INDEX IF NOT EXISTS turkomp_name_idx ON turkomp_foods (name);
+CREATE INDEX IF NOT EXISTS turkomp_code_idx ON turkomp_foods (turkomp_code);
+CREATE INDEX IF NOT EXISTS turkomp_group_idx ON turkomp_foods (food_group);
+
+-- raw_materials TÜRKOMP referansı
+ALTER TABLE raw_materials
+  ADD COLUMN IF NOT EXISTS turkomp_food_id INTEGER REFERENCES turkomp_foods(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS nutrition_source VARCHAR(30) DEFAULT 'manual';
+
+CREATE INDEX IF NOT EXISTS rm_turkomp_idx ON raw_materials (turkomp_food_id);
