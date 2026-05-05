@@ -145,3 +145,48 @@ Replit Agent "eksik" olarak işaretledi ama tasarım gereği yok.
 - Bir sonraki uzun oturum 12 saat kapağı koy
 - Skill update SONA bırakma — her sprint sonu hemen yaz
 - 4 saatte bir özet
+
+---
+
+## 🆕 5 MAY 2026 GECE — Yeni 8 Karar (Sprint 8-16 Sonrası)
+
+### DEC-12 — Sprint 8 Pilot Cleanup: Seçenek (a) GO
+**Bağlam:** DRY-RUN sonucunda pilot şubelerde 46 kişi (35 hedef + 11 ekstra)  
+**Karar:** **(a)** — extra 11 kişi pilot şubelerde aktif kalsın  
+**Neden:** Veri kaybetmek yerine fazlalık tut, Mahmut sonra inceler
+
+### DEC-13 — monthly_payroll vs monthly_payrolls (Pilot Süresince DOKUNULMAZ)
+**Detay:** `docs/DECISIONS-MONTHLY-PAYROLL.md`  
+**Karar:** Pilot süresince hiçbir tablo değişmez. Pilot sonrası (15 Haz) Seçenek A.
+
+### DEC-14 — payroll_parameters 2026 Seed (Tahmin → Mahmut Doğrulayacak)
+**Migration:** `migrations/2026-05-05-payroll-parameters-2026-seed.sql`  
+**Karar:** Tahmin değerleri seed et, Mahmut SGK + GİB + Resmi Gazete'ye göre UPDATE atsın
+
+### DEC-15 — Conflict Marker Yasağı (5 May Vakası Sonrası)
+**Olay:** `git pull` conflict → manuel resolve edilmeden commit → 30 marker prod'da → beyaz ekran  
+**Karar:**
+1. Replit Resolve UI (görsel) — TERCİH EDİLEN
+2. `git checkout <hash> -- <file>` — alternatif
+3. ASLA `git add -A && git commit` conflict resolve etmeden
+4. Marker count `grep -c '<<<<<<<' = 0` doğrulanmadan commit yok
+
+### DEC-16 — Notification Rate Limit: Task Overdue → 1/24h
+**Olay:** 1 task → 751 bildirim/24h spam (debug-guide §19)  
+**Çözüm:** `server/reminders.ts upsertOverdueNotification` 24 saat içinde varsa SESSİZ SKIP
+
+### DEC-17 — Hub Pattern: Sayfa Mimari Sadeleştirme
+**Karar:** Karışık modüller için Merkezi Hub sayfası:
+- `/ik-merkezi`, `/bordro-merkezi` (Sprint 11+13 yapıldı)
+- (Sprint 17+) `/crm-merkezi`, `/muhasebe-merkezi`, `/operasyon-merkezi`
+**Pattern:** Mevcut sayfalar bozulmaz, hub sadece yönlendirici
+
+### DEC-18 — Skor Sistemi: 5 Kategori 90 Puan + Admin Editable
+**Schema:** `score_parameters` tablosu  
+**Default seed:** Devam(20) + Checklist(20) + Görev(15) + Müşteri(15) + Yönetici(20) = 90  
+**Yetki:** admin/ceo CRUD (history kayıt)
+
+### DEC-19 — DEVIR-TESLIM Dosyası Zorunlu (Session End)
+**Kural:** 5+ commit yapılan oturumlar sonrası `docs/DEVIR-TESLIM-{tarih}.md` yaz.  
+**Yeni oturum açılışında ÖNCE bu dosya okunur (TODAY/PENDING/DECIDED'tan ÖNCE).  
+**Amaç:** 100% memory için tek dosya

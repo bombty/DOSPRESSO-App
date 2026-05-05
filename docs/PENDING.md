@@ -1,247 +1,204 @@
-# 📋 DOSPRESSO — PENDING.md
+# ⏳ PENDING — Bekleyen İşler
 
-**Son güncelleme:** 5 May 2026 Salı 19:30 (Sprint 7 KAPATILDI ✅)
-**Format:** TASK-XXX (iş) / DECISION-XXX (Aslan kararı)
-**Bağlam:** Pilot 12 May 09:00 — **7 gün uzakta**.
+> **Sahibi belli, deadline'lı, alıştırma listesi.** Yeni oturum: bu dosyayı okuyup öncelik sırasına git.
 
 ---
 
-## ✅ BU AKŞAM TAMAMLANDI (5 May 18:30→19:30)
+## 🚨 BU GECE/SABAH (Pilot Bloker)
 
-- ✅ 5 PR merged (#11-15)
-- ✅ Sprint 7 migration EXECUTE (raw_materials 17→35 kolon, 67 hammadde, 13 tedarikçi, 3 yeni tablo)
-- ✅ Build temiz, workflow ayakta
-- ✅ Smoke test 6/6 yeşil (5 May 19:15 Replit Agent raporu)
-- ✅ Skill files updates dosyası tazelendi (docs/SKILL-UPDATES-5-MAYIS.md, 246 satır)
+### P-1: Hotfix PR Aç + Mergele 🔴 ASLAN
+**Süre:** 3 dk  
+**Sahibi:** Aslan  
+**Deadline:** ASAP (origin'de marker var, esbuild crash riski)
 
----
-
-## 🌅 YARIN SABAH (6 May, ÖNCELİK SIRASI)
-
-### 1. TASK-S7-DEMO-MAHMUT — Mahmut'a etiket sistemi demosu (30 dk)
-- /girdi-yonetimi 5 tab turu (Liste, Alerjen, Etiket, Tedarikçi, Gap)
-- /branch-recipes/<X> → "Etiket Hesapla (TGK)" → PDF indir gösterisi
-- Mahmut'tan ilk feedback al, PENDING'e ekle
-
-### 2. TASK-S7-DATA-CLEANUP — 240 mevcut hammadde için TGK alanları (1-2 saat)
-**Sorun:** Mevcut 240 rawMaterials için energy_kcal, allergen_present, vs. NULL.
-Etiket hesapla bunlarla içeren reçete için besin değeri çıkaramaz.
-
-**Çözüm seçenekleri:**
-- A) TÜRKOMP batch matching script (otomatik ama ücretli lisans riski)
-- B) Manuel giriş (Tülay/Süleyman, 240 satır × 5 dk = 20 saat — yapılamaz)
-- C) En kullanılan 30 hammadde (kahve, süt, vs.) için manuel + gerisi NULL kalır
-- **ÖNERİ: C** — pilot için yeterli, geri kalan Sprint 8'de
-
-### 3. TASK-EREN-SAHA-TEST (3-4 saat)
-- HQ kiosk (Dospresso.HQ.2026!) test
-- 4 UX fix doğrulama (Anasayfa, 30sn, Mola 2 buton, QC user list)
-- Bulunan bug'ları DECIDED'a yaz
-
-### 4. TASK-AROMA-SEED (Coach iş, 1 saat)
-- Aroma listesi seed (HQ Coach veri girer)
-
-### 5. TASK-S7-RATE-LIMIT (30 dk)
-- TÜRKOMP endpoint'lerine express-rate-limit ekle (10 req/saat per kullanıcı)
-- Yasal koruma için kritik
+**Adımlar:**
+1. https://github.com/bombty/DOSPRESSO-App/pull/new/claude/hotfix-merge-conflict-markers-2026-05-05
+2. Title: `🚨 hotfix: resolve merge conflict markers`
+3. "Create pull request" → "Merge pull request" → "Confirm merge"
 
 ---
 
-## 📅 7 GÜN İÇİNDE (Pilot öncesi)
+### P-2: Replit Sync + Workflow Restart 🔴 REPLIT
+**Süre:** 2 dk  
+**Sahibi:** Replit  
+**Deadline:** P-1 mergelendikten hemen sonra  
+**Bağımlılık:** P-1
 
-- TASK-S8-PROCUREMENT-AUTOFILL: Satınalma → yeni hammadde alımında TGK alanları auto-fill prompt'u
-- TASK-S8-FACTORY-RECIPE-LABEL: fabrika-recete-detay.tsx'e de "Etiket Hesapla" butonu
-- TASK-S8-LABEL-REJECT-DIALOG: Etiket reddedilirken sebep dialog'u
-- TASK-S8-GAP-BATCH-OPTIMIZATION: gap-analysis N+1 fix (~30sn → 2sn)
-- TASK-PILOT-DRY-RUN: 4 lokasyon mock-pilot (admin + Mahmut + Mahmut2 + branch staff)
-- TASK-PILOT-LAUNCH-CHECKLIST: 12 May sabahı kontrol listesi
-
-### TASK-2026-05-05-A: Sprint 6 Bölüm 3+4 PR aç + merge
-**Branch:** `claude/sprint-6-bolum-3-pdks-detail-2026-05-05` (3 commit: b14db32, 1b99683, 4ce915f)
-**Link:** https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-6-bolum-3-pdks-detail-2026-05-05
-**İçerik:** PDKS detaylı rapor endpoint+frontend + Bordro UX CTA
-
-### TASK-2026-05-05-B: Sprint 7 PR aç + merge (3 commit)
-**Branch:** `claude/sprint-7-girdi-yonetimi-tgk-2026-05-05` (3 commit: 356fd7c, f690a24, ec25b18)
-**Link:** https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-7-girdi-yonetimi-tgk-2026-05-05
-**İçerik:** Girdi Yönetimi TGK (schema + 22 endpoint + frontend + 67 hammadde import + TÜRKOMP + PDF + recipe-label-engine)
-
-### TASK-2026-05-05-C: Replit migration EXECUTE
-İki migration:
-1. `migrations/2026-05-05-girdi-yonetimi-tgk.sql` — Schema (raw_materials 18 kolon, suppliers 7 kolon, 3 yeni tablo: supplier_quality_records, tgk_labels, turkomp_foods)
-2. `migrations/2026-05-05-girdi-data-import.sql` — 13 tedarikçi + 67 hammadde
-
-DRY-RUN sonra GO.
-
-### TASK-2026-05-05-D: Smoke test
-- `GET /api/girdi/list` → 67 hammadde
-- `GET /api/girdi-stats/overview` → toplam, tgk, alerjen, tedarikçi
-- `POST /api/recipe-label/calculate-branch` (test branchProductId) → smart match
-- `GET /api/recipe-label/gap-analysis` → uyumluluk yüzdesi
-- `GET /api/turkomp/cache/list` → 0 (henüz boş)
+**Adımlar:**
+1. `git checkout main && git pull origin main`
+2. Workflow restart
+3. Screenshot doğrulama (esbuild OK, login sayfası render)
+4. `grep -c '^<<<<<<<\|^=======$\|^>>>>>>>'` — hepsi 0 olmalı
 
 ---
 
-## 📋 YARIN (6 May Salı)
+### P-3: Sprint 8 EXECUTE Migration 🔴 REPLIT
+**Süre:** ~45 dk  
+**Sahibi:** Replit isolated task agent  
+**Deadline:** P-2'den sonra  
+**Bağımlılık:** P-1, P-2 + Aslan Plan mode  
+**Plan dosyası:** `.local/tasks/sprint-8-execute.md`
 
-### TASK-2026-05-06-A: Mahmut Bey final demo (Sprint 6+7)
-- Tüm şubeleri görüyor mu (viewOnly)
-- Bordro hesaplama akışı (/maas)
-- Girdi Yönetimi sayfası tanıtımı
-- TGK etiket örneği
+**Adımlar:**
+1. Aslan: Mode'u Plan'a çevir
+2. Replit: Project Task aç (proposeProjectTasks)
+3. Aslan: Onayla
+4. Isolated agent:
+   - `pg_dump` backup → `migrations/backups/pre-sprint-8-EXECUTE-2026-05-05-XXXX.sql`
+   - Migration 1: `2026-05-05-sprint-8-data-cleanup-personnel-sync.sql` (5 ADIM, 329 satır)
+     - 18 fake şube → is_active=false
+     - 119 fake personel → is_active=false (HQ + pilot şubeler korunur)
+     - 35 gerçek personel UPSERT (Fabrika 10, Ofis 5, Işıklar 11, Lara 9)
+     - 5 default skor kriteri seed
+   - Migration 2: `2026-05-05-payroll-parameters-2026-seed.sql` (130 satır, 2026 vergi/SGK)
+   - Smoke test (5 endpoint)
+   - Sayfa test (6 sayfa, Playwright)
+   - PR aç
+5. Aslan: PR mergele
+6. Aslan: Mode'u Build'e geri çevir
 
-### TASK-2026-05-06-B: Eren saha test
-- HQ Kiosk (18 PIN aktif)
-- 4 UX fix doğrulama (Anasayfa, 30sn auto-return, Mola 2 buton, QC user list)
-
-### TASK-2026-05-06-C: Aroma seed (HQ Coach)
-- Mr. Dobody aroma data setine ihtiyaç var
-
-### TASK-2026-05-06-D: Sistem genel taraması
-- Pilot öncesi son kontrol (24+ saat öncesi)
-- Console error scan
-- 27 quality gate çalıştır
-
-### TASK-2026-05-06-E: Sprint 7 Frontend İyileştirmeler (Pilot için kritik DEĞİL)
-- [ ] Reçete sayfasında "Etiket Hesapla" butonu (recipe-label-engine'i çağırır)
-- [ ] Etiket önizleme modal (besin değeri tablosu + alerjen vurgu)
-- [ ] Onay zinciri UI (gıda mühendisi onayı)
-
----
-
-## 📋 PİLOT SONRASI (13 May+)
-
-### TASK-2026-05-13-A: Satınalma → Girdi auto-fill
-- Yeni hammadde alımında purchaseOrders → rawMaterials otomatik link
-- "Bilgileri tamamla" wizard
-
-### TASK-2026-05-13-B: Tedarikçi performans dashboard
-- supplierQualityRecords üzerinden aggregate
-- Trend grafik (kabul/şartlı/red oranı zaman içinde)
-- Otomatik uyarı (red oranı %X üstü ise)
-
-### TASK-2026-05-13-C: TÜRKOMP cache batch
-- En çok kullanılan 50 hammadde için TÜRKOMP'tan veri çek (manuel arama → "Getir" butonu ile)
-- Cache durumu dashboard
+**Acceptance:**
+- 4 aktif şube ✅
+- 35-46 personel ✅
+- 5 skor kriteri (totalMaxPoints=90)
+- payroll_parameters 1 aktif kayıt (year=2026)
+- Bordro hesabı: SGK + vergi + net ≠ 0
+- 6 sayfa render OK
 
 ---
 
-## 🚨 SABAH ASLAN'A BEKLEYEN
+## 🟡 BU HAFTA (Pilot Hazırlık)
 
-### 1. Replit Plan Mode Sonuç Kontrolü
-Gece çalıştı, sabah doğrula:
-```bash
-git fetch origin
-git log --oneline -10  # son commit'ler
-psql -c "SELECT column_name FROM information_schema.columns WHERE table_name='factory_recipes' AND column_name LIKE '%storage%' OR column_name LIKE '%manufacturer%';"
-psql -c "SELECT id, status FROM factory_shift_sessions WHERE id IN (113, 114);"
-```
+### P-4: Mahmut Payroll Parameters Doğrulama 🟡 MAHMUT
+**Süre:** 30 dk  
+**Sahibi:** Mahmut (muhasebe sorumlusu)  
+**Deadline:** Pilot 12 May ÖNCESİ
 
-Beklenen:
-- Son commit: branch merge (3 commit getirmiş olmalı)
-- factory_recipes: 4 yeni kolon (storage_conditions, manufacturer_info, may_contain_allergens, shelf_life_days)
-- Vardıya 113+114: status='completed'
+**Yapılacak:**
+- Resmi Gazete asgari ücret 2026 yayını → 33.030 TL brüt / 28.075,50 TL net
+- SGK 2026 prim oranları → %14 işçi / %20.5 işveren / %1 işsizlik işçi / %2 işsizlik işveren
+- GİB 2026 vergi dilimleri → 5 dilim
+- Yemek/ulaşım muafiyetleri → 300 TL / 158 TL günlük
 
-### 2. Recipe Finder Skill İlk Run (07:00 sonrası)
-```bash
-grep "RecipeFinder" /tmp/logs/Start_application_*.log | tail -10
-```
+**Eğer farklı:**
 ```sql
-SELECT COUNT(*), MAX(created_at), subcategory
-FROM agent_pending_actions WHERE category='egitim'
-GROUP BY subcategory;
+UPDATE payroll_parameters 
+SET 
+  minimum_wage_gross = <kuruş>,
+  minimum_wage_net = <kuruş>,
+  ...
+WHERE year = 2026 AND is_active = true;
 ```
 
-### 3. Eren Kiosk + Etiket Testi (1.5 saat birlikte)
-- `docs/audit/PDKS-TEST-CHECKLIST-DETAYLI-5-MAYIS-2026.md` (Replit, 330 satır)
-- `docs/audit/ETIKET-SMOKE-TEST-5-MAYIS-2026.md` (Claude, 250+ satır)
+---
+
+### P-5: Pilot 4 Lokasyon Final Hazırlık 🟡 ASLAN + COACH
+**Süre:** 2 saat  
+**Sahibi:** Aslan + Coach  
+**Deadline:** Pilot 12 May Pazartesi 09:00
+
+**Yapılacak:**
+- Şube müdürleri brifingi (Mahmut Hibrit C strategy)
+- 4 lokasyonda kiosk hesapları test
+- 35 personelin ilk login bilgileri (admin oluşturmalı)
+- Mr. Dobody onboarding flow test
+- Pilot iletişim kanalı (WhatsApp grup veya Slack)
 
 ---
 
-## 📌 P1 — PILOT ÖNCESİ (12 May'a 8 gün)
+## 🟢 PİLOT SONRASI (Sprint 17+)
 
-### TASK-AROMA-SEED-COMPATIBILITY (Aslan + HQ Coach)
-**Süre:** Kod yok, data entry — 4-8 saat
-**Konu:** 32 aroma DB'de, 8 template reçete için compatibility eksik
-**Rehber:** `docs/audit/AROMA-SEED-REHBERI-5-MAYIS-2026.md`
+### P-6: Akademi 11 Boş Tablo Seed 🟢 ASLAN + COACH
+**Süre:** 1 hafta (içerik hazırlama)  
+**Sahibi:** Aslan + Coach  
+**Bekleyen tablolar:**
+- module_lessons (0)
+- module_videos
+- module_quizzes
+- training_assignments
+- 7 diğer
 
-### TASK-MRP-MISSING-UI (Claude — opsiyonel)
-**Süre:** 3-4 saat
-**Konu:** MRP-Light backend'de var, 4 endpoint UI'sız:
-- `/api/mrp/daily-plan/:id/confirm` (HQ onay)
-- `/api/mrp/leftovers/:id/verify` (akşam kapanış)
-- `/api/mrp/deduct-stock` (stok düşme)
-- `/api/mrp/calculate-waste` (fire hesabı)
-
-**Pilot etkisi:** Düşük (mevcut 7 endpoint UI var). Post-pilot polish yapılabilir.
-
-### TASK-EREN-KIOSK-FIX (PDKS sonrası)
-**Bekliyor:** Eren testi sonrası bug listesi
-**Olası fix'ler:** Phase butonlarına vurgu, auto-logout (8h), prompt mesajları
+**Gereken:**
+- Eğitim videoları (en az 5-10 başlangıç)
+- Quiz soruları (her modül için)
+- Onboarding doc'ları
 
 ---
 
-## 📌 P2 — POST-PILOT (12 May sonrası)
-
-### TASK-INSIGHTS-STUB-FIX
-**Süre:** 10 dk
-**Dosya:** `client/src/pages/trainer-egitim-merkezi.tsx`
-**Konu:** Stub `/api/agent/insights` → gerçek `/api/agent/actions`
-
-### TASK-DEMO-APPROVAL-UI
-**Süre:** 1-2 saat
-**Konu:** Süpervizör paneline "Demo Onayı Bekleyenler" widget
-
-### TASK-DRAG-DROP-RECIPE
-**Süre:** 1-2 saat
-**Konu:** Reçete editöründe dnd-kit ile drag-drop sıralama
-
-### TASK-RECETE-LOCK-UI
-**Süre:** 1 saat
-**Konu:** `POST /api/factory/recipes/:id/lock` UI butonu — kalite/audit risk azaltma
-
-### TASK-PAYROLL-FABRIKA-DESTEK
-**Süre:** 1 gün
-**Konu:** `payroll-engine.ts`'e `factory_shift_sessions` ekle (Eren maaş sisteme girmesi için)
-
-### TASK-FACTORY-F2-DASHBOARD
-**Karar bekliyor:** F2 backend var (268 satır), UI yok. Kalsın mı, kaldırılsın mı?
-
-### TASK-KIOSK-REFACTOR
-**Süre:** 1 hafta
-**Konu:** kiosk.tsx (2897 satır, 16 step) → component split + useReducer
-
-### TASK-BRANCH-OPENING-COWORK
-**Süre:** 3-5 gün
-**Konu:** id=4 izmir projesi için cowork tooling (Vendor Portal MVP)
+### P-7: module_flags.stok Pilot Enable 🟢 ASLAN
+**Süre:** 30 dk  
+**Sahibi:** Aslan karar  
+**Soru:** Pilot şubelerin stok takibi yapacak mı?  
+**Eğer evet:**
+- module_flags.stok=true (4 pilot şube için)
+- 113+ malzeme seed (HAM kodları'ndan eşleştir)
+- Sayım UI test
 
 ---
 
-## 🚫 İPTAL / BEKLET
-
-- AI auto-suggest reçete adımları (1-2 ay sonra)
-- Versiyon geçmişi reçete editör (low-priority)
-- Diff görünümü reçete editör
-
----
-
-## 🔧 KÜÇÜK (gerekirse 5-15 dk)
-
-- Phantom roller (5 adet, 0 user) → kaldırılabilir post-pilot
-- Procurement modülü dormant → activate kararı
-- ~2887 raw `console.log` → Sentry/Pino entegrasyonu
+### P-8: monthly_payroll Deprecation 🟢 CLAUDE + MAHMUT
+**Süre:** 3 hafta (15 Haz sonrası)  
+**Sahibi:** Aslan karar + Claude implementation  
+**Detay:** `docs/DECISIONS-MONTHLY-PAYROLL.md` (6 action item)
 
 ---
 
-## 📝 KARAR BEKLEYEN
+### P-9: GitHub Branch Protection 🟢 ASLAN
+**Süre:** 5 dk  
+**Sahibi:** Aslan  
+**Deadline:** Hotfix mergelendikten sonra  
+**Ne için:** Direct push yasaklansın, PR mecburi olsun  
+**Etki:** Bu gece yaşanan "30 marker push" olayı tekrar olmasın
 
-### DECISION-COWORK-OPTION
-Yeni şube açılış için A/B/C? (Vendor Portal / Cowork yorum / Gantt)
+**GitHub UI:** Settings → Branches → main → Branch protection rules
+- Require pull request before merging
+- Require approvals (1)
+- Dismiss stale reviews
 
-### DECISION-FABRIKA-MAAŞ
-Eren maaşı pilot sırasında manuel Excel mi, yoksa payroll-engine fabrika destek mi?
-**Tavsiye:** Manuel Excel pilot için. Post-pilot engine ekleme.
+---
 
-### DECISION-F2-DASHBOARD
-Factory F2 dashboard kalsın mı? UI yapılır mı?
-**Tavsiye:** Pilot sonrası karar. Şimdilik dondur.
+### P-10: pg_stat_statements + APM 🟢 DEVOPS
+**Süre:** 2 saat  
+**Sahibi:** Aslan + DevOps  
+**Pilot SONRASI:** Slow query ve error endpoint ölçümü için
+
+---
+
+## 🐛 BİLİNEN BUG'LAR (Pilot Sırasında İzlenecek)
+
+### Açık Bug'lar (debug-guide §1-31)
+1. §19 - Scheduler bildirim spam (✅ Sprint 16 düzeltildi, izlenecek)
+2. §29 - Bordro toplu hesaplama (Sprint 8 sonrası test edilecek)
+3. §30 - PDKS aggregation (Sprint B yapılmadı, manuel giriş alternatif)
+4. §31 - Procurement modülü dormant (pilot SONRASI)
+
+### Yeni Bulgular
+- payroll_parameters seed sonrası bordro hesaplama test gerekir
+- monthly_payroll vs monthly_payrolls duplicate (DECISIONS dosyası)
+
+---
+
+## 📋 ÖNCELİK SIRASINI ANLIK BAKIŞTAN OKU
+
+```
+🚨 ŞIMDIDI:
+  P-1 (Aslan: hotfix PR)
+  P-2 (Replit: git pull)
+  P-3 (Replit: Sprint 8 EXECUTE)
+
+🟡 BU HAFTA:
+  P-4 (Mahmut: payroll doğrulama)
+  P-5 (Aslan: pilot lokasyon hazırlık)
+
+🟢 PILOT SONRASI:
+  P-6 (Akademi seed)
+  P-7 (Stok modülü karar)
+  P-8 (monthly_payroll deprecation)
+  P-9 (Branch protection)
+  P-10 (APM kurulum)
+```
+
+---
+
+**Son güncelleme:** 5 May 2026, 23:30  
+**Sonraki güncelleme:** Sprint 8 EXECUTE bittikten sonra

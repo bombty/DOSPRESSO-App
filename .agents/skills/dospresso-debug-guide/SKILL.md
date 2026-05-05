@@ -1312,3 +1312,189 @@ curl /api/branch-recipes/categories     # 200 dönmeli
 curl /api/branch-recipes/1              # 200 dönmeli
 curl /api/branch-recipes/abc            # 400 (NaN guard)
 ```
+
+---
+
+## 🆕 UPDATE (5 Mayıs 2026) — Yeni 3 Bug + Çözüm
+
+### §32 — `git pull` Sonrası Conflict Marker'lı Commit (CRİTİCAL)
+
+**Belirti:** App çalışmıyor, beyaz ekran, esbuild hatası:
+```
+Error [TransformError]: Transform failed with 1 error:
+.../recipe-label-engine.ts:64:0: ERROR: Unexpected '<<'
+```
+
+**Kök neden:** `git pull origin main` conflict çıkardı, manuel resolve edilmeden `git add -A && git commit && git push` yapıldı. Marker'lı dosyalar production main'e gitti.
+
+**Tespit:**
+```bash
+# 3 dosyada (veya başka herhangi birinde) marker var mı:
+grep -rE '^<<<<<<<|^=======$|^>>>>>>>' \
+  client/src/pages/ server/routes/ shared/schema/ 2>/dev/null
+
+# Origin'de de:
+git show origin/main:server/routes/recipe-label-engine.ts | grep -c '^<<<<<<<'
+```
+
+**Çözüm (5 May vakası):**
+```bash
+# 1. Hotfix branch
+git checkout -b hotfix/resolve-merge-conflict-markers-YYYY-MM-DD
+
+# 2. Son temiz commit'ten dosyaları al
+git checkout <CLEAN_COMMIT_HASH> -- <PATH1> <PATH2> ...
+
+# 3. Marker count 0 doğrula
+grep -c '^<<<<<<<\|^=======$\|^>>>>>>>' <PATH1> <PATH2> ...
+
+# 4. Commit + push + PR
+git add -A && git commit -m "hotfix: resolve merge conflict markers"
+git push origin hotfix/...
+# GitHub UI'da PR aç → Squash and merge
+
+# 5. Local sync
+git checkout main && git pull origin main
+```
+
+**Önleme (kural):** `git pull` çıktısı **`CONFLICT (content)`** ihtiva ediyorsa:
+- ASLA `git add -A && git commit` yapma
+- `git status` ile UU (unmerged) durumunu gör
+- Manuel resolve (Replit Resolve UI veya `git checkout --theirs/--ours`)
+- `grep` ile marker count 0 doğrula
+- SONRA `git add` + `git commit`
+
+`dospresso-git-safety` skill'ine de eklendi (L4 yeni kural).
+
+---
+
+### §33 — Scheduler Bildirim Spam (1 task → 751 bildirim/24h)
+
+**Belirti:** notifications tablosu hızlıca büyüyor (24055 kayıt/24 saat), kullanıcılar aynı task için 50+ bildirim alıyor.
+
+**Kök neden:** `server/reminders.ts checkOverdueTaskNotifications`:
+- `existingMap` sadece `isRead=false` bildirimleri içeriyordu
+- Kullanıcı bildirimi okuyunca map'ten düştü
+- Bir sonraki 10-min tick'te yeni bildirim oluştu
+- Spam loop
+
+**Tespit:**
+```sql
+-- Son 24 saatte bildirim oluşum oranı
+SELECT type, COUNT(*) AS count
+FROM notifications
+WHERE created_at > NOW() - INTERVAL '24 hours'
+GROUP BY type
+ORDER BY count DESC;
+-- task_overdue 751+ ise spam var
+```
+
+**Çözüm (Sprint 16, commit 1fe0604):**
+```typescript
+// reminders.ts checkOverdueTaskNotifications
+// Eski: existingUnread (isRead=false filter)
+// Yeni: existingRecent (son 24 saat, read/unread fark etmez)
+const oneDayAgo = new Date(now.getTime() - 24*60*60*1000);
+const existingRecent = await db.select(...)
+  .where(and(
+    or(eq(type, 'task_overdue'), eq(type, 'task_overdue_assigner')),
+    gte(notifications.createdAt, oneDayAgo)
+  ));
+
+// upsertOverdueNotification
+// Eski: createdAt update → kullanıcı tekrar görüyordu
+// Yeni: 24 saat içinde varsa SESSİZ SKIP (return)
+if (existingId) return; // Skip, no update
+```
+
+**Etkisi:** 1 task → max 1 bildirim/24h (75+ → 1).
+
+---
+
+### §34 — `payroll_parameters` Tablosu Boş → Bordro 0 Verir
+
+**Belirti:** Bordro hesaplama 0 TL döner, hatta hata yok ama:
+```sql
+SELECT COUNT(*) FROM payroll_parameters WHERE is_active = true;
+-- 0 satır
+```
+
+**Kök neden:** `payrollParameters` schema-07'de tanımlı ama hiç seed yok. Bordro servisi bu tablodan vergi/SGK okumadan hesaplayamıyor.
+
+**Çözüm (Sprint 16):**
+```bash
+# Migration EXECUTE
+psql $DATABASE_URL -f migrations/2026-05-05-payroll-parameters-2026-seed.sql
+
+# Doğrula
+psql $DATABASE_URL -c "
+  SELECT year, is_active, 
+         minimum_wage_gross/100.0 AS asgari_brut_TL,
+         tax_bracket_5_rate/10.0 AS son_dilim_pct
+  FROM payroll_parameters WHERE is_active=true;
+"
+# Beklenen: year=2026, asgari_brut_TL=33030, son_dilim_pct=40
+```
+
+**Önemli:** Tahmin değerleri kullanılıyor. Mahmut SGK + GİB resmi yayınlarına göre UPDATE çalıştırmalı:
+```sql
+UPDATE payroll_parameters 
+SET minimum_wage_gross = <KURUS>, 
+    minimum_wage_net = <KURUS>,
+    updated_at = NOW()
+WHERE year = 2026 AND is_active = true;
+```
+
+---
+
+### §35 — DB Yazma Komutları Build Mode'da Reddediliyor (Sandbox)
+
+**Belirti:** Replit ana agent (Build mode) `git push`, `git commit`, `git checkout` çalıştırmaya çalışıyor:
+```
+Error: This command is destructive and not allowed in main agent.
+Use Plan mode + isolated task agent.
+```
+
+**Çözüm:** Aslan'ın koyduğu replit.md kuralına uy:
+- DB write, schema, migration, env değişiklik → **Plan mode** zorunlu
+- Plan mode'da Project Task aç → Isolated task agent (kendi branch'inde) çalışır
+- Backup zorunlu (`pg_dump`)
+- DRY-RUN önce, GO sonra
+- PR aç + review + merge
+
+**Build mode istisna (docs-only):** Markdown dosya yazma + commit + push OK (kod editi değil).
+
+---
+
+### §36 — Sidebar Yeni Sayfa Görünmüyor (Frontend Route Var Ama Erişilemiyor)
+
+**Belirti:** App.tsx'te `<Route path="/yeni-sayfa">` var ama kullanıcı sidebar'da bu sayfayı göremiyor.
+
+**Kök neden:** İki yerde tanım eksik:
+1. **Menu items** (`module-menu-config.ts` IK_MENU/FABRIKA_MENU vs.)
+2. **Prefix mapping** (alt kısımda `"/yeni-sayfa": IK_MENU` gibi)
+
+**Çözüm:**
+```typescript
+// 1) Menu items
+const IK_MENU = {
+  items: [
+    ...,
+    { id: "yeni-sayfa", label: "Yeni Sayfa", path: "/yeni-sayfa", 
+      icon: Users, allowedRoles: [...] }
+  ]
+};
+
+// 2) Prefix mapping (alt kısımda)
+const menuByPath = {
+  ...,
+  "/yeni-sayfa": IK_MENU,  // ← ZORUNLU
+};
+```
+
+**Doğrula:**
+```bash
+grep -n "yeni-sayfa" client/src/components/layout/module-menu-config.ts
+# 2 satır olmalı (item + mapping)
+```
+

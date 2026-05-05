@@ -1044,3 +1044,92 @@ grep -A 5 "uploadFromBytes" server/routes/[FILE].ts
 # 3 boyut Promise.all ile paralel olmalı
 # EXIF rotate + removeAlpha çağrılmalı
 ```
+
+---
+
+## 🆕 UPDATE (5 Mayıs 2026) — Yeni 3 Quality Check (28-30)
+
+### §28 — `git pull` Sonrası Marker Check (KRİTİK)
+
+5 May vakası sonrası mecburi:
+
+```bash
+# git pull/merge sonrası HER COMMIT öncesi:
+grep -rE '^<<<<<<<|^=======$|^>>>>>>>' \
+  client/src/pages/ \
+  server/routes/ \
+  shared/schema/ \
+  client/src/components/ 2>/dev/null
+
+# Çıktı OLMAMALI. 1+ satır varsa:
+# - DUR
+# - Manuel resolve veya `git checkout <hash> -- <file>`
+# - ASLA `git add -A && git commit` yapma
+```
+
+Hatırlatma: §32 debug-guide'a tam çözüm var.
+
+---
+
+### §29 — Sidebar Mapping Tutarlılık Kontrolü
+
+Yeni sayfa eklenince ZORUNLU çift kontrol:
+
+```bash
+# 1. App.tsx'te route var mı:
+grep -n "<Route path=\"/yeni-sayfa\"" client/src/App.tsx
+
+# 2. Sidebar items + prefix mapping (her ikisi de):
+grep -n "yeni-sayfa" client/src/components/layout/module-menu-config.ts
+# 2 satır olmalı (item içinde + prefix mapping'de)
+```
+
+Tek satır varsa kullanıcı sayfayı bulamaz → quality gate fail.
+
+---
+
+### §30 — Migration EXECUTE Öncesi Schema-DB Uyum Kontrolü
+
+DB yazma migration'ı EXECUTE öncesi:
+
+```bash
+# 1. Schema dosyası grep (kolon adlarını verify):
+grep -A 30 "export const TABLOADI = pgTable" shared/schema/schema-XX.ts
+
+# 2. Migration SQL'deki kolon adlarıyla karşılaştır:
+grep -E "INSERT INTO|UPDATE.*SET" migrations/2026-XX-XX-...sql
+
+# 3. Bu kolonlar gerçekten DB'de var mı (Replit ile sor):
+echo "Replit Shell: SELECT column_name FROM information_schema.columns WHERE table_name = 'TABLO';"
+```
+
+5 May vakaları:
+- `users.first_name` ASSUME edildi → grep doğrulandı (✅ var)
+- `tgkLabels.rejectedReason` (NOT rejectionReason!) → grep zorunlu
+
+---
+
+## 🆕 5 May 2026 Sprint 8-16 Sonrası Yeni Check'ler
+
+### Yeni 27→30 Check Listesi (Quality Gate v2.1)
+
+| # | Check | Komut |
+|---|---|---|
+| 28 | Conflict marker yok | `grep -rE '^<<<<<<<\|^=======$\|^>>>>>>>' .` |
+| 29 | Sidebar mapping çift kontrol | App.tsx + module-menu-config.ts grep |
+| 30 | Schema kolon assume yok | grep schema dosyaları + Replit DB sorgu |
+
+Gate execution sıra:
+1. Frontend build (`npx vite build`) - 0 error
+2. Backend build (`npx esbuild ...`) - 0 error
+3. **YENİ:** Conflict marker scan (#28)
+4. Schema-Migration uyum (#30)
+5. Manifest + Permission map sync
+6. Sidebar mapping (#29)
+7. 5-perspektif review (PE/F&B/QA/PM/Compliance)
+8. Replit local fix → GitHub yansıt
+9. Test data temizliği
+10. ... (mevcut 27)
+
+Tümü ✅ olmadan commit yok.
+
