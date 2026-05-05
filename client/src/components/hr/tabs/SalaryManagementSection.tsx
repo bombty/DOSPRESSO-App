@@ -2,7 +2,7 @@
  * SalaryManagementSection — Maaş Yönetimi
  * Extracted from ik.tsx for maintainability
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { type User } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
