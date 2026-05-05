@@ -12,6 +12,7 @@ DOSPRESSO is a comprehensive franchise management platform designed to centraliz
 - DOCS-ONLY işler Build modunda yapılabilir (plan dosyaları, audit, runbook, skill güncelleme).
 - Force push yasak; commit/push owner Replit Shell'den manuel.
 - `session-protocol` skill (`.agents/skills/session-protocol/SKILL.md`) her oturum sonu 5 adım zorunlu (devir teslim push, 4 skill update, docs/, replit.md memory, sonraki oturum talimatı).
+- `dospresso-git-safety` skill (`.agents/skills/dospresso-git-safety/SKILL.md`) — 5 Mayıs 2026 diverged main olayından sonra zorunlu: Build session başında L1 pre-edit fetch, edit öncesi L2 dosya sahipliği kontrolü, commit öncesi L3 sync check, conflict olursa L4 Replit Resolve UI (CLI değil), push öncesi L5 validation. `git checkout --theirs .` toptan komutu YASAK.
 
 ## System Architecture
 
