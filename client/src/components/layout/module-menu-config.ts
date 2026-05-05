@@ -162,6 +162,8 @@ const FINANS_MENU: ModuleMenuConfig = {
     { id: "mali", label: "Mali Yönetim", path: "/mali-yonetim", icon: CreditCard },
     { id: "bordro", label: "Bordro", path: "/bordrom", icon: CreditCard },
     { id: "muhasebe-rapor", label: "Muhasebe Rapor", path: "/muhasebe-raporlama", icon: BarChart2 },
+    // Sprint 14 (5 May 2026): Mali Rapor Hızlı Veri Girişi
+    { id: "mali-giris", label: "Mali Rapor Giriş", path: "/mali-rapor-giris", icon: FileBarChart, allowedRoles: ["admin","ceo","cgo","muhasebe","muhasebe_ik"] },
   ],
 };
 
@@ -213,6 +215,7 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/admin/skor-parametreleri": IK_MENU,
   "/bordro-merkezi": IK_MENU,
   "/yonetici-puanlama": IK_MENU,
+  "/ik-merkezi": IK_MENU,
   "/pdks-manuel-giris": IK_MENU,
   "/ekipman": EKIPMAN_MENU,
   "/ariza": EKIPMAN_MENU,
@@ -258,6 +261,7 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/muhasebe": FINANS_MENU,
   "/mali-yonetim": FINANS_MENU,
   "/muhasebe-raporlama": FINANS_MENU,
+  "/mali-rapor-giris": FINANS_MENU,
   "/ajanda": YONETIM_MENU,
   "/banner-editor": YONETIM_MENU,
   "/pilot-baslat": YONETIM_MENU,
