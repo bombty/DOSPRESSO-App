@@ -5,6 +5,20 @@ description: DOSPRESSO 36-point quality checklist with PASS/FAIL output. Covers 
 
 # DOSPRESSO Quality Gate — 35-Point Checklist
 
+## 🆕 Son Değişiklik Özeti (5 May 2026 Gece — Sprint 8-16 + Hotfix)
+
+> **Yeni Claude için:** QG 27 → 31 madde. 4 yeni check eklendi.
+
+**Yeni Quality Gate maddeleri:**
+- **QG-28** — Conflict marker count = 0 (push öncesi grep zorunlu)
+- **QG-29** — Sidebar mapping çift kontrol (App.tsx + module-menu-config.ts)
+- **QG-30** — Schema kolon assume yok (Replit DB sorgu zorunlu)
+- **QG-31** — Token kontrol (5 May incident — `grep ghp_|gho_|github_pat`)
+
+**5-Perspektif Review** (PE/F&B/QA/PM/Compliance) zorunlu kalır — major change'lerde.
+
+---
+
 Run after EVERY sprint build or significant code change. Report each item as PASS or FAIL.
 
 ---
