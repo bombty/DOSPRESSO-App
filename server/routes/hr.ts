@@ -6481,7 +6481,7 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       // SGK ve vergi hesaplama
       const sgkEmployee = Math.round(grossSalary * sgkEmployeeRate);
       const unemploymentEmployee = Math.round(grossSalary * unemploymentEmployeeRate);
-      const sgkEmployer = Math.round(grossSalary * 0.205); // %20.5
+      const sgkEmployer = Math.round(grossSalary * 0.2175); // %21.75 (2026, 7566 SK RG 19.12.2025)
       const unemploymentEmployer = Math.round(grossSalary * 0.02); // %2
       
       // Gelir vergisi matrahı
