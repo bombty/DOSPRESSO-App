@@ -1,12 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════
 // Sprint 4 / TASK-#345 (5 May 2026): Personel Self-Service Endpoint'ler
 // ═══════════════════════════════════════════════════════════════════
-// Personel kendi puantaj + izin + mesai bilgilerini görmek için.
-// "/api/me/" pattern'i: oturum açmış kullanıcının KENDİ verisi.
-// 
-// GÜVENLIK: Tüm endpoint'ler sadece req.user.id verisini döndürür.
-// Başkasının verisini almak isterse 403 — admin/muhasebe için
-// /api/personnel/:id/* mevcut endpoint'leri kullanılır.
+// pdksRecords schema: recordDate (DATE), recordTime (TIME), recordType ('giris'|'cikis')
+// checkInTime / checkOutTime / totalMinutes kolonları YOK.
 // ═══════════════════════════════════════════════════════════════════
 
 import { Router, Response } from 'express';
@@ -26,7 +22,6 @@ const router = Router();
 
 // ═══════════════════════════════════════════════════════════════════
 // 1) GET /api/me/puantaj?year=&month=
-// Kullanıcının kendi aylık puantajı (günlük detay + özet)
 // ═══════════════════════════════════════════════════════════════════
 router.get('/api/me/puantaj', isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -34,29 +29,30 @@ router.get('/api/me/puantaj', isAuthenticated, async (req: any, res: Response) =
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
     const month = parseInt(req.query.month as string) || (new Date().getMonth() + 1);
 
-    // Ay başı ve ay sonu hesapla
     const monthStart = new Date(year, month - 1, 1);
-    const monthEnd = new Date(year, month, 1);
+    const monthEnd = new Date(year, month, 0); // ay sonu
+    const monthStartStr = monthStart.toISOString().split('T')[0];
+    const monthEndStr = monthEnd.toISOString().split('T')[0];
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayStr = today.toISOString().split('T')[0];
 
-    // Şube giriş-çıkışlar (PDKS)
+    // Şube PDKS kayıtları — recordDate + recordType + recordTime
     const branchRecords = await db.select({
       id: pdksRecords.id,
-      checkInTime: pdksRecords.checkInTime,
-      checkOutTime: pdksRecords.checkOutTime,
+      recordDate: pdksRecords.recordDate,
+      recordTime: pdksRecords.recordTime,
+      recordType: pdksRecords.recordType,
       branchId: pdksRecords.branchId,
-      totalMinutes: pdksRecords.totalMinutes,
     })
       .from(pdksRecords)
       .where(and(
         eq(pdksRecords.userId, userId),
-        gte(pdksRecords.checkInTime, monthStart),
-        lte(pdksRecords.checkInTime, monthEnd),
+        gte(pdksRecords.recordDate, monthStartStr),
+        lte(pdksRecords.recordDate, monthEndStr),
       ))
-      .orderBy(desc(pdksRecords.checkInTime));
+      .orderBy(desc(pdksRecords.recordDate));
 
     // Fabrika vardıyaları
     const factorySessions = await db.select({
@@ -70,60 +66,79 @@ router.get('/api/me/puantaj', isAuthenticated, async (req: any, res: Response) =
       .where(and(
         eq(factoryShiftSessions.userId, userId),
         gte(factoryShiftSessions.checkInTime, monthStart),
-        lte(factoryShiftSessions.checkInTime, monthEnd),
+        lte(factoryShiftSessions.checkInTime, new Date(year, month, 1)),
       ))
       .orderBy(desc(factoryShiftSessions.checkInTime));
 
-    // Bugün aktif mi? (check-in var ama check-out yok)
-    const todayActiveBranch = branchRecords.find(r => 
-      r.checkInTime && r.checkInTime >= today && r.checkInTime < tomorrow && !r.checkOutTime
-    );
-    const todayActiveFactory = factorySessions.find(f =>
-      f.status === 'active' && f.checkInTime && f.checkInTime >= today
-    );
-    const isActiveToday = !!(todayActiveBranch || todayActiveFactory);
-
-    // Günlük tablo: tarih → giriş/çıkış/dakika
-    const dailyMap = new Map<string, any>();
+    // Günlük PDKS haritası — giris/cikis çifti → dakika hesabı
+    // Her tarih için: { giris: '08:30', cikis: '17:45', minutes: 555, branchId }
+    const dailyPdksMap = new Map<string, {
+      date: string;
+      giris?: string;
+      cikis?: string;
+      minutes: number;
+      source: string;
+      branchId?: number;
+    }>();
 
     for (const r of branchRecords) {
-      if (!r.checkInTime) continue;
-      const dateKey = new Date(r.checkInTime).toISOString().split('T')[0];
-      dailyMap.set(dateKey, {
-        date: dateKey,
-        checkIn: r.checkInTime,
-        checkOut: r.checkOutTime,
-        minutes: r.totalMinutes || 0,
-        source: 'branch',
-        branchId: r.branchId,
-      });
+      const dateKey = r.recordDate as string;
+      if (!dailyPdksMap.has(dateKey)) {
+        dailyPdksMap.set(dateKey, { date: dateKey, minutes: 0, source: 'branch', branchId: r.branchId ?? undefined });
+      }
+      const entry = dailyPdksMap.get(dateKey)!;
+      if (r.recordType === 'giris' && !entry.giris) {
+        entry.giris = r.recordTime as string | undefined;
+      } else if (r.recordType === 'cikis' && !entry.cikis) {
+        entry.cikis = r.recordTime as string | undefined;
+      }
     }
 
+    // Giriş + Çıkış varsa dakikayı hesapla
+    for (const [, entry] of dailyPdksMap) {
+      if (entry.giris && entry.cikis) {
+        const [gh, gm] = entry.giris.split(':').map(Number);
+        const [ch, cm] = entry.cikis.split(':').map(Number);
+        entry.minutes = Math.max(0, (ch * 60 + cm) - (gh * 60 + gm));
+      }
+    }
+
+    // Fabrika kayıtlarını ekle (şube kaydı yoksa)
     for (const f of factorySessions) {
       if (!f.checkInTime) continue;
       const dateKey = new Date(f.checkInTime).toISOString().split('T')[0];
-      // Fabrika kaydı varsa şube kaydının üzerine yazılmaz, eklenir
-      const existing = dailyMap.get(dateKey);
-      if (!existing) {
-        dailyMap.set(dateKey, {
+      if (!dailyPdksMap.has(dateKey)) {
+        dailyPdksMap.set(dateKey, {
           date: dateKey,
-          checkIn: f.checkInTime,
-          checkOut: f.checkOutTime,
+          giris: f.checkInTime ? new Date(f.checkInTime).toTimeString().slice(0, 5) : undefined,
+          cikis: f.checkOutTime ? new Date(f.checkOutTime).toTimeString().slice(0, 5) : undefined,
           minutes: f.workMinutes || 0,
           source: 'factory',
         });
       }
     }
 
-    const dailyRecords = Array.from(dailyMap.values()).sort(
+    const dailyRecords = Array.from(dailyPdksMap.values()).sort(
       (a, b) => b.date.localeCompare(a.date)
     );
 
-    // Aylık özet hesapla
+    // Bugün aktif mi?
+    const todayBranch = dailyPdksMap.get(todayStr);
+    const todayFactory = factorySessions.find(f =>
+      f.status === 'active' &&
+      f.checkInTime &&
+      new Date(f.checkInTime).toISOString().split('T')[0] === todayStr
+    );
+    const isActiveToday = !!(
+      (todayBranch?.giris && !todayBranch?.cikis) ||
+      todayFactory
+    );
+
+    // Aylık özet
     const totalMinutes = dailyRecords.reduce((sum, r) => sum + (r.minutes || 0), 0);
     const totalHours = Math.floor(totalMinutes / 60);
     const remainingMinutes = totalMinutes % 60;
-    const workedDays = dailyRecords.length;
+    const workedDays = dailyRecords.filter(r => r.giris).length;
 
     // Bu ay onaylanmış mesai dakikaları
     const [overtimeAgg] = await db.select({
@@ -133,8 +148,8 @@ router.get('/api/me/puantaj', isAuthenticated, async (req: any, res: Response) =
       .where(and(
         eq(overtimeRequests.userId, userId),
         eq(overtimeRequests.status, 'approved'),
-        gte(overtimeRequests.overtimeDate, monthStart.toISOString().split('T')[0]),
-        lte(overtimeRequests.overtimeDate, monthEnd.toISOString().split('T')[0]),
+        gte(overtimeRequests.overtimeDate, monthStartStr),
+        lte(overtimeRequests.overtimeDate, monthEndStr),
       ));
 
     res.json({
@@ -149,8 +164,10 @@ router.get('/api/me/puantaj', isAuthenticated, async (req: any, res: Response) =
       },
       dailyRecords,
       activeSession: isActiveToday ? {
-        type: todayActiveBranch ? 'branch' : 'factory',
-        checkInTime: todayActiveBranch?.checkInTime || todayActiveFactory?.checkInTime,
+        type: todayFactory ? 'factory' : 'branch',
+        checkInTime: todayFactory?.checkInTime || (todayBranch?.giris
+          ? `${todayStr}T${todayBranch.giris}:00`
+          : null),
       } : null,
     });
   } catch (error: unknown) {
@@ -161,14 +178,12 @@ router.get('/api/me/puantaj', isAuthenticated, async (req: any, res: Response) =
 
 // ═══════════════════════════════════════════════════════════════════
 // 2) GET /api/me/leave-balance
-// Kullanıcının kendi izin bakiyesi (gerçek tablodan)
 // ═══════════════════════════════════════════════════════════════════
 router.get('/api/me/leave-balance', isAuthenticated, async (req: any, res: Response) => {
   try {
     const userId = req.user.id;
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
 
-    // leave_balances tablosundan kayıt al (Sprint 1'de oluşturuldu)
     const [balance] = await db.select()
       .from(leaveBalances)
       .where(and(
@@ -177,8 +192,6 @@ router.get('/api/me/leave-balance', isAuthenticated, async (req: any, res: Respo
       ));
 
     if (!balance) {
-      // Tablo yoksa veya bu yıl için kayıt yoksa varsayılan döndür
-      // (Sprint 1 leave_balances henüz seed edilmemiş olabilir)
       return res.json({
         userId,
         periodYear: year,
@@ -191,7 +204,6 @@ router.get('/api/me/leave-balance', isAuthenticated, async (req: any, res: Respo
       });
     }
 
-    // Bu yıl bekleyen izin talepleri
     const pendingLeaves = await db.select({
       id: leaveRequests.id,
       leaveType: leaveRequests.leaveType,
@@ -208,7 +220,6 @@ router.get('/api/me/leave-balance', isAuthenticated, async (req: any, res: Respo
         sql`EXTRACT(YEAR FROM ${leaveRequests.startDate}) = ${year}`,
       ));
 
-    // Geçmiş onaylanmış izinler
     const approvedLeaves = await db.select({
       id: leaveRequests.id,
       leaveType: leaveRequests.leaveType,
@@ -242,7 +253,6 @@ router.get('/api/me/leave-balance', isAuthenticated, async (req: any, res: Respo
 
 // ═══════════════════════════════════════════════════════════════════
 // 3) GET /api/me/overtime
-// Kullanıcının kendi mesai talepleri (geçmiş + bekleyen)
 // ═══════════════════════════════════════════════════════════════════
 router.get('/api/me/overtime', isAuthenticated, async (req: any, res: Response) => {
   try {

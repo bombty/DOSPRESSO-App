@@ -1,10 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════
 // Sprint 3 / TASK-#346 (5 May 2026): Mahmut Bey — Muhasebe/İK Kontrol Merkezi
 // ═══════════════════════════════════════════════════════════════════
-// Mahmut Bey'in tek ekranda görmesi gereken bilgiler:
-//   1. Günlük özet — 3 lokasyon (Işıklar+Fabrika+HQ) giriş durumu
-//   2. Bekleyen işlemler — mesai, izin, bordro hesaplama
-//   3. Anormallikler — devamsız personel, açık vardıyalar
+// pdksRecords schema: recordDate (DATE), recordTime (TIME), recordType ('giris'|'cikis')
+// checkInTime / checkOutTime / totalMinutes kolonları YOK.
 // ═══════════════════════════════════════════════════════════════════
 
 import { Router, Response } from 'express';
@@ -24,7 +22,6 @@ import { and, eq, gte, lte, isNull, isNotNull, sql, count, desc, inArray } from 
 
 const router = Router();
 
-// Mahmut Bey'in sorumluluk alanı: HQ + Fabrika + Işıklar (admin ve ceo da görür)
 const IK_DASHBOARD_ROLES = ['admin', 'ceo', 'muhasebe', 'muhasebe_ik', 'ik'];
 const MAHMUT_BRANCH_IDS = [5, 23, 24]; // Işıklar, HQ, Fabrika
 
@@ -34,7 +31,6 @@ function checkIkAccess(userRole: string | undefined): boolean {
 
 // ═══════════════════════════════════════════════════════════════════
 // 1) GET /api/ik/gunluk-ozet
-// Bugünkü 3 lokasyon (Işıklar+Fabrika+HQ) giriş özeti
 // ═══════════════════════════════════════════════════════════════════
 router.get('/api/ik/gunluk-ozet', isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -44,26 +40,21 @@ router.get('/api/ik/gunluk-ozet', isAuthenticated, async (req: any, res: Respons
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayStr = today.toISOString().split('T')[0]; // '2026-05-05'
 
-    // 3 lokasyon için paralel sorgular
     const [branchData, factoryData, hqData, totalUsers] = await Promise.all([
-      // Şube giriş-çıkışlar (Işıklar #5)
+      // Işıklar #5 — bugünkü kayıtlar (giris + cikis ayrı satır)
       db.select({
-        branchId: pdksRecords.branchId,
         userId: pdksRecords.userId,
-        checkInTime: pdksRecords.checkInTime,
-        checkOutTime: pdksRecords.checkOutTime,
+        recordType: pdksRecords.recordType,
       })
         .from(pdksRecords)
         .where(and(
-          gte(pdksRecords.checkInTime, today),
-          lte(pdksRecords.checkInTime, tomorrow),
-          inArray(pdksRecords.branchId, [5]) // Işıklar
+          eq(pdksRecords.recordDate, todayStr),
+          inArray(pdksRecords.branchId, [5])
         )),
 
-      // Fabrika vardıyaları (#24)
+      // Fabrika #24 — aktif vardıyalar
       db.select({
         userId: factoryShiftSessions.userId,
         checkInTime: factoryShiftSessions.checkInTime,
@@ -73,23 +64,20 @@ router.get('/api/ik/gunluk-ozet', isAuthenticated, async (req: any, res: Respons
         .from(factoryShiftSessions)
         .where(and(
           gte(factoryShiftSessions.checkInTime, today),
-          lte(factoryShiftSessions.checkInTime, tomorrow),
         )),
 
-      // HQ giriş-çıkışlar (#23)
+      // HQ #23 — bugünkü kayıtlar
       db.select({
         userId: pdksRecords.userId,
-        checkInTime: pdksRecords.checkInTime,
-        checkOutTime: pdksRecords.checkOutTime,
+        recordType: pdksRecords.recordType,
       })
         .from(pdksRecords)
         .where(and(
-          gte(pdksRecords.checkInTime, today),
-          lte(pdksRecords.checkInTime, tomorrow),
-          eq(pdksRecords.branchId, 23) // HQ
+          eq(pdksRecords.recordDate, todayStr),
+          eq(pdksRecords.branchId, 23)
         )),
 
-      // Toplam aktif personel sayısı (her lokasyon için)
+      // Toplam aktif personel sayısı
       db.select({
         branchId: users.branchId,
         total: count(),
@@ -102,16 +90,25 @@ router.get('/api/ik/gunluk-ozet', isAuthenticated, async (req: any, res: Respons
         .groupBy(users.branchId),
     ]);
 
-    // Lokasyon kartları için özet hesapla
+    // Işıklar: giris yapanlar, hâlâ içeride olanlar (giris var ama cikis yok)
+    const isikGirisSet = new Set(branchData.filter(r => r.recordType === 'giris').map(r => r.userId));
+    const isikCikisSet = new Set(branchData.filter(r => r.recordType === 'cikis').map(r => r.userId));
+    const isikCurrently = [...isikGirisSet].filter(u => !isikCikisSet.has(u)).length;
+
+    // HQ: aynı mantık
+    const hqGirisSet = new Set(hqData.filter(r => r.recordType === 'giris').map(r => r.userId));
+    const hqCikisSet = new Set(hqData.filter(r => r.recordType === 'cikis').map(r => r.userId));
+    const hqCurrently = [...hqGirisSet].filter(u => !hqCikisSet.has(u)).length;
+
     const locations = [
       {
         id: 5,
         name: 'Işıklar (HQ-Owned)',
         type: 'branch',
         totalEmployees: totalUsers.find(u => u.branchId === 5)?.total ?? 0,
-        checkedInToday: new Set(branchData.map(b => b.userId)).size,
-        currentlyWorking: branchData.filter(b => !b.checkOutTime).length,
-        notCheckedIn: 0, // hesaplanacak
+        checkedInToday: isikGirisSet.size,
+        currentlyWorking: isikCurrently,
+        notCheckedIn: 0,
       },
       {
         id: 24,
@@ -127,26 +124,26 @@ router.get('/api/ik/gunluk-ozet', isAuthenticated, async (req: any, res: Respons
         name: 'Ofis (HQ)',
         type: 'office',
         totalEmployees: totalUsers.find(u => u.branchId === 23)?.total ?? 0,
-        checkedInToday: new Set(hqData.map(h => h.userId)).size,
-        currentlyWorking: hqData.filter(h => !h.checkOutTime).length,
+        checkedInToday: hqGirisSet.size,
+        currentlyWorking: hqCurrently,
         notCheckedIn: 0,
       },
     ].map(loc => ({
       ...loc,
-      notCheckedIn: loc.totalEmployees - loc.checkedInToday,
-      attendanceRate: loc.totalEmployees > 0
-        ? Math.round((loc.checkedInToday / loc.totalEmployees) * 100)
+      notCheckedIn: (loc.totalEmployees as number) - loc.checkedInToday,
+      attendanceRate: (loc.totalEmployees as number) > 0
+        ? Math.round((loc.checkedInToday / (loc.totalEmployees as number)) * 100)
         : 0,
     }));
 
     res.json({
-      date: today.toISOString().split('T')[0],
+      date: todayStr,
       locations,
       summary: {
-        totalEmployees: locations.reduce((sum, l) => sum + l.totalEmployees, 0),
+        totalEmployees: locations.reduce((sum, l) => sum + (l.totalEmployees as number), 0),
         totalCheckedIn: locations.reduce((sum, l) => sum + l.checkedInToday, 0),
         totalCurrentlyWorking: locations.reduce((sum, l) => sum + l.currentlyWorking, 0),
-        totalNotCheckedIn: locations.reduce((sum, l) => sum + l.notCheckedIn, 0),
+        totalNotCheckedIn: locations.reduce((sum, l) => sum + (l.notCheckedIn as number), 0),
       },
     });
   } catch (error: unknown) {
@@ -157,7 +154,6 @@ router.get('/api/ik/gunluk-ozet', isAuthenticated, async (req: any, res: Respons
 
 // ═══════════════════════════════════════════════════════════════════
 // 2) GET /api/ik/bekleyen-islemler
-// Onay bekleyen mesai + izin + bordro hesaplaması
 // ═══════════════════════════════════════════════════════════════════
 router.get('/api/ik/bekleyen-islemler', isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -166,7 +162,6 @@ router.get('/api/ik/bekleyen-islemler', isAuthenticated, async (req: any, res: R
     }
 
     const [pendingOvertimes, pendingLeaves, draftPayrolls] = await Promise.all([
-      // Bekleyen mesai talepleri
       db.select({
         id: overtimeRequests.id,
         userId: overtimeRequests.userId,
@@ -187,7 +182,6 @@ router.get('/api/ik/bekleyen-islemler', isAuthenticated, async (req: any, res: R
         .orderBy(desc(overtimeRequests.createdAt))
         .limit(50),
 
-      // Bekleyen izin talepleri
       db.select({
         id: leaveRequests.id,
         userId: leaveRequests.userId,
@@ -206,7 +200,6 @@ router.get('/api/ik/bekleyen-islemler', isAuthenticated, async (req: any, res: R
         .orderBy(desc(leaveRequests.createdAt))
         .limit(50),
 
-      // Hesaplanmamış / draft puantajlar (bu ay)
       db.select({
         id: monthlyPayroll.id,
         userId: monthlyPayroll.userId,
@@ -246,7 +239,6 @@ router.get('/api/ik/bekleyen-islemler', isAuthenticated, async (req: any, res: R
 
 // ═══════════════════════════════════════════════════════════════════
 // 3) GET /api/ik/anormallikler
-// 3+ gün üst üste devamsız, açık vardıyalar, eksik puantajlar
 // ═══════════════════════════════════════════════════════════════════
 router.get('/api/ik/anormallikler', isAuthenticated, async (req: any, res: Response) => {
   try {
@@ -254,107 +246,111 @@ router.get('/api/ik/anormallikler', isAuthenticated, async (req: any, res: Respo
       return res.status(403).json({ message: 'Bu sayfaya erişim yetkiniz yok' });
     }
 
-    const ABSENCE_THRESHOLD_DAYS = 3; // 3+ gün devamsız uyarı
+    const ABSENCE_THRESHOLD_DAYS = 3;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const threeDaysAgo = new Date(today);
     threeDaysAgo.setDate(threeDaysAgo.getDate() - ABSENCE_THRESHOLD_DAYS);
 
-    const [openShiftsBranch, openShiftsFactory, missingPayrolls] = await Promise.all([
-      // Açık (check-out yok) şube vardıyaları (24+ saatten eski)
-      db.select({
-        id: pdksRecords.id,
-        userId: pdksRecords.userId,
-        userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
-        branchId: pdksRecords.branchId,
-        branchName: branches.name,
-        checkInTime: pdksRecords.checkInTime,
-        hoursOpen: sql<number>`EXTRACT(EPOCH FROM (NOW() - ${pdksRecords.checkInTime})) / 3600`,
-      })
-        .from(pdksRecords)
-        .leftJoin(users, eq(pdksRecords.userId, users.id))
-        .leftJoin(branches, eq(pdksRecords.branchId, branches.id))
-        .where(and(
-          isNull(pdksRecords.checkOutTime),
-          inArray(pdksRecords.branchId, [5, 23]), // Işıklar + HQ
-          lte(pdksRecords.checkInTime, threeDaysAgo), // 3+ gün açık
-        ))
-        .limit(50),
+    // Açık fabrika vardıyaları (24+ saat)
+    const openShiftsFactory = await db.select({
+      id: factoryShiftSessions.id,
+      userId: factoryShiftSessions.userId,
+      userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+      checkInTime: factoryShiftSessions.checkInTime,
+      status: factoryShiftSessions.status,
+      hoursOpen: sql<number>`EXTRACT(EPOCH FROM (NOW() - ${factoryShiftSessions.checkInTime})) / 3600`,
+    })
+      .from(factoryShiftSessions)
+      .leftJoin(users, eq(factoryShiftSessions.userId, users.id))
+      .where(and(
+        eq(factoryShiftSessions.status, 'active'),
+        lte(factoryShiftSessions.checkInTime, threeDaysAgo),
+      ))
+      .limit(50);
 
-      // Açık fabrika vardıyaları
-      db.select({
-        id: factoryShiftSessions.id,
-        userId: factoryShiftSessions.userId,
-        userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
-        checkInTime: factoryShiftSessions.checkInTime,
-        status: factoryShiftSessions.status,
-        hoursOpen: sql<number>`EXTRACT(EPOCH FROM (NOW() - ${factoryShiftSessions.checkInTime})) / 3600`,
-      })
-        .from(factoryShiftSessions)
-        .leftJoin(users, eq(factoryShiftSessions.userId, users.id))
-        .where(and(
-          eq(factoryShiftSessions.status, 'active'),
-          lte(factoryShiftSessions.checkInTime, threeDaysAgo),
-        ))
-        .limit(50),
+    // Bu ay puantajı hesaplanmamış personeller
+    const missingPayrolls = await db.select({
+      userId: users.id,
+      userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+      branchId: users.branchId,
+      role: users.role,
+    })
+      .from(users)
+      .leftJoin(monthlyPayroll, and(
+        eq(monthlyPayroll.userId, users.id),
+        eq(monthlyPayroll.year, today.getFullYear()),
+        eq(monthlyPayroll.month, today.getMonth() + 1),
+      ))
+      .where(and(
+        isNull(users.deletedAt),
+        isNull(monthlyPayroll.id),
+        inArray(users.branchId, MAHMUT_BRANCH_IDS),
+      ))
+      .limit(50);
 
-      // Bu ay puantajı hesaplanmamış personeller
-      db.select({
-        userId: users.id,
-        userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
-        branchId: users.branchId,
-        role: users.role,
-      })
-        .from(users)
-        .leftJoin(monthlyPayroll, and(
-          eq(monthlyPayroll.userId, users.id),
-          eq(monthlyPayroll.year, today.getFullYear()),
-          eq(monthlyPayroll.month, today.getMonth() + 1),
-        ))
-        .where(and(
-          isNull(users.deletedAt),
-          isNull(monthlyPayroll.id), // payroll kaydı yok
-          inArray(users.branchId, MAHMUT_BRANCH_IDS),
-        ))
-        .limit(50),
-    ]);
+    // Açık şube kayıtları: giris var ama cikis yok, 3+ gün önce (raw SQL — no Drizzle interpolation)
+    const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0];
+    const openShiftsBranchRaw = await db.execute(sql.raw(`
+      SELECT DISTINCT ON (p.user_id)
+        p.user_id AS "userId",
+        u.first_name || ' ' || u.last_name AS "userName",
+        p.branch_id AS "branchId",
+        b.name AS "branchName",
+        p.record_date AS "recordDate",
+        EXTRACT(DAY FROM NOW() - p.record_date::timestamp)::INTEGER AS "daysOpen"
+      FROM pdks_records p
+      LEFT JOIN users u ON u.id = p.user_id
+      LEFT JOIN branches b ON b.id = p.branch_id
+      WHERE p.record_type = 'giris'
+        AND p.branch_id IN (5, 23)
+        AND p.record_date <= '${threeDaysAgoStr}'
+        AND NOT EXISTS (
+          SELECT 1 FROM pdks_records p2
+          WHERE p2.user_id = p.user_id
+            AND p2.record_date = p.record_date
+            AND p2.record_type = 'cikis'
+        )
+      ORDER BY p.user_id, p.record_date DESC
+      LIMIT 50
+    `));
 
-    // 3+ gün üst üste devamsız hesaplaması (PDKS verilerinden)
-    const absentUsersQuery = await db.execute(sql`
+    // 3+ gün devamsız personeller (raw SQL — no Drizzle interpolation)
+    const absentUsersQuery = await db.execute(sql.raw(`
       WITH user_last_attendance AS (
-        SELECT DISTINCT ON (u.id)
+        SELECT
           u.id AS user_id,
           u.first_name || ' ' || u.last_name AS user_name,
           u.branch_id,
           GREATEST(
-            COALESCE(MAX(p.check_in_time), '1970-01-01'::timestamp),
+            COALESCE(MAX(p.record_date::timestamp), '1970-01-01'::timestamp),
             COALESCE(MAX(f.check_in_time), '1970-01-01'::timestamp)
           ) AS last_check_in
         FROM users u
         LEFT JOIN pdks_records p ON p.user_id = u.id
         LEFT JOIN factory_shift_sessions f ON f.user_id = u.id
         WHERE u.deleted_at IS NULL
-          AND u.branch_id = ANY(${MAHMUT_BRANCH_IDS})
+          AND u.branch_id IN (5, 23, 24)
         GROUP BY u.id, u.first_name, u.last_name, u.branch_id
       )
-      SELECT 
+      SELECT
         user_id,
         user_name,
         branch_id,
         last_check_in,
         EXTRACT(DAY FROM NOW() - last_check_in)::INTEGER AS days_absent
       FROM user_last_attendance
-      WHERE last_check_in < NOW() - INTERVAL '${sql.raw(String(ABSENCE_THRESHOLD_DAYS))} days'
+      WHERE last_check_in < NOW() - INTERVAL '3 days'
         AND last_check_in > '1970-01-01'::timestamp
       ORDER BY days_absent DESC
-      LIMIT 50;
-    `);
+      LIMIT 50
+    `));
 
     res.json({
       openShifts: {
-        branch: openShiftsBranch,
+        branch: openShiftsBranchRaw.rows,
         factory: openShiftsFactory,
-        total: openShiftsBranch.length + openShiftsFactory.length,
+        total: openShiftsBranchRaw.rows.length + openShiftsFactory.length,
       },
       absentUsers: {
         threshold: ABSENCE_THRESHOLD_DAYS,
@@ -368,7 +364,7 @@ router.get('/api/ik/anormallikler', isAuthenticated, async (req: any, res: Respo
       },
       summary: {
         totalAnomalies:
-          openShiftsBranch.length +
+          openShiftsBranchRaw.rows.length +
           openShiftsFactory.length +
           (absentUsersQuery.rows.length || 0) +
           missingPayrolls.length,
