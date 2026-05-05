@@ -1,0 +1,84 @@
+GO. Plan onaylandı. Sırasıyla çalıştır:
+
+═══════════════════════════════════════════════════════════
+ADIM 1: Migration #1 EXECUTE
+═══════════════════════════════════════════════════════════
+
+migrations/2026-05-05-girdi-yonetimi-tgk.sql çalıştır.
+
+Doğrulama (her birinin çıktısını bana yaz):
+- SELECT COUNT(*) FROM information_schema.columns WHERE table_name='raw_materials';
+  Beklenen: 35
+
+- SELECT COUNT(*) FROM information_schema.columns WHERE table_name='suppliers';
+  Beklenen: önceki + 7
+
+- SELECT table_name FROM information_schema.tables 
+  WHERE table_name IN ('supplier_quality_records','tgk_labels','turkomp_foods');
+  Beklenen: 3 satır
+
+- SELECT column_name FROM information_schema.columns 
+  WHERE table_name='raw_materials' 
+  AND column_name IN ('turkomp_food_id','nutrition_source','energy_kcal','allergen_present');
+  Beklenen: 4 satır
+
+═══════════════════════════════════════════════════════════
+ADIM 2: Migration #2 EXECUTE
+═══════════════════════════════════════════════════════════
+
+migrations/2026-05-05-girdi-data-import.sql çalıştır.
+
+Doğrulama:
+- SELECT COUNT(*) FROM raw_materials WHERE code LIKE 'HAM%';
+  Beklenen: 67
+
+- SELECT COUNT(*) FROM suppliers WHERE code LIKE 'TED-%';
+  Beklenen: 13 (5 mevcut + 8 yeni)
+
+- SELECT material_group, COUNT(*) FROM raw_materials 
+  WHERE code LIKE 'HAM%' GROUP BY material_group ORDER BY COUNT(*) DESC;
+  Beklenen: 8-12 grup, en kalabalık 'katkı maddesi' ~12
+
+- SELECT COUNT(*) FROM raw_materials WHERE allergen_present = TRUE;
+  Beklenen: 25-35
+
+- SELECT s.name, COUNT(rm.id) as urun
+  FROM suppliers s LEFT JOIN raw_materials rm ON rm.supplier_id = s.id
+  WHERE s.code LIKE 'TED-%' GROUP BY s.name ORDER BY urun DESC;
+  Beklenen: Aro=4, Puratos=4, Hekimoğlu=2, Pakmaya=2, Metro Chef=1, vs.
+
+═══════════════════════════════════════════════════════════
+ADIM 3: BUILD + RESTART
+═══════════════════════════════════════════════════════════
+
+- npx vite build (frontend)
+- npx esbuild server/index.ts --platform=node --bundle (backend)
+- Workflow restart
+
+Build hatası varsa DURDUR ve logu bana gönder.
+
+═══════════════════════════════════════════════════════════
+ADIM 4: SMOKE TEST (önce API, sonra frontend)
+═══════════════════════════════════════════════════════════
+
+Admin (admin / 133200) ile cookie al, sonra:
+
+API:
+1. GET /api/girdi/list → 67+ hammadde, ilk 3'ün adını yaz
+2. GET /api/girdi-stats/overview → JSON tam yapıştır
+3. GET /api/tedarikci-kalite/summary-all → totalSuppliers, ilk 3 isim
+4. GET /api/turkomp/cache/list → count: 0 olmalı
+5. POST /api/recipe-label/calculate-branch
+   Body: {"branchProductId": 1}
+   → matchedCount, unmatchedCount, nutrition var mı?
+6. GET /api/personnel/<herhangi-bir-user-id>/attendance-detail?startDate=2026-04-01&endDate=2026-04-30
+   → 200 dönüyor mu?
+
+Frontend (manuel browser):
+7. /girdi-yonetimi → 5 tab açılıyor mu? Liste'de 67 hammadde?
+   Tedarikçi Performans tab → 13 satır?
+8. /branch-recipes (bir ürün seç) → "Etiket Hesapla (TGK)" butonu var mı?
+9. /etiket-hesapla?productId=1&productType=branch_product 
+   → otomatik smart matching çalışıyor mu? PDF indir çalışıyor mu?
+
+Sonuçları raporla. Hata varsa screenshot/log.
