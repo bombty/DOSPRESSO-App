@@ -5,7 +5,45 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 
 # DOSPRESSO Architecture Map
 
-## 🆕 Son Değişiklik Özeti (5 May 2026 Gece — Sprint 8-16 + Hotfix)
+## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
+
+> **Yeni Claude için hızlı bağlam:** Bu skill 5 May'den 6 May'e Sprint 17 (İK Redesign) ile güncellendi. Branch: `claude/ik-redesign-2026-05-06`, 9 commit, 14 dosya, +2880/-220.
+
+**Sprint 17 — İK Redesign (6 May 2026):**
+- **payroll-engine dual-model salary resolution** (`server/lib/payroll-engine.ts`):
+  - 3-aşamalı fallback chain: position_salaries → users.netSalary → minimum_wage_gross (4857 SK m.39)
+  - Yeni alan: `salarySource: 'position_matrix' | 'individual_net_salary' | 'minimum_wage_fallback'`
+  - `originalSalary` + `legalNote` audit alanları (asgari ücret fallback log)
+- **payroll-bridge engine ile sync** (`server/services/payroll-bridge.ts`):
+  - UnifiedPayrollResult interface aynı alanlarla genişletildi
+  - calculateBranchUnifiedPayroll WHERE genişletildi: tüm aktif user (sadece şube rolleri değil)
+- **/ik-merkezi v2 Mahmut-first dashboard** (478 satır, eski 295 satır menü hub'ı yerine)
+- **5 yeni İK sayfası** (`client/src/pages/ik/`):
+  - `izin-talep.tsx` — 4 izin tipi, balance check, 365 cap
+  - `mesai-talep.tsx` — HH:MM, 270 saat yıllık limit
+  - `takim-takvimi.tsx` — vardiya+izin+mesai branch scope (KVKK)
+  - `bordro-onay.tsx` — 3 katmanlı onay (mudur→muhasebe→ceo)
+  - `onay-kuyrugu.tsx` — izin+mesai tek kuyruk, reject reason zorunlu
+- **3 yeni endpoint** (`server/routes/me-self-service.ts`):
+  - `GET /api/me/payroll/:year/:month`
+  - `GET /api/me/payroll/:year/:month/pdf` (Lara format)
+  - `GET /api/me/payroll-history`
+- **migrations/2026-05-06-position-salaries-lara-seed.sql** — Lara 5 pozisyon (Stajyer/BarBuddy/Barista/SupBuddy/Sup) seed
+
+**Yeni kararlar (DECIDED.md):**
+- **D-39:** 6. perspektif End User (Persona-Specific) — 5 perspektif review 6'ya çıkarıldı
+- **D-40:** Lara Stajyer Excel sadakati + sistem fallback (33.000 TL DB'de, 33.030 TL bordroya)
+- **D-41:** Hub-first sidebar (5 yeni sayfa sidebar'a girmez, /ik-merkezi tek dominant link)
+- **D-20 NOTU:** Feature Freeze pause (Aslan, 6 May)
+
+**Bonus fix:** `server/routes/hr.ts:2187` orphan `});` — origin/main'den miras kalan syntax hatası, esbuild build'i kırıyordu. PR mergedikten sonra main de düzelir.
+
+**Önceki (5 May 2026 Gece — Sprint 8-16 + Hotfix):**
+> Bu kısım önceki update'ten kaldı, yeni Claude için aşağıda ayrıntı var.
+
+---
+
+## 🆕 Önceki Değişiklik (5 May 2026 Gece — Sprint 8-16 + Hotfix)
 
 > **Yeni Claude için hızlı bağlam:** Bu skill 4 May'den 5 May'e Sprint 7→16 + 1 hotfix ile güncellendi.
 

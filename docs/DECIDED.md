@@ -359,6 +359,56 @@ Bekleyen işler banner (izin/mesai talepleri).
 
 ---
 
+### D-39: 6. Perspektif — End User (Persona-Specific) (6 May 2026)
+**Karar:** D-07'deki 5 perspektif review **6'ya çıkarıldı**. Yeni 6. perspektif:
+
+6. **End User (Persona-Specific)** — Sistemi gerçekten kullanacak kişinin gözünden:
+   - Hangi cihazda? (Mahmut bilgisayar, Berkan telefon)
+   - Hangi bağlam? (Mahmut ay sonu, Berkan mola arası)
+   - Hangi durum? (yeni öğreniyor mu, günlük rutin mi)
+   - Şu an Excel/WhatsApp/kağıt kullanan birine geçiş kolaylaştı mı?
+
+**Personas (DOSPRESSO):** Aslan (CEO), Mahmut (muhasebe), Berkan (Lara barista), Andre (Lara mudur), Yavuz (coach 19 şube), Eren (fabrika mudur), Sema (recete_gm).
+
+**Neden:** Mevcut 5 perspektif "uzman gözü" (kod/ops/QA/UX teorisi/hukuk). Eksik olan: **gerçek kullanıcının yaşadığı an**. Product Manager perspektifinden FARKLI — PM "tasarım stratejisi", End User "fiili deneyim".
+
+**Uygulama:** Her major commit/karar için 6 perspektif tablosu zorunlu. Schema/API minor değişikliklerinde mental check yeterli.
+
+---
+
+### D-40: Lara Stajyer 33.000 TL — Excel Sadakati + Sistem Fallback (6 May 2026)
+**Karar:** Lara duyurusu rakamları (24.11.2025) sistemde **AYNEN korunur**, asgari ücret kontrolü payroll-engine'de yapılır.
+
+**Detay:**
+- Lara duyurusu (24.11.2025): Stajyer 33.000 TL
+- 2026 brüt asgari ücret: 33.030 TL (RG 26.12.2025/33119)
+- Sorun: Stajyer 33.000 < asgari ücret (4857 SK m.39 ihlali)
+- **Çözüm:** position_salaries.totalSalary = 33.000 (Excel sadakati). payroll-engine bordro hesaplarken `MAX(positionSalary, minimum_wage_gross)` uygular. salarySource = 'minimum_wage_fallback' işaretlenir, audit trail tutulur.
+
+**Neden:** Aslan'ın talebi: "stajyer maaşı gönderdiğim Excel ve personel maaşları aynı kalmalı." Lara duyuru güncellenmedikçe veri sadakat korur, hukuki uyum sistemde sağlanır.
+
+---
+
+### D-41: Hub-First Sidebar (6 May 2026)
+**Karar:** İK redesign'da yeni 5 sayfa (`izin-talep`, `mesai-talep`, `takim-takvimi`, `bordro-onay`, `onay-kuyrugu`) **sidebar'a girmez**.
+
+**Sidebar:** Tek "İK & Bordro" linki (`/ik-merkezi`) dominant. Alt sayfalar hub'tan erişilir.
+
+**Neden:** Sistem-raporu (5 May) "akademi rota patlaması" sorununu tespit etti — 50+ akademi linki kullanıcıyı kafasını karıştırıyor. Aynı hatayı İK'da yapmamak için Mahmut-first hub-merkez felsefesi korunur.
+
+**Opsiyonel iyileştirme (Sprint H sonrası):** Sidebar'da "İK & Bordro" yanında dinamik badge (bekleyen aksiyon sayısı). Şu an scope dışı.
+
+---
+
+### D-20 NOTU: Feature Freeze Pause (6 May 2026)
+**Aslan kararı:** Feature Freeze (18 Apr - 15 Haz 2026) **pause edildi**. "Birkaç gün içinde her şeyi bitirelim, pilot tarihi ben belirleyeceğim."
+
+Pilot 12 May 2026 ertelendi → tarih TBD.
+
+D-20'nin politikası şu an aktif değil; yeni feature talepleri reddedilmeyecek. Pilot tarihi tekrar set edilince Feature Freeze tekrar aktif olabilir.
+
+---
+
 **Bu dosya değişmez kararları içerir.** Yeni karar eklenirse yeni satır olarak ekle, eski karar silinmez. Audit trail önemli.
 
-**Son güncelleme:** 5 May 2026, 23:55 (Sprint 16 + Hotfix #21 + Devir Teslim sonrası)
+**Son güncelleme:** 6 May 2026, 01:00 (İK Redesign 9 commit hazır + D-39/D-40/D-41 + D-20 pause notu)

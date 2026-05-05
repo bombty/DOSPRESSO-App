@@ -5,19 +5,65 @@ description: DOSPRESSO oturum sonu zorunlu protokolü (Çalışma Sistemi v2.0).
 
 # DOSPRESSO Çalışma Sistemi v2.0 — Oturum Sonu Protokolü
 
-## 🆕 Son Değişiklik Özeti (5 May 2026 Gece)
+## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
-> **Yeni Claude için:** V2.0 finalize edildi. Bu skill **/mnt/skills/user/'da yok**, Aslan açılış mesajında yolu vermeli: `.agents/skills/session-protocol/SKILL.md`
+> **Yeni Claude için:** v2.1 update. **6. perspektif eklendi (D-39, 6 May).**
 
-**5 Zorunlu Adım (her oturum sonu):**
+**5 Zorunlu Adım (her oturum sonu — değişmedi):**
 1. 4 skill dosyasını güncelle (architecture/debug/quality + bu)
 2. `docs/TODAY.md` güncelle
 3. `docs/PENDING.md` güncelle
 4. `docs/DECIDED.md` yeni karar varsa ekle
-5. `docs/DEVIR-TESLIM-X-MAYIS-2026.md` yeni dosya yaz
+5. `docs/DEVIR-TESLIM-X-MAYIS-2026.md` yeni dosya yaz (büyük oturumlar için)
 
-**Triangle Workflow:**
-- Aslan = Owner (karar, business, GitHub PR merge)
+**6-Perspektif Review** (her major commit/karar — D-39 ile genişledi):
+1. **Principal Engineer** — kod kalitesi, mimari
+2. **Franchise F&B Ops** — operasyonel etki
+3. **Senior QA** — test edilebilirlik
+4. **Product Manager** — UX, ürün stratejisi
+5. **Compliance** — İş Kanunu, gıda mevzuat, KDV/AGI, KVKK
+6. **End User (Persona-Specific)** ← YENİ (6 May 2026)
+
+### 6. Perspektif: End User (Persona-Specific) Detayı
+
+**Neden eklendi:** Mevcut 5 perspektif "uzman gözü" — kod/ops/QA/UX teorisi/hukuk. Eksik olan: **gerçek kullanıcının yaşadığı an**. Product Manager perspektifinden FARKLI: PM "tasarım stratejisi", End User "fiili deneyim".
+
+**DOSPRESSO Personas:**
+
+| Persona | Rol | Cihaz | Bağlam | Kritik Sorular |
+|---|---|---|---|---|
+| **Aslan** | CEO | Bilgisayar/iPad | Genel yönetim, IT uzmanı değil | "Komut net mi? Karar gerek mi?" |
+| **Mahmut** | muhasebe_ik | Bilgisayar | Ay sonu, Excel'den geçiş | "Yeni sistem 30 dk eğitimle öğrenilir mi?" |
+| **Berkan** | barista (Lara) | Cep telefonu | Mola arası 5 dk | "Form 4 tıkta mı bitiyor?" |
+| **Andre** | mudur (Lara) | Telefon+tablet | Sabah açılış | "Bugün kim izinde 1 ekranda mı?" |
+| **Yavuz** | coach (19 şube) | Bilgisayar | Haftalık review | "19 şube tek ekran sıkışık mı?" |
+| **Eren** | fabrika_mudur | Tablet | Üretim arası | "Personel+bordro 1 yerde mi?" |
+| **Sema** | gida_muhendisi/recete_gm | Bilgisayar | Reçete + besin gözden geçir | "Gizli formül role'u doğru mu?" |
+
+**Uygulama:**
+- Her major UI/UX değişikliği: 6 perspektif tablosu zorunlu
+- API/schema değişikliği: 5 perspektif yeterli, End User mental check
+- Bug fix tek satır: mental check yeterli
+
+---
+
+## ⚙️ Triangle Workflow (D-01)
+
+**Aslan = Owner** — karar, business, GitHub PR merge, **IT uzmanı değil**:
+- Şu an Excel/WhatsApp/kağıt kullanan birine geçişi kolaylaştırır
+- Komutlar net, kopyala-yapıştır şeklinde verilmeli
+- Çok seçenek = paraliz; net öneri ile karar kolaylaştır
+
+**Claude = Mimari + Kod + GitHub push** — **Replit'in yapamadığı her şey**:
+- Plan, tasarım, kod yazımı, GitHub branch + PR push
+- Replit Build mode'da git destructive komutları engellendiği için branch switch Aslan'da
+
+**Replit = DB + build + test + smoke test:**
+- Plan mode + isolated agent: DB write, schema, migration, env
+- Build mode: kod editi, doc, test, build verification
+- Aslan + Claude'un yaptığı işin doğrulaması
+
+---
 - Replit = Main agent (build, plan/build mode, isolated task agent)
 - Claude (ben) = Architecture, code, GitHub push, skill update
 

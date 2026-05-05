@@ -5,17 +5,32 @@ description: DOSPRESSO 36-point quality checklist with PASS/FAIL output. Covers 
 
 # DOSPRESSO Quality Gate — 35-Point Checklist
 
-## 🆕 Son Değişiklik Özeti (5 May 2026 Gece — Sprint 8-16 + Hotfix)
+## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
-> **Yeni Claude için:** QG 27 → 31 madde. 4 yeni check eklendi.
+> **Yeni Claude için:** QG 31 → 34 madde + 5 perspektif → 6 perspektif. 3 yeni check.
 
 **Yeni Quality Gate maddeleri:**
-- **QG-28** — Conflict marker count = 0 (push öncesi grep zorunlu)
-- **QG-29** — Sidebar mapping çift kontrol (App.tsx + module-menu-config.ts)
-- **QG-30** — Schema kolon assume yok (Replit DB sorgu zorunlu)
-- **QG-31** — Token kontrol (5 May incident — `grep ghp_|gho_|github_pat`)
+- **QG-32** — Vite + Esbuild İkili Build (vite OK yetmez, esbuild de geçmeli — §38)
+- **QG-33** — `npx tsc --noEmit` ayrı kontrol (build geçse bile TS hatası olabilir)
+- **QG-34** — Branch state tarama (oturum başı `git log --oneline origin/main..HEAD` zorunlu — §39)
 
-**5-Perspektif Review** (PE/F&B/QA/PM/Compliance) zorunlu kalır — major change'lerde.
+**6-Perspektif Review** (D-39 ile genişletildi):
+1. Principal Engineer
+2. Franchise F&B Ops
+3. Senior QA
+4. Product Manager
+5. Compliance
+6. **End User (Persona-Specific)** ← YENİ (D-39, 6 May)
+
+**End User personas:** Aslan (CEO), Mahmut (muhasebe), Berkan (Lara barista), Andre (Lara mudur), Yavuz (coach 19 şube), Eren (fabrika), Sema (recete_gm).
+
+**Her major change'te 6 perspektif tablosu zorunlu** (DECIDED.md D-07 + D-39). Schema/API minor değişikliklerde mental check yeterli.
+
+**Önceki:**
+- QG-28 — Conflict marker count = 0 (push öncesi grep)
+- QG-29 — Sidebar mapping çift kontrol
+- QG-30 — Schema kolon assume yok
+- QG-31 — Token kontrol
 
 ---
 
