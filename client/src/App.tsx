@@ -280,6 +280,8 @@ const PerformansYonetim = lazyWithRetry(() => import("@/pages/performans-yonetim
 const SkorParametreleri = lazyWithRetry(() => import("@/pages/admin/skor-parametreleri"));  // Sprint 8 (5 May 2026): Skor admin paneli
 const TedarikciKalite = lazyWithRetry(() => import("@/pages/tedarikci-kalite"));  // Sprint 9 #348 (5 May 2026): Tedarikçi QC
 const Turkomp = lazyWithRetry(() => import("@/pages/turkomp"));  // Sprint 9 #348 (5 May 2026): TÜRKOMP arama
+const BordroMerkezi = lazyWithRetry(() => import("@/pages/bordro-merkezi"));  // Sprint 11 (5 May 2026): Bordro Hub
+const ManagerRating = lazyWithRetry(() => import("@/pages/manager-rating"));  // Sprint 12 (5 May 2026): Yönetici puanlama
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
 // ── Orphan → Linked (Sistem Atölyesi kararı) ──
 const Announcements = lazyWithRetry(() => import("@/pages/announcements"));
@@ -713,6 +715,12 @@ function Router() {
           </Route>
           <Route path="/turkomp">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><Turkomp /></ProtectedRoute>}
+          </Route>
+          <Route path="/bordro-merkezi">
+            {() => <ProtectedRoute><BordroMerkezi /></ProtectedRoute>}
+          </Route>
+          <Route path="/yonetici-puanlama">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","manager","supervisor","fabrika_mudur"]}><ManagerRating /></ProtectedRoute>}
           </Route>
           <Route path="/puantajim" component={PersonelPuantajim} />
           <Route path="/iletisim-merkezi" component={IletisimMerkeziRedirect} />

@@ -39,7 +39,9 @@ const IK_MENU: ModuleMenuConfig = {
     { id: "onboarding", label: "Onboarding", path: "/personel-onboarding-akisi", icon: UserPlus, allowedRoles: ["admin","ceo","cgo","muhasebe_ik","mudur","supervisor","coach","trainer","fabrika_mudur"] },
     { id: "performans", label: "Performans", path: "/performansim", icon: TrendingUp },
     { id: "performans-yonetim", label: "Yönetici Performans", path: "/performans-yonetim", icon: TrendingUp, allowedRoles: ["admin","ceo","cgo","coach","trainer","muhasebe","muhasebe_ik","manager","supervisor"] },
+    { id: "yonetici-puanlama", label: "Yönetici Puanlama", path: "/yonetici-puanlama", icon: Star, allowedRoles: ["admin","ceo","cgo","manager","supervisor","fabrika_mudur"] },
     { id: "ik-raporlar", label: "İK Raporları", path: "/ik-raporlari", icon: BarChart2 },
+    { id: "bordro-merkezi", label: "Bordro Merkezi", path: "/bordro-merkezi", icon: Wallet, allowedRoles: ["admin","ceo","cgo","muhasebe","muhasebe_ik","manager","supervisor"] },
     { id: "sube-bordro", label: "Bordro Özeti", path: "/sube-bordro-ozet", icon: CreditCard },
   ],
 };
@@ -207,6 +209,8 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/sube-vardiya-takibi": IK_MENU,
   "/performans-yonetim": IK_MENU,
   "/admin/skor-parametreleri": IK_MENU,
+  "/bordro-merkezi": IK_MENU,
+  "/yonetici-puanlama": IK_MENU,
   "/ekipman": EKIPMAN_MENU,
   "/ariza": EKIPMAN_MENU,
   "/ariza-yeni": EKIPMAN_MENU,
