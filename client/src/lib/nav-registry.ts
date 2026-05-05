@@ -689,6 +689,22 @@ export const NAV_ITEMS: NavItem[] = [
     defaultDescTR: "Kendi puantaj, izin ve mesainiz",
     defaultDescEN: "Your attendance, leave & overtime",
   },
+  // Sprint 7 (5 May 2026): Girdi Yönetimi / TGK 2017/2284 Uyumu
+  {
+    id: "girdi-yonetimi",
+    route: "/girdi-yonetimi",
+    icon: Package,
+    group: "management",
+    order: 60,
+    labelKey: "nav.girdiYonetimi",
+    defaultLabelTR: "Girdi Yönetimi",
+    defaultLabelEN: "Raw Materials & Suppliers",
+    scopes: ["hq"],
+    color: "bg-blue-700",
+    descriptionKey: "nav.desc.girdiYonetimi",
+    defaultDescTR: "Hammadde, tedarikçi ve TGK etiket yönetimi",
+    defaultDescEN: "Raw materials, suppliers and TGK label management",
+  },
   {
     id: "search",
     route: "#search",

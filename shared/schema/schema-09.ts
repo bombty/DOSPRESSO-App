@@ -1112,6 +1112,17 @@ export const suppliers = pgTable("suppliers", {
   status: varchar("status", { length: 30 }).default("aktif").notNull(),
   notes: text("notes"),
   
+  // ═══════════════════════════════════════════════════════════════════
+  // Sprint 7 (5 May 2026) - Gıda Mevzuat Sertifikaları (TGK uyum)
+  // ═══════════════════════════════════════════════════════════════════
+  foodAuthorizationNumber: varchar("food_authorization_number", { length: 100 }),
+  authorizationExpiryDate: date("authorization_expiry_date"),
+  iso22000Certified: boolean("iso_22000_certified").default(false),
+  haccpCertified: boolean("haccp_certified").default(false),
+  halalCertified: boolean("halal_certified").default(false),
+  lastAuditDate: date("last_audit_date"),
+  auditScore: numeric("audit_score", { precision: 5, scale: 2 }),
+  
   createdById: varchar("created_by_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1119,6 +1130,7 @@ export const suppliers = pgTable("suppliers", {
   index("supplier_code_idx").on(table.code),
   index("supplier_name_idx").on(table.name),
   index("supplier_status_idx").on(table.status),
+  index("supplier_auth_idx").on(table.foodAuthorizationNumber),
 ]);
 
 export const insertSupplierSchema = createInsertSchema(suppliers).omit({
@@ -1324,3 +1336,128 @@ export const insertGoodsReceiptSchema = createInsertSchema(goodsReceipts).omit({
 
 export type InsertGoodsReceipt = z.infer<typeof insertGoodsReceiptSchema>;
 export type GoodsReceipt = typeof goodsReceipts.$inferSelect;
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 7 (5 May 2026) - Suppliers TGK Compliance Fields
+// suppliers tablosuna eklenecek alanlar (ALTER TABLE migration ile)
+// ═══════════════════════════════════════════════════════════════════
+// Not: suppliers pgTable definition yukarıda — yeni alanlar mevcut
+// alana eklenecek. Bu yorum migration referansıdır.
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 7 - Tedarikçi Kalite Kayıtları (Performans Takibi)
+// Mahmut Bey + Tülay (Kalite) için: her giriş partisinde QC kontrol
+// ═══════════════════════════════════════════════════════════════════
+export const supplierInspectionStatusEnum = ["kabul", "şartlı_kabul", "red"] as const;
+export type SupplierInspectionStatus = typeof supplierInspectionStatusEnum[number];
+
+export const supplierQualityRecords = pgTable("supplier_quality_records", {
+  id: serial("id").primaryKey(),
+  supplierId: integer("supplier_id").notNull().references(() => suppliers.id, { onDelete: "cascade" }),
+  rawMaterialId: integer("raw_material_id"), // raw_materials reference (cross-schema, FK migration'da)
+  
+  // Giriş kaydı
+  deliveryDate: date("delivery_date").notNull(),
+  invoiceNumber: varchar("invoice_number", { length: 100 }),
+  deliveredQuantity: numeric("delivered_quantity", { precision: 12, scale: 3 }),
+  unit: varchar("unit", { length: 20 }),
+  
+  // Kalite kontrol
+  inspectionStatus: varchar("inspection_status", { length: 30 }).notNull(), // 'kabul' | 'şartlı_kabul' | 'red'
+  nonConformity: text("non_conformity"),
+  rejectionReason: text("rejection_reason"),
+  correctiveAction: text("corrective_action"),
+  
+  // İlişkiler
+  inspectedById: varchar("inspected_by_id").references(() => users.id),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("sqr_supplier_idx").on(table.supplierId),
+  index("sqr_material_idx").on(table.rawMaterialId),
+  index("sqr_date_idx").on(table.deliveryDate),
+  index("sqr_status_idx").on(table.inspectionStatus),
+]);
+
+export const insertSupplierQualityRecordSchema = createInsertSchema(supplierQualityRecords).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSupplierQualityRecord = z.infer<typeof insertSupplierQualityRecordSchema>;
+export type SupplierQualityRecord = typeof supplierQualityRecords.$inferSelect;
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 7 - TGK 2017/2284 Etiketler (Etiket Hesaplama ve Onay)
+// ═══════════════════════════════════════════════════════════════════
+export const tgkLabelStatusEnum = ["taslak", "onay_bekliyor", "onaylandi", "reddedildi"] as const;
+export type TgkLabelStatus = typeof tgkLabelStatusEnum[number];
+
+export const tgkLabels = pgTable("tgk_labels", {
+  id: serial("id").primaryKey(),
+  
+  // Etiket sahibi
+  productId: integer("product_id"),
+  productType: varchar("product_type", { length: 20 }), // 'branch_product' | 'factory_product'
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  
+  // Etiket içeriği (TGK Madde 9 zorunlu alanlar)
+  ingredientsText: text("ingredients_text"),
+  allergenWarning: text("allergen_warning"),
+  crossContaminationWarning: text("cross_contamination_warning"),
+  
+  // Net miktar
+  netQuantityG: numeric("net_quantity_g", { precision: 10, scale: 2 }),
+  servingSizeG: numeric("serving_size_g", { precision: 10, scale: 2 }),
+  
+  // Besin değerleri (100g başına) — TGK Ek-13
+  energyKcal: numeric("energy_kcal", { precision: 10, scale: 2 }),
+  energyKj: numeric("energy_kj", { precision: 10, scale: 2 }),
+  fat: numeric("fat", { precision: 10, scale: 3 }),
+  saturatedFat: numeric("saturated_fat", { precision: 10, scale: 3 }),
+  carbohydrate: numeric("carbohydrate", { precision: 10, scale: 3 }),
+  sugar: numeric("sugar", { precision: 10, scale: 3 }),
+  protein: numeric("protein", { precision: 10, scale: 3 }),
+  salt: numeric("salt", { precision: 10, scale: 3 }),
+  fiber: numeric("fiber", { precision: 10, scale: 3 }),
+  
+  // Saklama ve son kullanma
+  storageConditions: text("storage_conditions"),
+  shelfLifeDays: integer("shelf_life_days"),
+  bestBeforeDate: date("best_before_date"),
+  
+  // Üretici bilgisi
+  manufacturerName: varchar("manufacturer_name", { length: 255 }).default("DOSPRESSO Coffee & Donut"),
+  manufacturerAddress: text("manufacturer_address").default("Antalya, Türkiye"),
+  
+  // Onay zinciri (gıda mühendisi onayı zorunlu — TGK Madde 18)
+  status: varchar("status", { length: 30 }).default("taslak"),
+  createdById: varchar("created_by_id").references(() => users.id),
+  approvedById: varchar("approved_by_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedReason: text("rejected_reason"),
+  
+  // Versiyon
+  version: integer("version").default(1),
+  isActive: boolean("is_active").default(true),
+  
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("tgk_labels_product_idx").on(table.productId, table.productType),
+  index("tgk_labels_status_idx").on(table.status),
+]);
+
+export const insertTgkLabelSchema = createInsertSchema(tgkLabels).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTgkLabel = z.infer<typeof insertTgkLabelSchema>;
+export type TgkLabel = typeof tgkLabels.$inferSelect;
