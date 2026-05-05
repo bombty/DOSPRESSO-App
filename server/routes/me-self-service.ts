@@ -290,4 +290,198 @@ router.get('/api/me/overtime', isAuthenticated, async (req: any, res: Response) 
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// İK Redesign Faz 3 (6 May 2026): Bireysel Bordro Self-Service
+// ═══════════════════════════════════════════════════════════════════
+// 3 yeni endpoint:
+//   GET /api/me/payroll/:year/:month       → bireysel bordro detay JSON
+//   GET /api/me/payroll/:year/:month/pdf   → bireysel bordro PDF (Lara format)
+//   GET /api/me/payroll-history?limit=12   → son 12 ay kişisel bordro özeti
+//
+// 5 PERSPEKTİF REVIEW (D-07):
+//   - Principal Eng:   Auth + scope + kendi userId zorunlu, başkasının veri YOK
+//   - Franchise F&B:   Personel kendi bordrosuna 1 tıkla erişir, Mahmut'a soru sormaz
+//   - Senior QA:       4 senaryo: 401 (auth yok), 404 (ay yok), 200 (başarı), PDF download
+//   - Product Manager: Geçmiş 12 ay grafiği için history endpoint, scroll-friendly
+//   - Compliance:      KVKK — sadece kendi userId, başka kullanıcıya ait veri filtre dışı
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/me/payroll/:year/:month
+ * Authenticated kullanıcının belirli ay bordrosu.
+ * 200: bordro JSON | 404: o ay bordro yok | 401: auth yok
+ */
+router.get('/api/me/payroll/:year/:month', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const year = Number.parseInt(String(req.params.year), 10);
+    const month = Number.parseInt(String(req.params.month), 10);
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+      return res.status(400).json({ message: 'Geçersiz yıl veya ay' });
+    }
+
+    const result = await db.select()
+      .from(monthlyPayroll)
+      .where(and(
+        eq(monthlyPayroll.userId, userId),
+        eq(monthlyPayroll.year, year),
+        eq(monthlyPayroll.month, month),
+      ))
+      .limit(1);
+
+    if (!result[0]) {
+      return res.status(404).json({
+        message: `${year}/${month} ayı için bordro henüz hesaplanmadı`,
+        year,
+        month,
+        userId,
+      });
+    }
+
+    res.json(result[0]);
+  } catch (error: unknown) {
+    console.error('/api/me/payroll/:year/:month error:', error);
+    res.status(500).json({ message: 'Bordro alınamadı' });
+  }
+});
+
+/**
+ * GET /api/me/payroll/:year/:month/pdf
+ * Authenticated kullanıcının belirli ay bordro PDF'i.
+ * Lara şubesi için Excel formatına yakın layout (mevcut generateIndividualPayslipPDF).
+ */
+router.get('/api/me/payroll/:year/:month/pdf', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const year = Number.parseInt(String(req.params.year), 10);
+    const month = Number.parseInt(String(req.params.month), 10);
+
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+      return res.status(400).json({ message: 'Geçersiz yıl veya ay' });
+    }
+
+    // Bordro veriyi çek
+    const payroll = await db.select()
+      .from(monthlyPayroll)
+      .where(and(
+        eq(monthlyPayroll.userId, userId),
+        eq(monthlyPayroll.year, year),
+        eq(monthlyPayroll.month, month),
+      ))
+      .limit(1);
+
+    if (!payroll[0]) {
+      return res.status(404).json({
+        message: `${year}/${month} ayı için bordro yok — PDF üretilemiyor`,
+      });
+    }
+
+    // Kullanıcı + şube bilgisi (PDF üzerinde gösterilecek)
+    const { users, branches } = await import('@shared/schema');
+    const userInfo = await db.select({
+      firstName: users.firstName,
+      lastName: users.lastName,
+      role: users.role,
+      branchName: branches.name,
+    })
+      .from(users)
+      .leftJoin(branches, eq(users.branchId, branches.id))
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!userInfo[0]) {
+      return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+    }
+
+    const p = payroll[0];
+    const u = userInfo[0];
+
+    // generateIndividualPayslipPDF formatına dönüştür
+    const pdfGen = await import('../utils/pdf-generator');
+    const payslipData: pdfGen.PayslipData = {
+      firstName: u.firstName || '',
+      lastName: u.lastName || '',
+      position: p.positionCode || u.role || '',
+      branch: u.branchName || '',
+      month: p.month,
+      year: p.year,
+      baseSalary: p.baseSalary,
+      overtimePay: p.overtimePay,
+      offDayPay: 0, // legacy alan
+      holidayPay: p.holidayPay,
+      totalBonuses: p.bonus + p.mealAllowance,
+      grossTotal: p.grossTotal || p.totalSalary,
+      deficitDeduction: p.absenceDeduction + p.bonusDeduction,
+      sgkEmployee: p.sgkEmployee || 0,
+      unemploymentEmployee: p.unemploymentEmployee || 0,
+      incomeTax: p.incomeTax || 0,
+      stampTax: p.stampTax || 0,
+      agi: p.agi || 0,
+      totalDeductions: p.totalDeductions || 0,
+      netSalary: p.netPay,
+      sgkEmployer: p.sgkEmployer || 0,
+      unemploymentEmployer: p.unemploymentEmployer || 0,
+      totalEmployerCost: p.totalEmployerCost || p.netPay,
+    };
+
+    const pdfBuffer = await pdfGen.generateIndividualPayslipPDF(payslipData, p.month, p.year);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="bordro-${u.firstName}-${u.lastName}-${year}-${String(month).padStart(2, '0')}.pdf"`,
+    );
+    res.send(pdfBuffer);
+  } catch (error: unknown) {
+    console.error('/api/me/payroll/:year/:month/pdf error:', error);
+    res.status(500).json({ message: 'Bordro PDF üretilemedi' });
+  }
+});
+
+/**
+ * GET /api/me/payroll-history?limit=12
+ * Authenticated kullanıcının son N ay kişisel bordro özetleri (grafik için).
+ */
+router.get('/api/me/payroll-history', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const userId = req.user.id;
+    const limit = Math.min(Number.parseInt(String(req.query.limit ?? '12'), 10) || 12, 24);
+
+    const history = await db.select({
+      year: monthlyPayroll.year,
+      month: monthlyPayroll.month,
+      totalSalary: monthlyPayroll.totalSalary,
+      grossTotal: monthlyPayroll.grossTotal,
+      netPay: monthlyPayroll.netPay,
+      workedDays: monthlyPayroll.workedDays,
+      absentDays: monthlyPayroll.absentDays,
+      overtimeMinutes: monthlyPayroll.overtimeMinutes,
+      status: monthlyPayroll.status,
+      calculatedAt: monthlyPayroll.calculatedAt,
+    })
+      .from(monthlyPayroll)
+      .where(eq(monthlyPayroll.userId, userId))
+      .orderBy(desc(monthlyPayroll.year), desc(monthlyPayroll.month))
+      .limit(limit);
+
+    // Özet metrikleri
+    const totalNetSum = history.reduce((sum, h) => sum + (h.netPay || 0), 0);
+    const avgNet = history.length > 0 ? Math.round(totalNetSum / history.length) : 0;
+    const lastMonth = history[0] || null;
+
+    res.json({
+      list: history,
+      summary: {
+        count: history.length,
+        avgNet,
+        lastMonth,
+      },
+    });
+  } catch (error: unknown) {
+    console.error('/api/me/payroll-history error:', error);
+    res.status(500).json({ message: 'Bordro geçmişi alınamadı' });
+  }
+});
+
 export default router;
