@@ -6,15 +6,17 @@
 
 ## 🚨 BU GECE/SABAH (Pilot Bloker)
 
-### P-1: Hotfix PR Aç + Mergele 🔴 ASLAN
+### P-1: Devir Teslim PR Aç + Mergele 🔴 ASLAN
 **Süre:** 3 dk  
 **Sahibi:** Aslan  
-**Deadline:** ASAP (origin'de marker var, esbuild crash riski)
+**Deadline:** ASAP (yeni Claude session öncesi)
 
 **Adımlar:**
-1. https://github.com/bombty/DOSPRESSO-App/pull/new/claude/hotfix-merge-conflict-markers-2026-05-05
-2. Title: `🚨 hotfix: resolve merge conflict markers`
-3. "Create pull request" → "Merge pull request" → "Confirm merge"
+1. https://github.com/bombty/DOSPRESSO-App/pull/new/claude/devir-teslim-2026-05-05-temiz
+2. Title: `docs+skills: Devir teslim 5 May 2026 + V2 finalize`
+3. "Create pull request" → "Squash and merge" → "Confirm"
+
+**Not:** Hotfix #21 ZATEN MERGELENDİ (bu ayrı bir PR'dı, tamamlandı).
 
 ---
 
@@ -182,23 +184,25 @@ WHERE year = 2026 AND is_active = true;
 
 ```
 🚨 ŞIMDIDI:
-  P-1 (Aslan: hotfix PR)
-  P-2 (Replit: git pull)
-  P-3 (Replit: Sprint 8 EXECUTE)
+  P-1 (Aslan: devir teslim PR #22 mergele)
+  P-2 (Replit: git pull origin main - hotfix #21 + Sprint 8-16 dahil)
+  P-3 (Replit: Sprint 8 EXECUTE - 2 migration)
+  P-4 (Aslan: token kontrol - revoke edildi mi?)
 
 🟡 BU HAFTA:
-  P-4 (Mahmut: payroll doğrulama)
-  P-5 (Aslan: pilot lokasyon hazırlık)
+  P-5 (Mahmut: payroll_parameters 2026 doğrulama)
+  P-6 (Aslan: pilot lokasyon hazırlık)
+  P-7 (Pilot dry-run 10 May)
 
 🟢 PILOT SONRASI:
-  P-6 (Akademi seed)
-  P-7 (Stok modülü karar)
-  P-8 (monthly_payroll deprecation)
-  P-9 (Branch protection)
-  P-10 (APM kurulum)
+  P-8 (Akademi 11 boş tablo seed)
+  P-9 (Stok modülü pilot enable kararı)
+  P-10 (monthly_payroll deprecation)
+  P-11 (Branch protection rule)
+  P-12 (APM kurulum + pg_stat_statements)
 ```
 
 ---
 
-**Son güncelleme:** 5 May 2026, 23:30  
+**Son güncelleme:** 6 May 2026, 00:30 (Hotfix #21 mergelendi + Devir teslim PR #22 açık)  
 **Sonraki güncelleme:** Sprint 8 EXECUTE bittikten sonra

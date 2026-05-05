@@ -27,16 +27,21 @@
 | Sprint 14 | /mali-rapor-giris | #20 |
 | Sprint 15 | Skor admin Yeni Kriter form (8 alan) | #20 |
 | Sprint 16 | payroll_parameters seed + monthly_payroll DECISION + scheduler spam fix | #20 |
-| Hotfix | Merge conflict marker temizliği (3 dosya, 30→0) | ⏳ Aslan PR aç |
+| Hotfix | Merge conflict marker temizliği (3 dosya, 30→0) | ✅ PR #21 mergelendi |
 
 ---
 
-## 🔄 ŞU AN AKTİF DURUM (5 May 23:30)
+## 🔄 ŞU AN AKTİF DURUM (6 May 00:30)
 
 ### Origin/Main
-- HEAD: `00204b5` (PR #20 mergelendi)
-- ⚠️ 30 conflict marker var (3 dosyada) — hotfix mergelenmedi
-- Hotfix branch: `claude/hotfix-merge-conflict-markers-2026-05-05` ✅ Temiz
+- HEAD: `6e82044` (Hotfix #21 mergelendi - PR #21 sonrası)
+- ✅ Marker count: 3 dosyada 0/0/0 (temiz)
+- Hotfix #21 mergelendi ✅
+
+### Devir Teslim
+- Branch: `claude/devir-teslim-2026-05-05-temiz` ✅ Push'ta
+- 3 commit: 901980c + 972d42a + fd7e8bb
+- PR #22 (açık) - Aslan mergeleyecek
 
 ### Replit
 - Plan mode'da
@@ -44,8 +49,12 @@
 - Lokal'de hotfix uygulandı, beyaz ekran düzeldi
 - Sprint 8 EXECUTE bekliyor (isolated agent)
 
-### Aslan'ın Tek İşi
-PR aç + mergele: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/hotfix-merge-conflict-markers-2026-05-05
+### Token Durumu
+- Eski token GitHub Push Protection algıladı (5 May incident)
+- Muhtemelen revoke edildi → yarın test gerekir
+
+### Aslan'ın Tek İşi (Şu An)
+PR aç + mergele: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/devir-teslim-2026-05-05-temiz
 
 ---
 
@@ -70,10 +79,11 @@ PR aç + mergele: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/hotfix
 | Backend kod | ✅ Hazır |
 | Frontend sayfalar | ✅ Hazır |
 | DB migration'lar | ⏳ EXECUTE bekliyor |
-| Marker temizliği | ⏳ Hotfix PR bekliyor |
+| Marker temizliği | ✅ Hotfix PR #21 mergelendi |
 | Bordro parametreleri | ⏳ Mahmut doğrulama |
+| Devir teslim | ⏳ PR #22 mergelenecek |
 
-**Bloker:** Hotfix + Sprint 8 EXECUTE. Mahmut doğrulaması paralel yapılabilir.
+**Bloker:** Sprint 8 EXECUTE. Mahmut doğrulaması paralel yapılabilir.
 
 ---
 
@@ -86,5 +96,5 @@ PR aç + mergele: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/hotfix
 
 ---
 
-**Son güncelleme:** 5 May 2026, 23:30  
-**Sonraki güncelleme:** Hotfix mergelendikten sonra
+**Son güncelleme:** 6 May 2026, 00:30 (Hotfix #21 mergelendi + Devir teslim PR #22 açık)  
+**Sonraki güncelleme:** Sprint 8 EXECUTE bittikten sonra

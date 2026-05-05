@@ -476,4 +476,62 @@ shared/schema/
 
 ---
 
-**Hazır.** Yeni oturum bu dosyayı okuyup Aslan'a "kaldığımız yerden devam, hotfix mergelendi mi?" sorusu ile başlayabilir. ✨
+## 🆕 POST-DEVIR TESLİM UPDATE (5 May 23:30 → 6 May 00:30)
+
+Devir teslim yazıldıktan sonraki saatlerde olanlar:
+
+### Hotfix #21 mergelendi ✅
+- Aslan GitHub UI'dan PR #21 mergeledi
+- main HEAD = 6e82044 (Hotfix merge)
+- 3 dosya 764671383 baseline'dan temiz versiyona dönüştürüldü
+- Esbuild parse hatası gitti, app çalışıyor
+
+### Devir Teslim PR #22 (açık)
+- Branch: `claude/devir-teslim-2026-05-05-temiz`
+- 3 commit: 901980c (devir teslim ana) + 972d42a (DECIDED+QG) + fd7e8bb (5 skill özet kutusu)
+- ~1700 satır docs+skills update
+- Aslan mergelemesi gerek
+
+### Token Sızdırma İncident
+- DECIDED.md:43'te git push token (ghp_0qPH...) yanlışlıkla yazılmıştı
+- GitHub Push Protection algıladı, ilk push reddedildi
+- sed ile temizlendi, yeni temiz branch + tek commit
+- ⚠️ Token muhtemelen revoke edildi → yarın test gerekir
+
+### Skill Dosyalarına "🆕 Son Değişiklik Özeti" eklendi
+- 5 skill dosyasının başına özet kutu (~119 satır)
+- Yeni Claude bir bakışta neyin değiştiğini görür
+- /mnt/skills/user/'da 3 skill, .agents/skills/'de 5+ skill - yeni Claude için yol mesajda verildi
+
+### Aslan'ın Audit Soruları (5 May gece sonu)
+- "Devir teslim 100% doğru mu?" → DECIDED.md D-31-D-38 + QG-31 eksikti, eklendi
+- "Yeni oturum sprint bilgisi alır mı?" → 5 perspektif audit yapıldı, 6 atlama tespit edildi (skill yolları, migration listesi, day-1 dosyaları, smoke test acceptance, pilot 7 gün takvim, token durum)
+- "MD skill'ler güncel mi?" → 5/5 skill güncel, başlara özet kutu eklendi
+- "MD dosyalar 100% güncel mi?" → BU UPDATE bölümü onun cevabı
+
+---
+
+## 🎯 YENI CLAUDE BU DOSYAYI OKUYUNCA NE BİLECEK?
+
+**Sprint 8-16 + Hotfix tamamı hakkında bilgi:**
+- 14+ commit, ~5000 satır kod, 19 yeni dosya
+- 12 yeni sayfa + 22 yeni endpoint + 1 yeni schema + 2 migration
+- Hotfix #21 mergelendi
+- Devir teslim PR #22 açık (mergelenmesi gerek)
+
+**Bekleyen (kritik):**
+- Sprint 8 EXECUTE (Replit Plan mode + isolated agent + 2 migration)
+- Mahmut payroll_parameters 2026 doğrulama
+- Token revoke kontrolü
+- Devir teslim PR #22 mergele
+
+**Pilot 12 May (T-7 gün):**
+- 4 lokasyon: 5 (Işıklar) + 8 (Lara) + 23 (HQ) + 24 (Fabrika)
+- Dry-run: 10 May
+- Go-live: 12 May Pazartesi 09:00
+
+---
+
+**Hazır.** Yeni oturum bu dosyayı okuyup Aslan'a "kaldığımız yerden devam, Sprint 8 EXECUTE bitmiş mi?" sorusu ile başlayabilir. ✨
+
+**Son güncelleme:** 6 May 2026, 00:30 (Hotfix mergelendi + Devir teslim push'ta)
