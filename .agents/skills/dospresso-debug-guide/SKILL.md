@@ -1,9 +1,9 @@
 ---
 name: dospresso-debug-guide
-description: DOSPRESSO-specific debugging procedures for common issues. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, TypeScript req.user pattern, kiosk auth failures, SLA business hours issues, delegation system issues, and Drizzle schema vs DB column mismatches. Use when investigating any bug or unexpected behavior.
+description: DOSPRESSO-specific debugging procedures for 39 documented bug patterns. Covers 401/403 auth errors, stale TanStack cache, empty results, FK constraint errors, Radix UI crashes, HTTP 423 data locks, SLA timezone issues, TypeScript req.user pattern, kiosk auth failures, SLA business hours issues, delegation system issues, Drizzle schema vs DB column mismatches, conflict marker push (5 May incident), scheduler bildirim spam (Sprint 16), payroll_parameters boş (Sprint 16), build mode DB write block, sidebar new page invisible, orphan `});` esbuild fail (§37), vite+esbuild build farkı (§38), compaction branch drift (§39). Use when investigating any bug or unexpected behavior.
 ---
 
-# DOSPRESSO Debug Checklist
+# DOSPRESSO Debug Checklist (39 Documented Patterns)
 
 ## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
