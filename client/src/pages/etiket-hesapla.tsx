@@ -127,13 +127,6 @@ export default function EtiketHesaplaPage() {
   });
 
   const handleDownloadPDF = () => {
-<<<<<<< HEAD
-    if (!calcResult) {
-      toast({ title: 'Önce hesaplama yapın', variant: 'destructive' });
-      return;
-    }
-    const n = calcResult.nutrition;
-=======
     if (!calcResult || calcResult.matchedCount === 0) {
       toast({ title: 'Önce hesaplama yapın', variant: 'destructive' });
       return;
@@ -142,7 +135,6 @@ export default function EtiketHesaplaPage() {
     // Nutrition null olsa bile PDF üret (alerjen + ingredient listesi yine kullanılabilir)
     const hasNutrition = !!calcResult.nutrition;
     
->>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
     downloadTGKLabel({
       productName: calcResult.productName || calcResult.recipeName,
       ingredientsText: calcResult.ingredientsText,
@@ -152,21 +144,6 @@ export default function EtiketHesaplaPage() {
       storageConditions: labelData.storageConditions,
       shelfLifeDays: labelData.shelfLifeDays,
       countryOfOrigin: labelData.countryOfOrigin,
-<<<<<<< HEAD
-      energyKcal: n?.energyKcal ?? 0,
-      energyKj: n?.energyKj ?? 0,
-      fat: n?.fat ?? 0,
-      saturatedFat: n?.saturatedFat ?? 0,
-      carbohydrate: n?.carbohydrate ?? 0,
-      sugar: n?.sugar ?? 0,
-      protein: n?.protein ?? 0,
-      salt: n?.salt ?? 0,
-      fiber: n?.fiber ?? 0,
-      version: 1,
-    });
-    const warn = !n ? ' (besin değeri eksik — hammadde veritabanı güncellenmeli)' : '';
-    toast({ title: 'PDF indirildi', description: `TGK 2017/2284 uyumlu etiket${warn}` });
-=======
       energyKcal: hasNutrition ? calcResult.nutrition.energyKcal : undefined,
       energyKj: hasNutrition ? calcResult.nutrition.energyKj : undefined,
       fat: hasNutrition ? calcResult.nutrition.fat : undefined,
@@ -186,7 +163,6 @@ export default function EtiketHesaplaPage() {
         : 'PDF indirildi (besin değeri eksik — hammadde veritabanı güncellenmeli)',
       variant: hasNutrition ? 'default' : 'destructive',
     });
->>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
   };
 
   if (!productId) {
@@ -353,25 +329,6 @@ export default function EtiketHesaplaPage() {
           )}
 
           {/* Hesaplanan Besin Değerleri */}
-<<<<<<< HEAD
-          <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-blue-600" />
-                Hesaplanan Besin Değerleri (100g başına)
-              </CardTitle>
-              <CardDescription className="text-xs">
-                TGK Ek-13 uyumlu format
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!calcResult.nutrition ? (
-                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded p-3">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>Besin değeri hesaplanamadı — eşleşen hammaddeler için enerji verisi yok. PDF yine de indirilebilir (değerler 0 gösterilir).</span>
-                </div>
-              ) : (
-=======
           {calcResult.nutrition ? (
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200">
               <CardHeader>
@@ -384,7 +341,6 @@ export default function EtiketHesaplaPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
->>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   <div className="p-2 bg-white dark:bg-muted rounded">
                     <div className="text-muted-foreground">Enerji</div>
@@ -414,11 +370,6 @@ export default function EtiketHesaplaPage() {
                     <div className="font-bold text-base">{calcResult.nutrition.fiber} g</div>
                   </div>
                 </div>
-<<<<<<< HEAD
-              )}
-            </CardContent>
-          </Card>
-=======
               </CardContent>
             </Card>
           ) : (
@@ -438,7 +389,6 @@ export default function EtiketHesaplaPage() {
               </CardContent>
             </Card>
           )}
->>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
 
           {/* Alerjen + Çapraz Bulaşma */}
           {(calcResult.allergenWarning || calcResult.crossContaminationWarning) && (
@@ -461,24 +411,6 @@ export default function EtiketHesaplaPage() {
             </Card>
           )}
 
-<<<<<<< HEAD
-          {/* Etiket meta bilgisi */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Etiket Bilgileri</CardTitle>
-              <CardDescription className="text-xs">PDF için ek bilgiler</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div>
-                  <Label className="text-xs">Net Miktar (g)</Label>
-                  <Input 
-                    type="number" 
-                    value={labelData.netQuantityG}
-                    onChange={(e) => setLabelData({...labelData, netQuantityG: Number(e.target.value)})}
-                    data-testid="input-net-quantity"
-                  />
-=======
           {/* Etiket meta bilgisi — matchedCount > 0 ise göster (PDF için gerekli) */}
           {calcResult.matchedCount > 0 && (
             <Card>
@@ -515,55 +447,11 @@ export default function EtiketHesaplaPage() {
                       data-testid="input-storage"
                     />
                   </div>
->>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
                 </div>
-                <div>
-                  <Label className="text-xs">Raf Ömrü (gün)</Label>
-                  <Input 
-                    type="number" 
-                    value={labelData.shelfLifeDays}
-                    onChange={(e) => setLabelData({...labelData, shelfLifeDays: Number(e.target.value)})}
-                    data-testid="input-shelf-life"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label className="text-xs">Saklama Koşulları</Label>
-                  <Input 
-                    value={labelData.storageConditions}
-                    onChange={(e) => setLabelData({...labelData, storageConditions: e.target.value})}
-                    placeholder="örn: Soğuk zincirde 4°C altında saklayınız"
-                    data-testid="input-storage"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-<<<<<<< HEAD
-          {/* Aksiyonlar */}
-          <Card className="border-blue-300">
-            <CardContent className="p-4 flex flex-wrap gap-2 justify-end">
-              <Button 
-                variant="outline" 
-                onClick={handleDownloadPDF}
-                data-testid="button-download-pdf"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                PDF İndir
-              </Button>
-              <Button 
-                onClick={() => saveMutation.mutate()}
-                disabled={saveMutation.isPending || !calcResult.nutrition}
-                data-testid="button-save-label"
-                title={!calcResult.nutrition ? 'Besin değeri olmadan kayıt yapılamaz' : undefined}
-              >
-                {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Etiketi Kaydet
-                {!canApprove && <span className="text-xs ml-1">(taslak)</span>}
-              </Button>
-            </CardContent>
-          </Card>
-=======
           {/* Aksiyonlar — PDF her zaman, Save sadece nutrition varsa (Sprint 7 hotfix) */}
           {calcResult.matchedCount > 0 && (
             <Card className="border-blue-300">
@@ -591,7 +479,6 @@ export default function EtiketHesaplaPage() {
               </CardContent>
             </Card>
           )}
->>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
         </>
       )}
     </div>
