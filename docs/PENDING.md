@@ -1,27 +1,60 @@
 # 📋 DOSPRESSO — PENDING.md
 
-**Son güncelleme:** 5 May 2026 Salı 18:30 (Aslan + Claude — Sprint 7 v3 + frontend tamamlandı)
+**Son güncelleme:** 5 May 2026 Salı 19:30 (Sprint 7 KAPATILDI ✅)
 **Format:** TASK-XXX (iş) / DECISION-XXX (Aslan kararı)
 **Bağlam:** Pilot 12 May 09:00 — **7 gün uzakta**.
 
 ---
 
-## 🚨 BU AKŞAM (5 May, 18:30 ŞİMDİ)
+## ✅ BU AKŞAM TAMAMLANDI (5 May 18:30→19:30)
 
-**TASK-S7-MERGE — 2 PR aç + merge** (Aslan, 6 dk)
-- Sprint 6 Bölüm 3+4 PR: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-6-bolum-3-pdks-detail-2026-05-05
-- Sprint 7 (v1+v2+v3+frontend) PR: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-7-girdi-yonetimi-tgk-2026-05-05
+- ✅ 5 PR merged (#11-15)
+- ✅ Sprint 7 migration EXECUTE (raw_materials 17→35 kolon, 67 hammadde, 13 tedarikçi, 3 yeni tablo)
+- ✅ Build temiz, workflow ayakta
+- ✅ Smoke test 6/6 yeşil (5 May 19:15 Replit Agent raporu)
+- ✅ Skill files updates dosyası tazelendi (docs/SKILL-UPDATES-5-MAYIS.md, 246 satır)
 
-**TASK-S7-MIGRATION — Replit DRY-RUN + EXECUTE** (Aslan→Replit, 30 dk)
-- 2 migration: 2026-05-05-girdi-yonetimi-tgk.sql + 2026-05-05-girdi-data-import.sql
-- DRY-RUN sonra GO bekle
+---
 
-**TASK-S7-SMOKE — Smoke test** (Aslan→Replit, 15 dk)
-- /api/girdi/list → 67+ hammadde
-- /api/girdi-stats/overview → toplam, alerjen
-- /api/turkomp/cache/list → boş (henüz veri yok)
-- /etiket-hesapla?productId=X → reçete + auto besin değeri + PDF
-- /girdi-yonetimi → tedarikçi performans tab dolu
+## 🌅 YARIN SABAH (6 May, ÖNCELİK SIRASI)
+
+### 1. TASK-S7-DEMO-MAHMUT — Mahmut'a etiket sistemi demosu (30 dk)
+- /girdi-yonetimi 5 tab turu (Liste, Alerjen, Etiket, Tedarikçi, Gap)
+- /branch-recipes/<X> → "Etiket Hesapla (TGK)" → PDF indir gösterisi
+- Mahmut'tan ilk feedback al, PENDING'e ekle
+
+### 2. TASK-S7-DATA-CLEANUP — 240 mevcut hammadde için TGK alanları (1-2 saat)
+**Sorun:** Mevcut 240 rawMaterials için energy_kcal, allergen_present, vs. NULL.
+Etiket hesapla bunlarla içeren reçete için besin değeri çıkaramaz.
+
+**Çözüm seçenekleri:**
+- A) TÜRKOMP batch matching script (otomatik ama ücretli lisans riski)
+- B) Manuel giriş (Tülay/Süleyman, 240 satır × 5 dk = 20 saat — yapılamaz)
+- C) En kullanılan 30 hammadde (kahve, süt, vs.) için manuel + gerisi NULL kalır
+- **ÖNERİ: C** — pilot için yeterli, geri kalan Sprint 8'de
+
+### 3. TASK-EREN-SAHA-TEST (3-4 saat)
+- HQ kiosk (Dospresso.HQ.2026!) test
+- 4 UX fix doğrulama (Anasayfa, 30sn, Mola 2 buton, QC user list)
+- Bulunan bug'ları DECIDED'a yaz
+
+### 4. TASK-AROMA-SEED (Coach iş, 1 saat)
+- Aroma listesi seed (HQ Coach veri girer)
+
+### 5. TASK-S7-RATE-LIMIT (30 dk)
+- TÜRKOMP endpoint'lerine express-rate-limit ekle (10 req/saat per kullanıcı)
+- Yasal koruma için kritik
+
+---
+
+## 📅 7 GÜN İÇİNDE (Pilot öncesi)
+
+- TASK-S8-PROCUREMENT-AUTOFILL: Satınalma → yeni hammadde alımında TGK alanları auto-fill prompt'u
+- TASK-S8-FACTORY-RECIPE-LABEL: fabrika-recete-detay.tsx'e de "Etiket Hesapla" butonu
+- TASK-S8-LABEL-REJECT-DIALOG: Etiket reddedilirken sebep dialog'u
+- TASK-S8-GAP-BATCH-OPTIMIZATION: gap-analysis N+1 fix (~30sn → 2sn)
+- TASK-PILOT-DRY-RUN: 4 lokasyon mock-pilot (admin + Mahmut + Mahmut2 + branch staff)
+- TASK-PILOT-LAUNCH-CHECKLIST: 12 May sabahı kontrol listesi
 
 ### TASK-2026-05-05-A: Sprint 6 Bölüm 3+4 PR aç + merge
 **Branch:** `claude/sprint-6-bolum-3-pdks-detail-2026-05-05` (3 commit: b14db32, 1b99683, 4ce915f)

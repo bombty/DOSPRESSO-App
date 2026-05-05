@@ -418,6 +418,7 @@ import personnelAttendanceDetailRouter from "./routes/personnel-attendance-detai
 import girdiYonetimiRouter from "./routes/girdi-yonetimi";  // Sprint 7 (5 May 2026): Girdi Yönetimi / TGK 2017/2284
 import turkompIntegrationRouter from "./routes/turkomp-integration";  // Sprint 7 v2 (5 May 2026): TÜRKOMP veri tabanı entegrasyonu
 import recipeLabelEngineRouter from "./routes/recipe-label-engine";  // Sprint 7 v3 (5 May 2026): Reçete → TGK Etiket otomatik hesaplama
+import scoreParametersRouter from "./routes/score-parameters";  // Sprint 8 (5 May 2026): Skor kriterleri admin panel
 import factoryRecipesRouter from "./routes/factory-recipes";
 import factoryRecipeNutritionRouter from "./routes/factory-recipe-nutrition";
 import factoryAllergensRouter from "./routes/factory-allergens";
@@ -901,6 +902,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(girdiYonetimiRouter);  // Sprint 7 (5 May 2026): /api/girdi/*, /api/tedarikci-kalite/*, /api/tgk-label/* (TGK 2017/2284)
   app.use(turkompIntegrationRouter);  // Sprint 7 v2 (5 May 2026): /api/turkomp/* (Türkiye Tarım Bakanlığı veri tabanı)
   app.use(recipeLabelEngineRouter);  // Sprint 7 v3 (5 May 2026): /api/recipe-label/* (otomatik etiket hesaplama)
+  app.use(scoreParametersRouter);  // Sprint 8 (5 May 2026): /api/score-parameters/* (admin skor kriterleri)
   app.use(factoryRecipesRouter);
   app.use(factoryRecipeNutritionRouter);
   app.use(factoryAllergensRouter);

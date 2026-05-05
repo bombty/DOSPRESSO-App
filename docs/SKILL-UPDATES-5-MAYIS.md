@@ -141,3 +141,106 @@ git diff <file>     # Replit ne yapmış?
 
 Çakışma çözmek yerine **paralel çalışsınlar** - iki endpoint farklı
 yaklaşımlar. UI hangisini çağıracağını seçer.
+
+---
+
+## EK GÜNCELLEMELER (5 May 19:00 sonrası — Sprint 7 finalize)
+
+### dospresso-debug-guide/SKILL.md - EKLE
+
+#### Schema'da OLMAYAN export'u import etme hatası (5 May 2026)
+
+**Sorun:** `personnel-attendance-detail.ts` (Sprint 7 v3 ile geldi) `shiftAssignments` import etmeye çalıştı ama bu isimde export yok. Build hatası → workflow restart başarısız.
+
+**Çözüm:**
+- `import { shifts as shiftsTable } from '@shared/schema'` (alias gerekli çünkü `shifts` local var)
+- `userId` → `assignedToId` (kolon adı farklı)
+- `shiftStart` → `startTime`, `shiftEnd` → `endTime`
+- `isNull(shiftsTable.deletedAt)` filtre ekle (soft delete koruması)
+
+**Önleme:** Her yeni route dosyasında schema import ettikten sonra **derhal `npx esbuild server/index.ts --bundle --platform=node --packages=external --outfile=/tmp/check.js` çalıştır** — undefined export'ları erkenden yakalar.
+
+#### Sprint 7 Migration Doğrulamaları (5 May 2026 başarılı çalıştırıldı)
+
+Migration #1 sonrası beklenen DB durumu:
+- `raw_materials`: 17 → 35 kolon (18 yeni)
+- `suppliers`: 27 → 34 kolon (7 yeni: foodAuthorizationNumber, ISO22000, HACCP, halal, vs.)
+- 3 yeni tablo: `supplier_quality_records`, `tgk_labels`, `turkomp_foods`
+- FK: `raw_materials.turkomp_food_id → turkomp_foods.id`
+
+Migration #2 sonrası:
+- 13 tedarikçi (5 mevcut + 8 yeni TED-* code)
+- 67 hammadde (HAM001-HAM067)
+- Toplam `raw_materials` ~307 satır (240 mevcut + 67 yeni)
+
+⚠️ **Kritik gözlem:** Mevcut 240 hammaddenin TGK alanları **NULL**. Etiket hesaplama bunlar için besin değeri çıkaramaz. Sprint 8'de ya TÜRKOMP batch matching ya da manuel girişi planla.
+
+### dospresso-quality-gate/SKILL.md - EKLE
+
+#### TÜRKOMP Yasal Uyarı (5 May 2026)
+
+TÜRKOMP (turkomp.tarimorman.gov.tr) verileri **ücretsiz arama** için açık ama **toplu scraping ücretli lisans** gerektirir.
+
+**İzin verilen kullanım:**
+- Kullanıcı (gıda mühendisi) tek bir gıda ararsa OK
+- Sonucu cache'lemek OK
+- Cache'i diğer kullanıcılara servis etmek OK
+
+**YASAK:**
+- Otomatik 645 gıdayı topluca çekmek
+- Cache'i veri seti olarak satmak
+- Düzenli aralıklarla resyncing yapmak
+
+`server/routes/turkomp-integration.ts` rate limit yok şu an. **Sprint 8'de:** `express-rate-limit` ekle (kullanıcı başına 10 req/saat).
+
+#### TGK 2017/2284 Etiket Onay Zinciri (5 May 2026)
+
+Etiket statüsü mutlaka şu sırada ilerlemeli:
+`taslak` → `onay_bekliyor` → `onaylandi` (veya `reddedildi`)
+
+**Onay sadece:** `gida_muhendisi` veya `admin` (TGK Madde 18). Frontend'de bu kontrol yapılıyor ama **backend'de de zorunlu** (`canApproveLabel(role)`).
+
+**Versiyonlama:** Aynı ürün için yeni etiket oluşturulduğunda eski sürüm `is_active=false` yapılıp yeni sürüm `version+1` ile eklenir. UI son aktifi gösterir, audit trail için tüm sürümler tutulur.
+
+### dospresso-architecture/SKILL.md - EKLE
+
+#### Sprint 7 Triangle Workflow Notu
+
+Replit Agent (5 May 19:00 oturumu) **çok disiplinli** çalıştı:
+- DRY-RUN raporu eksiksiz (kolon sayısı, çakışma kontrolü, FK status)
+- Migration sırası doğru (önce schema, sonra data)
+- Build başarısız olunca **otomatik schema fix yaptı** (shiftAssignments → shifts)
+- 6 API testini paralel koştu
+
+**Bu seviyeyi koruyabilmek için:**
+- Replit'e komut yazarken hep **DRY-RUN ÖNCE** vurgusu
+- Beklenen değerleri **rakam olarak ver** (raw_materials kolon=35, vs.) ki Replit doğrulayabilsin
+- "GO bekle" netleştir — yarı-otomatik değil, full-manual onay
+- Build hatası varsa Replit'in lokal düzeltmesi GitHub'a YAZILMALI (yoksa bir sonraki pull patlatır)
+
+#### Sprint 7 Eksiklikleri (Sprint 8'e taşınanlar)
+
+✗ Mevcut 240 rawMaterials için TGK alanları NULL — TÜRKOMP batch matching gerekli
+✗ TÜRKOMP rate limit yok — express-rate-limit ekle
+✗ /api/recipe-label/gap-analysis N+1 problem (~800 query, 30sn) — batch matching
+✗ Reçete sayfasındaki "Etiket Hesapla" butonu sadece branch reçetede — fabrika reçetesinde de gerekli (fabrika-recete-detay.tsx)
+✗ Etiket reddedildiğinde reddedilme sebebi UI'da yok — reject dialog ekle
+✗ TÜRKOMP cache stale — bir gıda için son fetch tarihinden 6 ay geçtiyse uyar
+
+### dospresso-session-protocol/SKILL.md - EKLE
+
+#### 30+ Saatlik Maraton Sonu Disiplin (5 May 2026)
+
+**Öğrenilen:** Aslan'la 30+ saat maraton tamamlandı. Çıktı kalitesi düştü mü test ederek gör:
+- ✅ Smoke test 6/6 geçti
+- ✅ Production hatası 0
+- ✅ 5 PR temiz merge oldu
+- ⚠️ Tek runtime hatası: `shiftAssignments` (Replit hızlı yakaladı, fix etti)
+
+**Sonuç:** Triangle çalışıyor. Maraton mümkün ama Claude'un da Replit'in de **sürekli kalite kontrol** yapması gerekiyor.
+
+**Sıradaki maraton için:**
+- 12 saatten uzun oturum başlamadan önce **net süre kapağı** koy ("00:30'da dur" gibi)
+- Her 4 saatte bir özetin
+- Skill update'i SONA bırakma — her sprint sonu hemen yaz (yorgun kafa atlar)
+

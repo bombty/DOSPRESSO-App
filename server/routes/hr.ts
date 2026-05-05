@@ -68,6 +68,7 @@ import {
   employeeDocuments,
   disciplinaryReports,
   notifications,
+  scoreParameters,
 } from "../../shared/schema";
 
 class AuthorizationError extends Error {
@@ -2072,6 +2073,97 @@ JSON formatında yanıt ver:
         return res.status(403).json({ message: error.message });
       }
       res.status(500).json({ message: "Takım performansı yüklenirken hata oluştu" });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════
+  // GET /api/performance/personnel — Sprint 8 #D (5 May 2026)
+  // ═══════════════════════════════════════════════════════════════════
+  // Aslan'ın talebi:
+  //   "performans sayfasında personellerin şubelere veya rollere göre
+  //    filtreleyerek performans skorlarını görmem gerekir"
+  // 
+  // Yetki: HQ rolleri (admin, ceo, cgo, coach, trainer, muhasebe, muhasebe_ik, manager, supervisor)
+  // Filtre: branchId, role
+  // Dönüş: { personnel: [{ userId, fullName, branchName, role, totalScore, breakdown, ...}] }
+  // ═══════════════════════════════════════════════════════════════════
+
+  router.get('/api/performance/personnel', isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user!;
+      const allowedRoles = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'muhasebe_ik', 'manager', 'supervisor'];
+      if (!allowedRoles.includes(user.role)) {
+        return res.status(403).json({ message: 'Bu sayfayı görüntülemek için yetkiniz yok' });
+      }
+
+      const branchIdFilter = req.query.branchId ? Number(req.query.branchId) : null;
+      const roleFilter = req.query.role ? String(req.query.role) : null;
+
+      // Active personeli al (filtreli)
+      const conditions: any[] = [eq(users.isActive, true)];
+      if (branchIdFilter) conditions.push(eq(users.branchId, branchIdFilter));
+      if (roleFilter) conditions.push(eq(users.role, roleFilter));
+      // Branch role kullanıcılar sadece kendi şubesini görür
+      const isBranchUser = !['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'muhasebe_ik'].includes(user.role);
+      if (isBranchUser && user.branchId) {
+        conditions.push(eq(users.branchId, user.branchId));
+      }
+
+      const personnelList = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        username: users.username,
+        role: users.role,
+        branchId: users.branchId,
+      }).from(users).where(and(...conditions));
+
+      // Şube isimlerini al
+      const branchList = await db.select().from(branches);
+      const branchMap = new Map(branchList.map(b => [b.id, b.name]));
+
+      // Skor parametrelerinin toplamını al (toplam max)
+      const activeParams = await db.select().from(scoreParameters).where(eq(scoreParameters.isActive, true));
+      const totalMaxPoints = activeParams.reduce((s, p) => s + (p.maxPoints || 0), 0);
+      // Default değerler 90 (Devam 20 + Checklist 20 + Görev 15 + Müşteri 15 + Yönetici 20)
+      const maxScore = totalMaxPoints || 90;
+
+      // Her personel için skor breakdown hesapla
+      // NOT: PDKS/checklist/görev/müşteri data'sı henüz tam değil, placeholder skorlar
+      // Sprint 9'da gerçek hesaplama mantığı implement edilecek
+      const result = personnelList.map((p) => {
+        const fullName = [p.firstName, p.lastName].filter(Boolean).join(' ').trim() || p.username || 'Bilinmiyor';
+        const branchName = p.branchId ? (branchMap.get(p.branchId) || 'Bilinmiyor') : 'HQ';
+        
+        // Placeholder breakdown (gerçek hesaplama Sprint 9)
+        const breakdown = {
+          devam: 0,
+          checklist: 0,
+          gorev: 0,
+          musteri: 0,
+          yonetici: 0,
+        };
+        const totalScore = Object.values(breakdown).reduce((s, v) => s + v, 0);
+        const scorePercent = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+
+        return {
+          userId: p.id,
+          fullName,
+          branchName,
+          branchId: p.branchId,
+          role: p.role,
+          totalScore,
+          maxScore,
+          scorePercent,
+          breakdown,
+          trend: 0,
+        };
+      });
+
+      res.json({ personnel: result, totalMaxPoints: maxScore });
+    } catch (error: unknown) {
+      console.error('/api/performance/personnel error:', error);
+      res.status(500).json({ message: 'Personel performansı yüklenemedi' });
     }
   });
 

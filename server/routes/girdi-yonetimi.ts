@@ -604,6 +604,72 @@ router.put('/api/tgk-label/:id/approve', isAuthenticated, async (req: any, res: 
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// 11b) PUT /api/tgk-label/:id/reject — Etiket red (Sprint 8 #350)
+// ═══════════════════════════════════════════════════════════════════
+// Aslan talebi (5 May 21:00):
+//   "Pilot gün için gıda mühendisinin etiketi onaylayabilmesi gerekli"
+//   #350: Reddet butonu + red notu textarea
+// ═══════════════════════════════════════════════════════════════════
+
+router.put('/api/tgk-label/:id/reject', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canApproveLabel(user.role)) {
+      return res.status(403).json({ message: 'Etiket reddetme yetkiniz yok (sadece gıda mühendisi/admin)' });
+    }
+
+    const id = parseInt(req.params.id);
+    const { reason } = req.body || {};
+    
+    if (!reason || typeof reason !== 'string' || reason.trim().length < 5) {
+      return res.status(400).json({ message: 'Red sebebi en az 5 karakter olmalıdır' });
+    }
+
+    const [updated] = await db.update(tgkLabels)
+      .set({
+        status: 'reddedildi',
+        approvedById: user.id, // Reddeden kişi (audit)
+        approvedAt: new Date(),
+        rejectedReason: reason.trim(),
+        updatedAt: new Date(),
+      })
+      .where(eq(tgkLabels.id, id))
+      .returning();
+
+    if (!updated) return res.status(404).json({ message: 'Etiket bulunamadı' });
+    res.json(updated);
+  } catch (error: unknown) {
+    console.error('/api/tgk-label/:id/reject error:', error);
+    res.status(500).json({ message: 'Etiket reddedilemedi' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// 11c) PUT /api/tgk-label/:id/submit — Taslak → Onay Bekliyor (Sprint 8)
+// ═══════════════════════════════════════════════════════════════════
+
+router.put('/api/tgk-label/:id/submit', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    const id = parseInt(req.params.id);
+    
+    const [updated] = await db.update(tgkLabels)
+      .set({
+        status: 'onay_bekliyor',
+        updatedAt: new Date(),
+      })
+      .where(eq(tgkLabels.id, id))
+      .returning();
+
+    if (!updated) return res.status(404).json({ message: 'Etiket bulunamadı' });
+    res.json(updated);
+  } catch (error: unknown) {
+    console.error('/api/tgk-label/:id/submit error:', error);
+    res.status(500).json({ message: 'Etiket onaya gönderilemedi' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // 12) GET /api/tgk-label/list — Tüm etiketler (filter)
 // ═══════════════════════════════════════════════════════════════════
 

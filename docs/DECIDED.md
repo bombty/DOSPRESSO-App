@@ -109,3 +109,39 @@
 - tgk_labels.version: her save'de +1
 - Eski versiyonlar isActive=false, kayıtta tutulur (TGK denetim)
 - Sadece son versiyon onay için sunulur
+
+---
+
+## Akşam Eklenen Kararlar (5 May 19:00 sonrası)
+
+### DECISION-S7-MEGA-PR — Tek mega PR yaklaşımı doğrulandı
+Sprint 7'de 9 commit'i tek PR'da topladık (PR #13). Avantaj: PR yorgunluğu yok, atomic merge, tarih tutarlı. **Sprint 8'de de aynı yaklaşım.**
+
+### DECISION-S7-MIGRATION-DRY-RUN — Disiplin kuralı netleşti
+Replit Agent'a komut verirken:
+- Beklenen değerleri **rakam olarak** ver (kolon=35, hammadde=67, vs.)
+- "DRY-RUN ÖNCE, GO bekle, sonra EXECUTE" — her zaman 3 aşama
+- Build hatası varsa Replit lokal düzeltmeyi GitHub'a YAZMALI (yoksa bir sonraki pull patlatır)
+
+5 May 19:15 Sprint 7 migration bu kuralla başarılı oldu.
+
+### DECISION-S7-EKSİKLER → SPRINT 8
+Pilot için kritik OLMAYAN ama Sprint 8'e taşınacaklar:
+1. Mevcut 240 rawMaterials için TGK alanları (NULL → en azından top 30 manuel)
+2. TÜRKOMP rate limit (express-rate-limit, 10/saat per kullanıcı)
+3. /api/recipe-label/gap-analysis batch optimization (~30sn → 2sn)
+4. Fabrika reçetesinde de "Etiket Hesapla" butonu
+5. Etiket reddedilirken sebep dialog'u
+
+### DECISION-S7-FRONTEND-ENTEGRASYON
+TÜRKOMP ve tedarikçi-kalite için **ayrı sayfa YOK**. Bunlar /girdi-yonetimi içine entegre:
+- Tedarikçi Performans = 4. tab
+- TÜRKOMP'tan Getir = Edit modal'da buton
+
+Replit Agent "eksik" olarak işaretledi ama tasarım gereği yok.
+
+### DECISION-MARATHON-LIMIT
+30+ saatlik maraton sonrası kabul edildi:
+- Bir sonraki uzun oturum 12 saat kapağı koy
+- Skill update SONA bırakma — her sprint sonu hemen yaz
+- 4 saatte bir özet

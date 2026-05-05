@@ -127,11 +127,22 @@ export default function EtiketHesaplaPage() {
   });
 
   const handleDownloadPDF = () => {
+<<<<<<< HEAD
     if (!calcResult) {
       toast({ title: 'Önce hesaplama yapın', variant: 'destructive' });
       return;
     }
     const n = calcResult.nutrition;
+=======
+    if (!calcResult || calcResult.matchedCount === 0) {
+      toast({ title: 'Önce hesaplama yapın', variant: 'destructive' });
+      return;
+    }
+    
+    // Nutrition null olsa bile PDF üret (alerjen + ingredient listesi yine kullanılabilir)
+    const hasNutrition = !!calcResult.nutrition;
+    
+>>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
     downloadTGKLabel({
       productName: calcResult.productName || calcResult.recipeName,
       ingredientsText: calcResult.ingredientsText,
@@ -141,6 +152,7 @@ export default function EtiketHesaplaPage() {
       storageConditions: labelData.storageConditions,
       shelfLifeDays: labelData.shelfLifeDays,
       countryOfOrigin: labelData.countryOfOrigin,
+<<<<<<< HEAD
       energyKcal: n?.energyKcal ?? 0,
       energyKj: n?.energyKj ?? 0,
       fat: n?.fat ?? 0,
@@ -154,6 +166,27 @@ export default function EtiketHesaplaPage() {
     });
     const warn = !n ? ' (besin değeri eksik — hammadde veritabanı güncellenmeli)' : '';
     toast({ title: 'PDF indirildi', description: `TGK 2017/2284 uyumlu etiket${warn}` });
+=======
+      energyKcal: hasNutrition ? calcResult.nutrition.energyKcal : undefined,
+      energyKj: hasNutrition ? calcResult.nutrition.energyKj : undefined,
+      fat: hasNutrition ? calcResult.nutrition.fat : undefined,
+      saturatedFat: hasNutrition ? calcResult.nutrition.saturatedFat : undefined,
+      carbohydrate: hasNutrition ? calcResult.nutrition.carbohydrate : undefined,
+      sugar: hasNutrition ? calcResult.nutrition.sugar : undefined,
+      protein: hasNutrition ? calcResult.nutrition.protein : undefined,
+      salt: hasNutrition ? calcResult.nutrition.salt : undefined,
+      fiber: hasNutrition ? calcResult.nutrition.fiber : undefined,
+      version: 1,
+    });
+    
+    toast({ 
+      title: 'PDF indirildi', 
+      description: hasNutrition 
+        ? 'TGK 2017/2284 uyumlu etiket' 
+        : 'PDF indirildi (besin değeri eksik — hammadde veritabanı güncellenmeli)',
+      variant: hasNutrition ? 'default' : 'destructive',
+    });
+>>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
   };
 
   if (!productId) {
@@ -320,6 +353,7 @@ export default function EtiketHesaplaPage() {
           )}
 
           {/* Hesaplanan Besin Değerleri */}
+<<<<<<< HEAD
           <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
@@ -337,6 +371,20 @@ export default function EtiketHesaplaPage() {
                   <span>Besin değeri hesaplanamadı — eşleşen hammaddeler için enerji verisi yok. PDF yine de indirilebilir (değerler 0 gösterilir).</span>
                 </div>
               ) : (
+=======
+          {calcResult.nutrition ? (
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ShieldCheck className="h-5 w-5 text-blue-600" />
+                  Hesaplanan Besin Değerleri (100g başına)
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  TGK Ek-13 uyumlu format
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+>>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   <div className="p-2 bg-white dark:bg-muted rounded">
                     <div className="text-muted-foreground">Enerji</div>
@@ -366,9 +414,31 @@ export default function EtiketHesaplaPage() {
                     <div className="font-bold text-base">{calcResult.nutrition.fiber} g</div>
                   </div>
                 </div>
+<<<<<<< HEAD
               )}
             </CardContent>
           </Card>
+=======
+              </CardContent>
+            </Card>
+          ) : (
+            // Nutrition null — eşleşen hammaddelerin besin değeri eksik
+            <Card className="bg-amber-50 dark:bg-amber-950/30 border-amber-300">
+              <CardContent className="p-3 flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs">
+                  <strong>Besin değeri hesaplanamadı.</strong>
+                  <p className="text-muted-foreground mt-1">
+                    Eşleşen hammaddelerin energy_kcal değerleri NULL. PDF yine indirilebilir 
+                    (içindekiler + alerjen ile) ama besin değeri tablosu boş çıkar. 
+                    Çözüm: Girdi Yönetimi'nden bu hammaddelere besin değerlerini ekle 
+                    (TÜRKOMP'tan getir veya manuel gir).
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+>>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
 
           {/* Alerjen + Çapraz Bulaşma */}
           {(calcResult.allergenWarning || calcResult.crossContaminationWarning) && (
@@ -391,6 +461,7 @@ export default function EtiketHesaplaPage() {
             </Card>
           )}
 
+<<<<<<< HEAD
           {/* Etiket meta bilgisi */}
           <Card>
             <CardHeader>
@@ -407,6 +478,44 @@ export default function EtiketHesaplaPage() {
                     onChange={(e) => setLabelData({...labelData, netQuantityG: Number(e.target.value)})}
                     data-testid="input-net-quantity"
                   />
+=======
+          {/* Etiket meta bilgisi — matchedCount > 0 ise göster (PDF için gerekli) */}
+          {calcResult.matchedCount > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Etiket Bilgileri</CardTitle>
+                <CardDescription className="text-xs">PDF için ek bilgiler</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <Label className="text-xs">Net Miktar (g)</Label>
+                    <Input 
+                      type="number" 
+                      value={labelData.netQuantityG}
+                      onChange={(e) => setLabelData({...labelData, netQuantityG: Number(e.target.value)})}
+                      data-testid="input-net-quantity"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Raf Ömrü (gün)</Label>
+                    <Input 
+                      type="number" 
+                      value={labelData.shelfLifeDays}
+                      onChange={(e) => setLabelData({...labelData, shelfLifeDays: Number(e.target.value)})}
+                      data-testid="input-shelf-life"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs">Saklama Koşulları</Label>
+                    <Input 
+                      value={labelData.storageConditions}
+                      onChange={(e) => setLabelData({...labelData, storageConditions: e.target.value})}
+                      placeholder="örn: Soğuk zincirde 4°C altında saklayınız"
+                      data-testid="input-storage"
+                    />
+                  </div>
+>>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
                 </div>
                 <div>
                   <Label className="text-xs">Raf Ömrü (gün)</Label>
@@ -430,6 +539,7 @@ export default function EtiketHesaplaPage() {
             </CardContent>
           </Card>
 
+<<<<<<< HEAD
           {/* Aksiyonlar */}
           <Card className="border-blue-300">
             <CardContent className="p-4 flex flex-wrap gap-2 justify-end">
@@ -453,6 +563,35 @@ export default function EtiketHesaplaPage() {
               </Button>
             </CardContent>
           </Card>
+=======
+          {/* Aksiyonlar — PDF her zaman, Save sadece nutrition varsa (Sprint 7 hotfix) */}
+          {calcResult.matchedCount > 0 && (
+            <Card className="border-blue-300">
+              <CardContent className="p-4 flex flex-wrap gap-2 justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={handleDownloadPDF}
+                  data-testid="button-download-pdf"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  PDF İndir
+                  {!calcResult.nutrition && <span className="text-xs ml-1 text-orange-500">(eksik)</span>}
+                </Button>
+                {calcResult.nutrition && (
+                  <Button 
+                    onClick={() => saveMutation.mutate()}
+                    disabled={saveMutation.isPending}
+                    data-testid="button-save-label"
+                  >
+                    {saveMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                    Etiketi Kaydet
+                    {!canApprove && <span className="text-xs ml-1">(taslak)</span>}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+>>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
         </>
       )}
     </div>

@@ -97,9 +97,12 @@ export default function PersonelDetay() {
     queryKey: ["/api/personnel", id],
     queryFn: async () => {
       const response = await fetch(`/api/personnel/${id}`);
-      if (!response.ok) return [];
+      if (!response.ok) {
+        throw new Error(`Personel bulunamadı (HTTP ${response.status})`);
+      }
       const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      // /api/personnel/:id single user object döner — array'e çevirmiyoruz!
+      return data as User;
     },
     enabled: !!id,
   });
