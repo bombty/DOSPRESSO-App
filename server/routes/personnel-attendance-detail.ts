@@ -108,11 +108,7 @@ router.get('/api/personnel/:userId/attendance-detail', isAuthenticated, async (r
         isNull(shiftsTable.deletedAt),
       ))
       .orderBy(desc(shiftsTable.shiftDate))
-<<<<<<< HEAD
-      .catch(() => []);
-=======
       .catch(() => []); // shifts tablosu sorunu olursa boş dön
->>>>>>> 764671383fe7f936456bbe677d22d9ec733f6a58
 
     // ═════════════════════════════════════════════════
     // 4) İzin Talepleri (bu tarih aralığında)
