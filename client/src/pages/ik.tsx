@@ -939,12 +939,13 @@ export default function IKPage() {
                       const trainingStats = userTrainingCompletion.get(employee.id);
                       
                       return (
-                        <Link key={employee.id} href={`/personel-detay/${employee.id}`}>
-                          <Card 
-                            className="hover-elevate cursor-pointer transition-all h-full"
-                            data-testid={`card-employee-${employee.id}`}
-                          >
-                            <CardContent className="p-4">
+                        <Card 
+                          key={employee.id}
+                          className="hover-elevate transition-all h-full"
+                          data-testid={`card-employee-${employee.id}`}
+                        >
+                          <CardContent className="p-4">
+                            <Link href={`/personel-detay/${employee.id}`} className="block cursor-pointer">
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1 min-w-0">
                                   <h3 className="font-semibold truncate">
@@ -985,9 +986,44 @@ export default function IKPage() {
                                   <span>HQ</span>
                                 )}
                               </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
+                            </Link>
+                            {/* Sprint 6 Bölüm 4 (5 May 2026 - Mahmut feedback): Hızlı Eylemler */}
+                            {ikScope.isHQ && (
+                              <div className="mt-3 pt-3 border-t flex gap-1.5 flex-wrap">
+                                <Link href={`/personel-detay/${employee.id}?tab=attendance`}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs"
+                                    data-testid={`button-quick-pdks-${employee.id}`}
+                                  >
+                                    📊 PDKS
+                                  </Button>
+                                </Link>
+                                <Link href={`/personel-detay/${employee.id}?tab=leave`}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs"
+                                    data-testid={`button-quick-leave-${employee.id}`}
+                                  >
+                                    🏖️ İzin
+                                  </Button>
+                                </Link>
+                                <Link href={`/personel-detay/${employee.id}?tab=disciplinary`}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs"
+                                    data-testid={`button-quick-disciplinary-${employee.id}`}
+                                  >
+                                    📝 Tutanak
+                                  </Button>
+                                </Link>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>

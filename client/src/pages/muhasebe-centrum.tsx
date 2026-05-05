@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { CentrumShell, KpiChip, Widget, MiniStats, ListItem, DobodySlot, TimeFilter, type TimePeriod, type KpiVariant } from "@/components/centrum/CentrumShell";
 import { useState } from "react";
+import { Link } from "wouter";  // Sprint 6 Bölüm 4: anormallik kartlarında click-to-detail
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -164,20 +165,26 @@ export default function MuhasebeCentrum() {
         </div>
       )}
 
-      {/* Sprint 3 (5 May): ANORMALLIKLER */}
+      {/* Sprint 3 (5 May): ANORMALLIKLER - Sprint 6 Bölüm 4: tıklanabilir ListItem'lar */}
       {anormallikler && totalAnomalies > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-red-500 px-1">🚨 Anormallikler ({totalAnomalies})</h3>
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-semibold text-red-500">🚨 Anormallikler ({totalAnomalies})</h3>
+            <span className="text-[10px] text-muted-foreground">Personele tıkla → detayı gör</span>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Widget title={`⏱️ Açık Vardıyalar (${anormallikler.openShifts?.total ?? 0})`}>
               {[...(anormallikler.openShifts?.branch || []), ...(anormallikler.openShifts?.factory || [])].slice(0, 5).map((s: any) => (
-                <ListItem
-                  key={`shift-${s.id}`}
-                  title={s.userName}
-                  meta={`${Math.floor(s.hoursOpen)} saat açık`}
-                  priority="!"
-                  priorityColor="#f87171"
-                />
+                <Link key={`shift-${s.id}`} href={`/personel-detay/${s.userId}?tab=attendance`}>
+                  <div className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors">
+                    <ListItem
+                      title={s.userName}
+                      meta={`${Math.floor(s.hoursOpen)} saat açık →`}
+                      priority="!"
+                      priorityColor="#f87171"
+                    />
+                  </div>
+                </Link>
               ))}
               {anormallikler.openShifts?.total === 0 && (
                 <p className="text-[10px] text-muted-foreground px-3 py-3">Açık vardiya yok ✅</p>
@@ -189,13 +196,16 @@ export default function MuhasebeCentrum() {
                 {anormallikler.absentUsers?.threshold || 3}+ gün giriş yapmamış
               </p>
               {(anormallikler.absentUsers?.list || []).slice(0, 5).map((u: any) => (
-                <ListItem
-                  key={`absent-${u.user_id}`}
-                  title={u.user_name}
-                  meta={`${u.days_absent} gün devamsız`}
-                  priority="⚠"
-                  priorityColor="#fbbf24"
-                />
+                <Link key={`absent-${u.user_id}`} href={`/personel-detay/${u.user_id}?tab=attendance`}>
+                  <div className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors">
+                    <ListItem
+                      title={u.user_name}
+                      meta={`${u.days_absent} gün devamsız →`}
+                      priority="⚠"
+                      priorityColor="#fbbf24"
+                    />
+                  </div>
+                </Link>
               ))}
               {anormallikler.absentUsers?.total === 0 && (
                 <p className="text-[10px] text-muted-foreground px-3 py-3">Devamsız personel yok ✅</p>
@@ -207,13 +217,16 @@ export default function MuhasebeCentrum() {
                 {anormallikler.missingPayrolls?.period} dönemi için hesaplanmamış
               </p>
               {(anormallikler.missingPayrolls?.list || []).slice(0, 5).map((p: any) => (
-                <ListItem
-                  key={`missing-${p.userId}`}
-                  title={p.userName}
-                  meta={p.role}
-                  priority="!"
-                  priorityColor="#f87171"
-                />
+                <Link key={`missing-${p.userId}`} href={`/personel-detay/${p.userId}?tab=attendance`}>
+                  <div className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors">
+                    <ListItem
+                      title={p.userName}
+                      meta={`${p.role} →`}
+                      priority="!"
+                      priorityColor="#f87171"
+                    />
+                  </div>
+                </Link>
               ))}
               {anormallikler.missingPayrolls?.total === 0 && (
                 <p className="text-[10px] text-muted-foreground px-3 py-3">Tüm bordrolar tamam ✅</p>
