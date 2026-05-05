@@ -13,6 +13,7 @@ DOSPRESSO is a comprehensive franchise management platform designed to centraliz
 - Force push yasak; commit/push owner Replit Shell'den manuel.
 - `session-protocol` skill (`.agents/skills/session-protocol/SKILL.md`) her oturum sonu 5 adım zorunlu (devir teslim push, 4 skill update, docs/, replit.md memory, sonraki oturum talimatı).
 - `dospresso-git-safety` skill (`.agents/skills/dospresso-git-safety/SKILL.md`) — 5 Mayıs 2026 diverged main olayından sonra zorunlu: Build session başında L1 pre-edit fetch, edit öncesi L2 dosya sahipliği kontrolü, commit öncesi L3 sync check, conflict olursa L4 Replit Resolve UI (CLI değil), push öncesi L5 validation. `git checkout --theirs .` toptan komutu YASAK.
+- **WORKFLOW MANDATORY (5 Mayıs 2026):** (1) Her oturum başında `git fetch && git pull origin main` ZORUNLU. (2) Her commit öncesi `git log origin/main..HEAD` ile unpushed kontrol. (3) Push reject olursa DUR + Aslan'ı uyar, `--force` YASAK. (4) Main'de doğrudan kod editi YASAK — `git checkout -b fix/<konu>` ile branch aç, PR yoluyla merge. İstisna: docs-only (skill/replit.md/runbook) main'e doğrudan commit edilebilir.
 
 ## System Architecture
 

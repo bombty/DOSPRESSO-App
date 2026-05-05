@@ -5,6 +5,51 @@ description: DOSPRESSO git senkronizasyon güvenlik protokolü. Main agent (Repl
 
 # DOSPRESSO Git Safety Protocol — 5 Katmanlı Önleme
 
+---
+
+## ⚠️ WORKFLOW MANDATORY (5 Mayıs 2026 — Aslan Kararı)
+
+Bu 4 kural her oturumda, her edit'te, her commit'te uygulanır. İhlal = oturum durur.
+
+### 1. Her oturum başında — ZORUNLU sync
+```bash
+git fetch origin && git pull origin main
+```
+Sadece `fetch` yetmez — **pull et**, behind=0 olduğunu garanti et. Pull conflict çıkarsa L4 (Replit Resolve UI) ile çöz.
+
+### 2. Her commit ÖNCESİ — unpushed kontrol
+```bash
+git fetch
+git log origin/main..HEAD
+```
+Çıktı boşsa: `git push origin main`. Çıktıda commit varsa: **önce neden unpushed kaldı?** İncele, sonra push.
+
+### 3. Push BAŞARISIZ olursa — DUR, --force YASAK
+```bash
+git push origin main
+# Eğer "rejected" / "non-fast-forward" / "Updates were rejected"
+# → DURDUR
+# → Aslan'ı uyar
+# → ASLA `git push --force` veya `-f` KULLANMA
+```
+Reject sebebi: remote'ta yeni commit var. Adım: `git pull --rebase` → conflict varsa L4 → tekrar push.
+
+### 4. Main'de doğrudan iş YAPMA — branch oluştur
+```bash
+# YANLIŞ: main üzerinde doğrudan edit
+git checkout main && <edit dosyaları>
+
+# DOĞRU: feature branch + PR
+git checkout -b fix/<konu> veya feat/sprint-N-<konu>
+<edit dosyaları>
+git add . && git commit -m "..."
+git push origin fix/<konu>
+# → GitHub'da PR aç → Aslan review → merge
+```
+**İstisna:** Sadece DOCS-ONLY değişiklikler (skill, replit.md, runbook, plan dosyaları) main'e doğrudan commit edilebilir — kod değişikliği DAİMA branch + PR.
+
+---
+
 ## Kök Neden (5 Mayıs 2026 Olayı)
 
 5 Mayıs Sprint 7 sırasında main agent (Replit) ve task agent (Claude PR'ları) **aynı dosyalara paralel yazdı**:
