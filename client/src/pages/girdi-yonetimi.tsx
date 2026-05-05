@@ -98,6 +98,11 @@ export default function GirdiYonetimiPage() {
     queryKey: ["/api/tgk-label/list"],
   });
 
+  // Sprint 7 v3 - Tedarikçi performans özeti
+  const { data: tedarikciSummary } = useQuery<any>({
+    queryKey: ["/api/tedarikci-kalite/summary-all"],
+  });
+
   // Sprint 7 v3 (5 May 2026): Üretim ↔ Hammadde gap analizi
   const { data: gapAnalysis, isLoading: gapLoading, refetch: refetchGap } = useQuery<any>({
     queryKey: ["/api/recipe-label/gap-analysis"],
@@ -480,22 +485,117 @@ export default function GirdiYonetimiPage() {
         </TabsContent>
 
         {/* Tab 4: Tedarikçi Performans */}
-        <TabsContent value="tedarikci" className="mt-4">
+        <TabsContent value="tedarikci" className="mt-4 space-y-3">
+          {/* Özet kartları */}
+          {tedarikciSummary && (
+            <div className="grid grid-cols-3 gap-3">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-xs text-muted-foreground">Toplam Tedarikçi</div>
+                  <div className="text-2xl font-bold mt-1">{tedarikciSummary.totalSuppliers}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-xs text-muted-foreground">QC Verisi Var</div>
+                  <div className="text-2xl font-bold mt-1 text-green-600">{tedarikciSummary.withQC}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-xs text-muted-foreground">QC Verisi Yok</div>
+                  <div className="text-2xl font-bold mt-1 text-orange-500">{tedarikciSummary.withoutQC}</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-purple-500" />
-                Tedarikçi Performans Özeti
+                Tedarikçi Performans Tablosu
               </CardTitle>
               <CardDescription>
-                Her tedarikçi için QC kabul oranı, uygunsuzluk ve red sayıları
+                Sertifikalar, ürün sayısı ve QC kabul/red oranları
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>Tedarikçi performans verisi gelecek QC kayıtlarından hesaplanacak.</p>
-                <p className="text-xs mt-2">QC kayıt eklemek için: Hammadde girişinde "Kalite Kontrol" butonuyla başlayın</p>
+              {!tedarikciSummary?.suppliers?.length ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>Henüz tedarikçi yok</p>
+                </div>
+              ) : (
+                <div className="rounded-md border overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tedarikçi</TableHead>
+                        <TableHead>Onay No</TableHead>
+                        <TableHead className="text-center">Sertifikalar</TableHead>
+                        <TableHead className="text-center">Ürün</TableHead>
+                        <TableHead className="text-center">Teslimat</TableHead>
+                        <TableHead className="text-right">Performans</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tedarikciSummary.suppliers.map((s: any) => (
+                        <TableRow key={s.id} data-testid={`row-supplier-${s.id}`}>
+                          <TableCell className="font-medium">{s.name}</TableCell>
+                          <TableCell className="font-mono text-xs">{s.foodAuthorizationNumber || '-'}</TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex gap-1 justify-center">
+                              {s.iso22000Certified && <Badge variant="outline" className="text-xs">ISO22000</Badge>}
+                              {s.haccpCertified && <Badge variant="outline" className="text-xs">HACCP</Badge>}
+                              {s.halalCertified && <Badge variant="outline" className="text-xs">Helal</Badge>}
+                              {!s.iso22000Certified && !s.haccpCertified && !s.halalCertified && (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center font-medium">{s.productCount}</TableCell>
+                          <TableCell className="text-center">
+                            {s.totalDeliveries > 0 ? (
+                              <div className="text-xs">
+                                <span className="text-green-600">✓{s.accepted}</span>
+                                {s.conditional > 0 && <span className="text-orange-500 ml-1">⚠{s.conditional}</span>}
+                                {s.rejected > 0 && <span className="text-red-600 ml-1">✗{s.rejected}</span>}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {s.performancePercent !== null ? (
+                              <Badge 
+                                variant={s.performancePercent >= 90 ? 'default' : s.performancePercent >= 70 ? 'secondary' : 'destructive'}
+                                className="font-bold"
+                              >
+                                %{s.performancePercent.toFixed(1)}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground italic">QC bekliyor</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200">
+            <CardContent className="p-3 flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div className="text-xs">
+                <strong>Tedarikçi performansı nasıl hesaplanır?</strong>
+                <p className="text-muted-foreground mt-1">
+                  Performans = (Kabul + Şartlı×0.5) / Toplam Teslimat × 100<br/>
+                  ⭐ ≥%90 = Mükemmel · ≥%70 = İyi · &lt;%70 = İyileştirme gerekli
+                </p>
               </div>
             </CardContent>
           </Card>

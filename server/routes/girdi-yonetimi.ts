@@ -360,6 +360,81 @@ router.get('/api/tedarikci-kalite/performance/:supplierId', isAuthenticated, asy
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// 8b) GET /api/tedarikci-kalite/summary-all — Tüm tedarikçi özet (Sprint 7 v3)
+// ═══════════════════════════════════════════════════════════════════
+
+router.get('/api/tedarikci-kalite/summary-all', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canRead(user.role)) {
+      return res.status(403).json({ message: 'Yetki yok' });
+    }
+
+    // Tüm aktif tedarikçileri getir + her birinin ürün sayısı + QC istatistik
+    const allSuppliers = await db.select({
+      id: suppliers.id,
+      code: suppliers.code,
+      name: suppliers.name,
+      foodAuthorizationNumber: suppliers.foodAuthorizationNumber,
+      iso22000Certified: suppliers.iso22000Certified,
+      haccpCertified: suppliers.haccpCertified,
+      halalCertified: suppliers.halalCertified,
+      auditScore: suppliers.auditScore,
+    }).from(suppliers).where(eq(suppliers.status, 'aktif'));
+
+    const results = await Promise.all(allSuppliers.map(async (s) => {
+      // Bu tedarikçinin ürün sayısı
+      const products = await db.select({ id: rawMaterials.id })
+        .from(rawMaterials)
+        .where(and(eq(rawMaterials.supplierId, s.id), eq(rawMaterials.isActive, true)));
+      
+      // Bu tedarikçinin QC kayıtları
+      const qcRecords = await db.select({ 
+        status: supplierQualityRecords.inspectionStatus,
+      })
+        .from(supplierQualityRecords)
+        .where(eq(supplierQualityRecords.supplierId, s.id));
+      
+      const accepted = qcRecords.filter((r: any) => r.status === 'kabul').length;
+      const conditional = qcRecords.filter((r: any) => r.status === 'şartlı_kabul').length;
+      const rejected = qcRecords.filter((r: any) => r.status === 'red').length;
+      const total = qcRecords.length;
+      const performance = total > 0 
+        ? ((accepted + conditional * 0.5) / total * 100).toFixed(1)
+        : null;
+      
+      return {
+        ...s,
+        productCount: products.length,
+        totalDeliveries: total,
+        accepted,
+        conditional,
+        rejected,
+        performancePercent: performance ? parseFloat(performance) : null,
+      };
+    }));
+
+    // Performansa göre sırala (en iyi en üstte, veri olmayanlar en altta)
+    results.sort((a, b) => {
+      if (a.performancePercent === null && b.performancePercent === null) return b.productCount - a.productCount;
+      if (a.performancePercent === null) return 1;
+      if (b.performancePercent === null) return -1;
+      return b.performancePercent - a.performancePercent;
+    });
+
+    res.json({
+      totalSuppliers: results.length,
+      withQC: results.filter(r => r.totalDeliveries > 0).length,
+      withoutQC: results.filter(r => r.totalDeliveries === 0).length,
+      suppliers: results,
+    });
+  } catch (error: unknown) {
+    console.error('/api/tedarikci-kalite/summary-all error:', error);
+    res.status(500).json({ message: 'Tedarikçi özet alınamadı' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // 9) POST /api/tgk-label/calculate — Reçeteden besin değeri hesapla
 // ═══════════════════════════════════════════════════════════════════
 
