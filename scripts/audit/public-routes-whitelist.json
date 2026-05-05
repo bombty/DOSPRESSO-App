@@ -38,7 +38,16 @@
     { "path": "/bordrom",                              "reason": "BordromPage — kullanıcının kendi bordrosu" },
     { "path": "/iletisim-merkezi",                     "reason": "Redirect bileşeni" },
     { "path": "/musteri-geribildirimi",                "reason": "Redirect bileşeni" },
-    { "path": "/training",                             "reason": "TrainingRedirect bileşeni" }
+    { "path": "/training",                             "reason": "TrainingRedirect bileşeni" },
+    { "path": "/branch-recipes",                       "reason": "BranchRecipes liste — her personel kendi şubesinin reçetelerini görür, sayfa içinde scope-check" },
+    { "path": "/branch-recipes/:id",                   "reason": "BranchRecipeDetail — sayfa içinde role-check (HQ_EDIT_ROLES)" },
+    { "path": "/branch-recipes/admin",                 "reason": "BranchRecipesAdmin — sayfa içinde HQ role-check" },
+    { "path": "/branch-recipes/admin/recipe/:recipeId", "reason": "BranchRecipeEditor — sayfa içinde HQ role-check" },
+    { "path": "/branch-recipes/admin/onboarding",      "reason": "OnboardingAdmin — sayfa içinde role-check" },
+    { "path": "/onboarding",                           "reason": "MyOnboarding — kullanıcının kendi onboarding süreci" },
+    { "path": "/akademi/onboarding",                   "reason": "MyOnboarding (akademi alias) — kullanıcının kendi onboarding süreci" },
+    { "path": "/personel-puantajim",                   "reason": "PersonelPuantajim — kullanıcının kendi puantajı (Sprint 4)" },
+    { "path": "/puantajim",                            "reason": "PersonelPuantajim alias — kullanıcının kendi puantajı" }
   ],
   "catchAllComponents": [
     { "match": "NotFound",            "reason": "Wouter catch-all NotFound (path yok)" },
