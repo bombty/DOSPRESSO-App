@@ -5,6 +5,33 @@ description: DOSPRESSO oturum sonu zorunlu protokolü (Çalışma Sistemi v2.0).
 
 # DOSPRESSO Çalışma Sistemi v2.0 — Oturum Sonu Protokolü
 
+## 🆕 Son Değişiklik Özeti (5 May 2026 Gece)
+
+> **Yeni Claude için:** V2.0 finalize edildi. Bu skill **/mnt/skills/user/'da yok**, Aslan açılış mesajında yolu vermeli: `.agents/skills/session-protocol/SKILL.md`
+
+**5 Zorunlu Adım (her oturum sonu):**
+1. 4 skill dosyasını güncelle (architecture/debug/quality + bu)
+2. `docs/TODAY.md` güncelle
+3. `docs/PENDING.md` güncelle
+4. `docs/DECIDED.md` yeni karar varsa ekle
+5. `docs/DEVIR-TESLIM-X-MAYIS-2026.md` yeni dosya yaz
+
+**Triangle Workflow:**
+- Aslan = Owner (karar, business, GitHub PR merge)
+- Replit = Main agent (build, plan/build mode, isolated task agent)
+- Claude (ben) = Architecture, code, GitHub push, skill update
+
+**Plan/Build Mode:**
+- DB write/schema/migration → Plan mode + isolated agent + backup
+- Docs/UI/code edit → Build mode OK
+- Plan mode'da git mutating yasak (push/commit/checkout)
+
+**5 May Incident Dersi:**
+- Conflict resolve → Replit Resolve UI VEYA `git checkout <hash> -- <files>` (asla `git add -A && git commit` conflict varken)
+- Token → asla dosyaya yazma (D-05), sadece konuşmada
+
+---
+
 ## ZORUNLU — Her Oturum Sonunda (5 Adım, Sırasıyla)
 
 "Bu oturumda hiçbir skill değişmedi" demek neredeyse **IMKANSIZDIR**.

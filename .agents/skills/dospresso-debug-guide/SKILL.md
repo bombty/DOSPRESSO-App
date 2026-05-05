@@ -5,6 +5,21 @@ description: DOSPRESSO-specific debugging procedures for common issues. Covers 4
 
 # DOSPRESSO Debug Checklist
 
+## 🆕 Son Değişiklik Özeti (5 May 2026 Gece)
+
+> **Yeni Claude için:** §32-§36 yeni eklendi. 31 → 36 dokümante bug.
+
+**Yeni bölümler:**
+- **§32** — `git pull` Sonrası Conflict Marker'lı Commit (CRİTİCAL) — 5 May incident
+- **§33** — Scheduler Bildirim Spam (1 task → 751 bildirim/24h) — Sprint 16 fix
+- **§34** — `payroll_parameters` Tablosu Boş → Bordro 0 Verir — Sprint 16 fix
+- **§35** — DB Yazma Komutları Build Mode'da Reddediliyor (Sandbox)
+- **§36** — Sidebar Yeni Sayfa Görünmüyor (Frontend Route Var Ama Erişilemiyor)
+
+**Önceki:** §1-§31 (4 May ve öncesi - değişmedi)
+
+---
+
 ## Quick Triage — Identify the Symptom
 
 | Symptom | Jump to |

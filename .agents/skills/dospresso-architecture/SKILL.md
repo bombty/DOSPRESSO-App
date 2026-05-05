@@ -5,6 +5,40 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 
 # DOSPRESSO Architecture Map
 
+## 🆕 Son Değişiklik Özeti (5 May 2026 Gece — Sprint 8-16 + Hotfix)
+
+> **Yeni Claude için hızlı bağlam:** Bu skill 4 May'den 5 May'e Sprint 7→16 + 1 hotfix ile güncellendi.
+
+**Sprint 7 v3 (TGK 2017/2284 etiket sistemi - 5 May sabah):**
+- 67 hammadde + 13 tedarikçi seed, smart matching, TÜRKOMP cache
+- PR #11-#17 mergelendi, 9 alt PR
+
+**Sprint 8-16 (5 May gece - 13+ commit, ~5000 satır):**
+- 12 yeni sayfa: `/performans-yonetim`, `/admin/skor-parametreleri`, `/tedarikci-kalite`, `/turkomp`, `/bordro-merkezi`, `/yonetici-puanlama`, `/ik-merkezi`, `/mali-rapor-giris`, `/pdks-manuel-giris` + 3 update
+- 22+ yeni endpoint: `/api/score-parameters/*`, `/api/manager-rating/*`, `/api/performance/personnel`, `/api/tgk-label/{submit,approve,reject}` + diğerleri
+- 1 yeni schema: `schema-25-score-parameters.ts`
+- 2 migration: `2026-05-05-sprint-8-data-cleanup-personnel-sync.sql` + `2026-05-05-payroll-parameters-2026-seed.sql`
+- 1 servis: `server/services/performance-calculator.ts` (5 kategori = 90 puan)
+- Sidebar: İK_MENU 12 madde, FABRIKA_MENU 12 madde, FINANS_MENU 5 madde
+
+**Hotfix #21 (5 May gece geç):**
+- 30 conflict marker temizliği (`recipe-label-engine.ts:9` + `etiket-hesapla.tsx:18` + `personnel-attendance-detail.ts:3`)
+- 764671383 baseline'dan overwrite
+
+**Pilot 12 May Pazartesi:** 4 lokasyon (5=Işıklar, 8=Lara, 23=HQ, 24=Fabrika) — T-7 gün.
+
+---
+
+## Platform Metrics (5 Mayıs 2026 — Sprint 16 sonrası)
+- **Database tablosu (kodda):** **478+ pgTable** (Sprint 8: +1 score_parameters)
+- **API endpoint:** ~1.985 (Sprint 8-16: +22)
+- **Sayfa:** ~336 (Sprint 8-16: +12)
+- **Aktif rol:** 23 (8 phantom)
+- **Bilinen bug:** 33 (debug-guide §1-§36, §32-36 yeni eklendi)
+- **Quality Gate:** 31 madde (QG-28 marker, QG-29 sidebar, QG-30 schema, QG-31 token)
+
+---
+
 ## Platform Metrics (4 Mayıs 2026 — Branch Recipe System eklendi)
 - **Database tablosu (kodda):** **465 pgTable** tanımı (4 May: +9 branch_* + +1 schema-24, Sprint 3'te 13 tablo + 4 UNIQUE + 83 index + 47 FK eklendi, Task #255)
 - **Database tablosu (DB'de gerçek):** ~466 (drift = 0, baseline `migrations/0000_baseline.sql`)

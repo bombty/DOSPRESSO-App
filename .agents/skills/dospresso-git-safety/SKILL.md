@@ -5,6 +5,35 @@ description: DOSPRESSO git senkronizasyon güvenlik protokolü. Main agent (Repl
 
 # DOSPRESSO Git Safety Protocol — 5 Katmanlı Önleme
 
+## 🆕 Son Değişiklik Özeti (5 May 2026 Gece)
+
+> **Yeni Claude için:** Bu skill **/mnt/skills/user/'da yok**, Aslan açılış mesajında yolu vermeli: `.agents/skills/dospresso-git-safety/SKILL.md`
+
+**5 May'de yaşanan 2 incident:**
+
+**1) Conflict Marker Push Olayı:**
+- Replit `git pull` conflict çıkardı
+- `git add -A && git commit && git push` direkt main'e (3 dosya 30 marker)
+- esbuild parse hatası → beyaz ekran
+- **Hotfix #21:** 764671383 baseline'dan overwrite
+
+**2) Token Sızdırma Olayı:**
+- DECIDED.md:43'e GitHub PAT yanlışlıkla yazıldı
+- GitHub Push Protection algıladı, push reddedildi
+- Token muhtemelen revoke edildi
+- **Çözüm:** sed ile temizle, yeni temiz branch
+
+**Bu sessionda eklenen yeni kurallar:**
+- **L4 Resolve Yöntemi:** Replit Resolve UI VEYA `git checkout <hash> -- <files>` — asla blind `git add -A`
+- **L5 Token Kontrol:** Her commit öncesi `grep ghp_|gho_|github_pat` zorunlu
+- **D-38 Hotfix Branch + PR:** Hiçbir conflict çözümü doğrudan main'e gitmez
+
+**Pre-flight Komutu (her commit öncesi):**
+```bash
+grep -rE '^<<<<<<<\|^=======$\|^>>>>>>>' .   # marker check
+grep -rE '(ghp\|gho\|ghu\|ghs\|github_pat)_[A-Za-z0-9_]+' .  # token check
+```
+
 ---
 
 ## ⚠️ WORKFLOW MANDATORY (5 Mayıs 2026 — Aslan Kararı)
