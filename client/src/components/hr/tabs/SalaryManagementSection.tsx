@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { type User } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -18,12 +19,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/empty-state";
 import { ListSkeleton } from "@/components/list-skeleton";
-import { Edit, Star, Users } from "lucide-react";
+import { Edit, Star, Users, Calculator, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 export default function SalaryManagementSection({ employees, branches }: { employees: User[]; branches: { id: number; name: string }[] }) {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [branchFilter, setBranchFilter] = useState<string>("all");
@@ -103,6 +105,32 @@ export default function SalaryManagementSection({ employees, branches }: { emplo
 
   return (
     <div className="space-y-4">
+      {/* Sprint 6 Bölüm 4 (5 May 2026 - Mahmut feedback): Toplu Bordro Hesapla CTA */}
+      {/* "Bordrom" sayfası kişisel — toplu hesaplama buradan /maas'a gider */}
+      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200 dark:border-blue-800">
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-2">
+              <Calculator className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Aylık Bordro Hesaplama</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Burası maaş tanımları için. Aylık bordro hesaplaması "Maaş Hesaplama" sayfasındadır.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => setLocation('/maas')}
+            data-testid="button-go-to-maas-from-salary"
+            size="sm"
+          >
+            Maaş Hesaplama
+            <ArrowRight className="h-3 w-3 ml-2" />
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Özet Kartları */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>

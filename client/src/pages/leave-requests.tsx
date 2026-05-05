@@ -177,38 +177,64 @@ export default function LeaveRequestsPage() {
               })}
             </div>
 
+            {/* Sprint 6 Bölüm 4 (5 May 2026 - Mahmut feedback): Şube filtresi belirgin + dropdown */}
             {/* Şube Filtreleri (sadece HQ) */}
             {isHQRole(user?.role as any) && branches.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-muted-foreground mr-1">Şube:</span>
-                <button
-                  onClick={() => setBranchFilter("all")}
-                  className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
-                    branchFilter === "all"
-                      ? "bg-primary text-primary-foreground border-primary font-semibold"
-                      : "bg-background hover:bg-muted border-border"
-                  }`}
-                >
-                  🌐 Tüm Şubeler
-                </button>
-                {branches.map((b) => {
-                  const count = leaveRequests.filter(r => getRequestBranchId(r) === b.id).length;
-                  if (count === 0) return null;
-                  const icon = b.id === 24 ? "🏭" : b.id === 23 ? "🏢" : "☕";
-                  return (
-                    <button
-                      key={b.id}
-                      onClick={() => setBranchFilter(String(b.id))}
-                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
-                        branchFilter === String(b.id)
-                          ? "bg-primary text-primary-foreground border-primary font-semibold"
-                          : "bg-background hover:bg-muted border-border"
-                      }`}
-                    >
-                      {icon} {b.name} ({count})
-                    </button>
-                  );
-                })}
+              <div className="space-y-2 p-3 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-bold flex items-center gap-1.5">
+                    📍 Şube Filtresi
+                  </span>
+                  <select
+                    value={branchFilter}
+                    onChange={(e) => setBranchFilter(e.target.value)}
+                    className="text-xs px-2 py-1 rounded border bg-background"
+                    data-testid="select-branch-filter"
+                  >
+                    <option value="all">🌐 Tüm Şubeler</option>
+                    {branches.map((b) => {
+                      const count = leaveRequests.filter(r => getRequestBranchId(r) === b.id).length;
+                      if (count === 0) return null;
+                      return (
+                        <option key={b.id} value={String(b.id)}>
+                          {b.name} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setBranchFilter("all")}
+                    className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                      branchFilter === "all"
+                        ? "bg-primary text-primary-foreground border-primary font-semibold"
+                        : "bg-background hover:bg-muted border-border"
+                    }`}
+                    data-testid="chip-branch-all"
+                  >
+                    🌐 Tümü ({leaveRequests.length})
+                  </button>
+                  {branches.map((b) => {
+                    const count = leaveRequests.filter(r => getRequestBranchId(r) === b.id).length;
+                    if (count === 0) return null;
+                    const icon = b.id === 24 ? "🏭" : b.id === 23 ? "🏢" : "☕";
+                    return (
+                      <button
+                        key={b.id}
+                        onClick={() => setBranchFilter(String(b.id))}
+                        className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                          branchFilter === String(b.id)
+                            ? "bg-primary text-primary-foreground border-primary font-semibold"
+                            : "bg-background hover:bg-muted border-border"
+                        }`}
+                        data-testid={`chip-branch-${b.id}`}
+                      >
+                        {icon} {b.name} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
