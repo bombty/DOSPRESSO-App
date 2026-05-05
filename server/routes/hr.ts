@@ -2098,6 +2098,10 @@ JSON formatında yanıt ver:
 
       const branchIdFilter = req.query.branchId ? Number(req.query.branchId) : null;
       const roleFilter = req.query.role ? String(req.query.role) : null;
+      
+      // Sprint 10: Tarih aralığı (default: bu ay)
+      const yearParam = req.query.year ? Number(req.query.year) : undefined;
+      const monthParam = req.query.month ? Number(req.query.month) : undefined;
 
       // Active personeli al (filtreli)
       const conditions: any[] = [eq(users.isActive, true)];
@@ -2122,29 +2126,27 @@ JSON formatında yanıt ver:
       const branchList = await db.select().from(branches);
       const branchMap = new Map(branchList.map(b => [b.id, b.name]));
 
-      // Skor parametrelerinin toplamını al (toplam max)
-      const activeParams = await db.select().from(scoreParameters).where(eq(scoreParameters.isActive, true));
-      const totalMaxPoints = activeParams.reduce((s, p) => s + (p.maxPoints || 0), 0);
-      // Default değerler 90 (Devam 20 + Checklist 20 + Görev 15 + Müşteri 15 + Yönetici 20)
-      const maxScore = totalMaxPoints || 90;
+      // Sprint 10: Gerçek skor hesaplama (bulk)
+      const { calculateBulkPersonnelScores, getMonthRange } = await import('../services/performance-calculator');
+      const { start, end } = getMonthRange(yearParam, monthParam);
+      
+      const userIds = personnelList.map(p => p.id);
+      const scoreMap = await calculateBulkPersonnelScores(userIds, start, end);
 
-      // Her personel için skor breakdown hesapla
-      // NOT: PDKS/checklist/görev/müşteri data'sı henüz tam değil, placeholder skorlar
-      // Sprint 9'da gerçek hesaplama mantığı implement edilecek
       const result = personnelList.map((p) => {
         const fullName = [p.firstName, p.lastName].filter(Boolean).join(' ').trim() || p.username || 'Bilinmiyor';
         const branchName = p.branchId ? (branchMap.get(p.branchId) || 'Bilinmiyor') : 'HQ';
         
-        // Placeholder breakdown (gerçek hesaplama Sprint 9)
-        const breakdown = {
-          devam: 0,
-          checklist: 0,
-          gorev: 0,
-          musteri: 0,
-          yonetici: 0,
-        };
-        const totalScore = Object.values(breakdown).reduce((s, v) => s + v, 0);
-        const scorePercent = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+        const score = scoreMap.get(p.id);
+        if (!score) {
+          // Hesaplama başarısız → placeholder
+          return {
+            userId: p.id, fullName, branchName, branchId: p.branchId, role: p.role,
+            totalScore: 0, maxScore: 90, scorePercent: 0,
+            breakdown: { devam: 0, checklist: 0, gorev: 0, musteri: 0, yonetici: 0 },
+            trend: 0,
+          };
+        }
 
         return {
           userId: p.id,
@@ -2152,15 +2154,26 @@ JSON formatında yanıt ver:
           branchName,
           branchId: p.branchId,
           role: p.role,
-          totalScore,
-          maxScore,
-          scorePercent,
-          breakdown,
+          totalScore: score.totalScore,
+          maxScore: score.maxScore,
+          scorePercent: score.scorePercent,
+          breakdown: score.breakdown,
+          metrics: score.metrics,
           trend: 0,
         };
       });
 
-      res.json({ personnel: result, totalMaxPoints: maxScore });
+      // Toplam max puan (response'da metadata)
+      const maxScoreFirst = result[0]?.maxScore ?? 90;
+
+      res.json({ 
+        personnel: result, 
+        totalMaxPoints: maxScoreFirst,
+        period: { 
+          start: start.toISOString().slice(0, 10), 
+          end: end.toISOString().slice(0, 10) 
+        },
+      });
     } catch (error: unknown) {
       console.error('/api/performance/personnel error:', error);
       res.status(500).json({ message: 'Personel performansı yüklenemedi' });
