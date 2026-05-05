@@ -5,18 +5,33 @@
 
 ---
 
-## ⚡ ŞU AN DURUM (5 May ~18:30)
+## ⚡ ŞU AN DURUM (5 May ~19:30) — SPRINT 7 KAPATILDI ✅
 
-**Saat:** 5 May 18:30 (~30 saat maraton)
-**Aktif branch:** `claude/sprint-7-girdi-yonetimi-tgk-2026-05-05` (5 commit, push edildi: bf02d54)
-**Diğer açık branch:** `claude/sprint-6-bolum-3-pdks-detail-2026-05-05` (3 commit, push edildi)
-**Pilot skoru:** 9.99+ (Sprint 7 v3 ile etiket sistemi tam fonksiyonel)
+**Saat:** 5 May 19:30 (~31 saat maraton)
+**Main HEAD:** `6fdd9af` (Sprint 7 shifts hotfix merged)
+**Açık branch:** YOK (hepsi merged + delete edildi)
+**Pilot skoru:** 9.99+ (Sprint 7 tam fonksiyonel, smoke test 6/6 yeşil)
 
-### Sprint 7 SON DURUM
-- ✅ v1: Schema (TGK alanları + 2 yeni tablo) + 13 endpoint + 700-satır frontend
-- ✅ v2: TÜRKOMP entegrasyonu + jsPDF etiket üreteci + 67 hammadde import SQL
-- ✅ v3: recipe-label-engine (smart matching) + gap-analysis endpoint
-- ✅ v3 frontend: /etiket-hesapla sayfası + Tedarikçi performans dashboard + Branch recipe "Etiket Hesapla" butonu
+### Bugün GitHub'a merged (5 PR)
+| PR | Commit | Konu |
+|---|---|---|
+| #11 | 32f331b | Sprint 6 Bölüm 1+2 (Mahmut viewOnly + EDIT 403) |
+| #12 | 553079f | Sprint 6 Bölüm 3+4 (PDKS detay + Bordro CTA) |
+| #13 | eed2cc1 | Sprint 7 MEGA (Girdi/TÜRKOMP/PDF/Etiket) — 9 commit |
+| #14 | cea1ac7 | Hotfix: Route guard whitelist |
+| #15 | 6fdd9af | Sprint 7 hotfix: shiftAssignments → shifts |
+
+### Replit Production Durumu (5 May 19:15 smoke test)
+- ✅ Workflow çalışıyor, backend build temiz
+- ✅ raw_materials: 35 kolon (17→35), 307 satır (240+67)
+- ✅ suppliers: 13 tedarikçi (5+8 yeni)
+- ✅ Yeni 3 tablo aktif (turkomp_foods, tgk_labels, supplier_quality_records)
+- ✅ 6/6 API endpoint test yeşil
+- ✅ /api/personnel/:id/attendance-detail HTTP 200 (Sprint 6 Bölüm 3)
+- ✅ Frontend /girdi-yonetimi 5 tab render OK
+- ✅ /etiket-hesapla router'da kayıtlı
+
+
 
 ---
 
