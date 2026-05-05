@@ -80,9 +80,11 @@ export default function FabrikaReceteDetay() {
   const handleCalculateTgkLabel = async () => {
     setTgkLabelLoading(true);
     try {
-      const res = await fetch(`/api/recete/factory/${recipeId}/calculate-label`, {
+      const res = await fetch(`/api/recipe-label/calculate-factory`, {
         method: 'POST',
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ factoryRecipeId: parseInt(recipeId || '0') }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -101,11 +103,11 @@ export default function FabrikaReceteDetay() {
   const handleDownloadTgkPdf = () => {
     if (!tgkLabelData) return;
     downloadTGKLabel({
-      productName: tgkLabelData.recipe?.name || recipe?.name || 'Ürün',
+      productName: tgkLabelData.recipeName || recipe?.name || 'Ürün',
       ingredientsText: tgkLabelData.ingredientsText || '',
       allergenWarning: tgkLabelData.allergenWarning,
       crossContaminationWarning: tgkLabelData.crossContaminationWarning,
-      netQuantityG: tgkLabelData.totalWeightG,
+      netQuantityG: tgkLabelData.totalGramsKnown,
       energyKcal: tgkLabelData.nutrition?.energyKcal,
       energyKj: tgkLabelData.nutrition?.energyKj,
       fat: tgkLabelData.nutrition?.fat,
