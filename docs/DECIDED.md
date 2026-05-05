@@ -1,147 +1,268 @@
-# DECIDED — 5 Mayıs 2026
+# ✅ DECIDED — Kalıcı Kararlar
 
-## Sprint 6 Kararları (Aslan + Mahmut feedback)
-
-### Yetki Modeli
-- **Mahmut tüm şubeleri görsün** ama sadece HQ+Fabrika+Işıklar EDIT yetkili
-- viewOnly mantığı: GET endpoint'leri tüm scope, PUT/DELETE managed branches kontrolü
-- managed_branches array: [5, 23, 24] (Işıklar, HQ, Fabrika)
-
-### UX
-- /bordrom = personel kişisel (Aslan'ın gördüğü)
-- /maas = HQ toplu hesaplama (Mahmut'un işi)
-- /ik?tab=maas = Maaş tanımları (yeni özellikler için)
-- Karışıklığı önlemek için "Maaş Hesaplama" CTA mavi banner her yerde
-
-## Sprint 7 Kararları (Aslan)
-
-### Kapsam
-- **Tam TGK 2017/2284 uyumu**: Etiket + alerjen + besin değeri + onay
-- **Tüm endpoints** (A-G), bugün 6.5 saat - hedef 00:30 → revize edildi 22:00 → revize edildi 18:00 (ec25b18 ile)
-
-### Veri Kaynağı
-- **TÜRKOMP** (turkomp.tarimorman.gov.tr) - Türkiye Tarım Bakanlığı resmi
-- **Hibrit yaklaşım**: Önce manuel girilmiş, yoksa TÜRKOMP cache, yoksa TÜRKOMP'tan tek tek çek
-- **Toplu scraping YASAK** (ücretli lisans gerekli)
-
-### Yetki
-- READ:  admin, ceo, cgo, satinalma, gida_muhendisi, kalite_kontrol, fabrika_mudur, fabrika_sorumlu, kalite, sef, recete_gm
-- WRITE: admin, ceo, satinalma, gida_muhendisi, sef, recete_gm
-- APPROVE LABEL: admin, gida_muhendisi (TGK Madde 18 - gıda mühendisi onayı zorunlu)
-
-### Teknoloji
-- **PDF**: jsPDF (zaten kurulu, client-side, server'a yük yok) - öneriden Aslan onayladı
-- **PDF formatı**: A6 (105×148mm) - etiket için ideal boyut
-- **PDF dil**: TR (önce), EN sonradan eklenebilir
-
-### Veri Kararları
-- 67 hammadde Numbers'tan import (HAM001-HAM067)
-- 13 tedarikçi normalize edilmiş (büyük/küçük harf birleştirildi)
-- Marka 11 unique → marka kolonu rawMaterials'a eklendi (yeni)
-- TGK uyum flag (`tgk_compliant`): kritik olanlar (un, şeker, tuz, su, zeytinyağı) TRUE
-- nutrition_source: 'manual' (default) | 'turkomp' | 'supplier_doc' | 'estimated'
-
-## Genel Kurallar
-
-### Çalışma Sistemi v2.0 (devam)
-- 4 skill files mandatory at every session end
-- Plan mode + isolated agent + DRY-RUN + GO bekle for DB writes
-- 5 perspektifli review (Principal Engineer / Franchise F&B Ops / Senior QA / PM / Compliance)
-- Schema kolon adlarını DB'ye yazmadan önce GREP ZORUNLU
-
-### Triangle Workflow
-- Claude: kod yazar, GitHub push, devir-teslim
-- Aslan: GitHub UI ile PR merge, business kararlar
-- Replit Agent: DB migration + build + smoke test
-
-### Commit Mesaj Standardı (5 May 2026 - güncellenmiş)
-- Başlık: "Sprint X (Bölüm Y) - Kısa açıklama" veya "Sprint X vN - ..."
-- Body: SPRINT amacı, KARAR, IMPLEMENTATION, FILES değişiklikleri, NOTES
-- Footer: DİFF satır sayısı + dosya sayısı
-- Emoji yok (clean)
-
-### Big Sprint Stratejisi (yeni)
-- "Tek branch çoklu commit, tek mega PR"
-- PR yorgunluğu azaltır, atomic merge daha güvenli
-- Sprint bittiğinde bir tek mega PR aç
-
-## Sprint 7 Kararları (5 May 2026 öğleden sonra)
-
-### Girdi Yönetimi Kapsamı
-- **Tam TGK 2017/2284 uyumlu**: etiket oluşturma + alerjen + besin değeri otomasyonu
-- 67 hammadde Numbers'tan import (HAM001-HAM067)
-- 13 tedarikçi normalize (İçim, Puratos, Hekimoğlu vs.)
-
-### Yetki Modeli (Sprint 7)
-- **WRITE:** admin, ceo, satinalma, gida_muhendisi
-- **READ:** + cgo, kalite_kontrol, fabrika_mudur, fabrika_sorumlu, kalite, sef, recete_gm
-- **TGK Etiket Onayı:** SADECE admin + gida_muhendisi (TGK Madde 18 uyumlu)
-- **TÜRKOMP kullanım:** admin, ceo, satinalma, gida_muhendisi, kalite_kontrol, kalite
-
-### TÜRKOMP Veri Kaynağı
-- Türkiye Tarım ve Orman Bakanlığı resmi veritabanı
-- URL: https://turkomp.tarimorman.gov.tr (645 gıda × 100 bileşen)
-- ⚠️ **Yasal:** Toplu scraping ücretli lisans gerektirir, modül sadece manual arama
-- Cache table: turkomp_foods (kullanıcı arar → tek tek getirir)
-
-### PDF Etiket Teknolojisi
-- **jsPDF** (zaten kurulu, dependency yok)
-- Client-side oluşturma (server'a yük binmez)
-- A6 boyut (105×148 mm)
-- TGK Ek-13 besin değeri tablosu
-- 14 alerjen otomatik tespit + vurgu
-
-### Smart Matching Mantığı (Reçete → Etiket)
-- branchRecipeIngredients FREE-TEXT → rawMaterials fuzzy match gerekli
-- 4 seviye:
-  1. Tam eşleşme (lowercase) → matchScore: 1.0
-  2. CONTAINS → 0.85 (tek), 0.7 (çoklu - en kısa seç)
-  3. İlk kelime → 0.5
-  4. Hiç eşleşmedi → null + alternatif öner
-- Eşleşmeyen ingredient'ler kullanıcıya "manuel bağla" uyarısı
-
-### Schema Uyumsuzluğu (Bilinen Sorun)
-- `factoryRecipeIngredients.rawMaterialId` aslında `inventory.id` (rawMaterials değil)
-- recipe-label-engine bunu fuzzy match ile bypass ediyor
-- Pilot sonrası migration ile düzeltilebilir (riskli)
-
-### Versiyonlama (TGK Etiket)
-- tgk_labels.version: her save'de +1
-- Eski versiyonlar isActive=false, kayıtta tutulur (TGK denetim)
-- Sadece son versiyon onay için sunulur
+> **Bir kez verilen kararlar, tartışılmaz.** Yeni oturum: önce bu dosyayı oku, kararları yeniden açma.
 
 ---
 
-## Akşam Eklenen Kararlar (5 May 19:00 sonrası)
+## 🏗️ MİMARİ KARARLAR
 
-### DECISION-S7-MEGA-PR — Tek mega PR yaklaşımı doğrulandı
-Sprint 7'de 9 commit'i tek PR'da topladık (PR #13). Avantaj: PR yorgunluğu yok, atomic merge, tarih tutarlı. **Sprint 8'de de aynı yaklaşım.**
+### D-01: Triangle Workflow (4 Apr 2026)
+**Karar:** İş bölümü kesindir.
+- **Aslan (CEO):** Business, UX, priority kararları
+- **Claude:** Architecture, code, GitHub push, kod yazma
+- **Replit Agent:** DB migration, build, hotfix, smoke test
 
-### DECISION-S7-MIGRATION-DRY-RUN — Disiplin kuralı netleşti
-Replit Agent'a komut verirken:
-- Beklenen değerleri **rakam olarak** ver (kolon=35, hammadde=67, vs.)
-- "DRY-RUN ÖNCE, GO bekle, sonra EXECUTE" — her zaman 3 aşama
-- Build hatası varsa Replit lokal düzeltmeyi GitHub'a YAZMALI (yoksa bir sonraki pull patlatır)
+**Neden:** Karışıklığı önlemek, sorumluluk net olsun.
 
-5 May 19:15 Sprint 7 migration bu kuralla başarılı oldu.
+---
 
-### DECISION-S7-EKSİKLER → SPRINT 8
-Pilot için kritik OLMAYAN ama Sprint 8'e taşınacaklar:
-1. Mevcut 240 rawMaterials için TGK alanları (NULL → en azından top 30 manuel)
-2. TÜRKOMP rate limit (express-rate-limit, 10/saat per kullanıcı)
-3. /api/recipe-label/gap-analysis batch optimization (~30sn → 2sn)
-4. Fabrika reçetesinde de "Etiket Hesapla" butonu
-5. Etiket reddedilirken sebep dialog'u
+### D-02: Monorepo Tek Repo (Mart 2026)
+**Karar:** `bombty/DOSPRESSO-App` tek repo, monorepo değil.  
+**Yapı:** client/ + server/ + shared/ + migrations/ + docs/  
+**Neden:** Replit hızlı build için tek workspace.
 
-### DECISION-S7-FRONTEND-ENTEGRASYON
-TÜRKOMP ve tedarikçi-kalite için **ayrı sayfa YOK**. Bunlar /girdi-yonetimi içine entegre:
-- Tedarikçi Performans = 4. tab
-- TÜRKOMP'tan Getir = Edit modal'da buton
+---
 
-Replit Agent "eksik" olarak işaretledi ama tasarım gereği yok.
+### D-03: Drizzle ORM + PostgreSQL Neon (Mart 2026)
+**Karar:** Drizzle ORM, type-safe schema. Neon serverless.  
+**Neden:** TypeScript inference, migration yönetimi kolay.  
+**Schema dosyaları:** schema-01 → schema-25 (domain bazlı).
 
-### DECISION-MARATHON-LIMIT
-30+ saatlik maraton sonrası kabul edildi:
-- Bir sonraki uzun oturum 12 saat kapağı koy
-- Skill update SONA bırakma — her sprint sonu hemen yaz
-- 4 saatte bir özet
+---
+
+### D-04: 24 Schema Dosyası (Apr 2026)
+**Karar:** Tek monolit yerine domain bazlı 24+ schema.  
+**Avantaj:** Modüler, paralel iş, conflict az.  
+**Schema-25 (Sprint 8):** scoreParameters + history.
+
+---
+
+## 🔐 GÜVENLİK VE COMPLIANCE
+
+### D-05: Push Token Asla Dosyaya Yazılmaz (10 Apr 2026)
+**Token:** Konuşmada paylaşılır (asla dosyaya yazma — bu kural D-05).  
+**Komut formatı:** `git push "https://x-access-token:TOKEN@github.com/bombty/DOSPRESSO-App.git" BRANCH`
+
+---
+
+### D-06: Main'e Doğrudan Push Yasak (5 May 2026)
+**Karar:** Tüm değişiklikler hotfix branch + PR mecburi.  
+**Neden:** 5 May gecesi 30 conflict marker push olayı.  
+**Aktif:** P-9'dan sonra GitHub Branch Protection ile teknik olarak da uygulanacak.
+
+---
+
+### D-07: 5 Perspektif Review (3 May 2026)
+Her major değişiklik için:
+1. **Principal Engineer** — kod kalitesi
+2. **Franchise F&B Ops** — operasyonel etki
+3. **Senior QA** — test edilebilirlik
+4. **Product Manager** — UX
+5. **Compliance** — İş Kanunu, gıda mevzuat, KDV/AGI, KVKK
+
+---
+
+### D-08: Plan Mode Zorunluluğu (Apr 2026)
+**Karar:** DB write, schema, migration, env değişiklik için:
+- Mode'u **Plan**'a çevir (Aslan)
+- Isolated task agent (Replit Agent)
+- pg_dump backup zorunlu
+- DRY-RUN + GO mecburi
+- PR review
+
+**Build mode'da DB yazma YASAK** (kuralı esnetme).
+
+---
+
+### D-09: Çalışma Sistemi v2.0 — 4 Skill Mecburi (14 Apr 2026)
+**Karar:** Her oturum sonu 4 skill dosyası güncellenir:
+- `dospresso-architecture`
+- `dospresso-debug-guide`
+- `dospresso-quality-gate`
+- `session-protocol`
+
+---
+
+### D-10: Async Coordination — 3 MD Dosya (Apr 2026)
+- `docs/TODAY.md` — bugün ne yapıldı
+- `docs/PENDING.md` — bekleyen işler
+- `docs/DECIDED.md` — kalıcı kararlar (bu dosya)
+
+---
+
+## 🏢 İŞ MODELİ KARARLARI
+
+### D-11: Pilot 4 Lokasyon (Apr 2026)
+- **Işıklar #5** (HQ-owned, Antalya)
+- **Antalya Lara #8** (franchise temsil)
+- **Merkez Ofis #23** (HQ)
+- **Fabrika #24** (üretim)
+
+**Strateji:** Hibrit C — Mahmut HQ koordinasyon, Coach saha gözetim.  
+**Tarih:** 12 May 2026 Pazartesi 09:00.
+
+---
+
+### D-12: Muhasebe Scope Sabit (Apr 2026)
+**Karar:** Muhasebe modülü = HQ + Fabrika + Işıklar **SADECE**.  
+**Neden:** Diğer şubeler franchise muhasebe ayrı yürütüyor.
+
+---
+
+### D-13: Data Flow Tek Yönlü (Apr 2026)
+**Karar:** Branch → HQ. ASLA tersi.  
+**Neden:** Veri tutarlılığı, audit, complians.
+
+---
+
+### D-14: Fabrika ↔ Branch Tam İzole (Apr 2026)
+**Karar:** Cross-access yok.  
+- `product_recipes` (branch) ≠ `factory_recipes` (factory)
+- Branch ve factory personeli birbirini görmez
+- Stok ayrı
+
+---
+
+### D-15: Mr. Dobody — Pattern-Based (Mart 2026)
+**Karar:** Individual alert DEĞİL.  
+**Yapı:** Pattern-based notifications + autonomous actions with approval mechanism.
+
+---
+
+### D-16: Admin Tam Erişim (Mart 2026)
+**Karar:** Admin role her zaman tam erişim. Filtre uygulanmaz.
+
+---
+
+### D-17: HQ Kiosk PIN Plaintext (DECISIONS#14, Mart 2026)
+**Karar:** Pilot süresince plaintext kalır (HQ hesabı az, düşük risk).  
+**Pilot SONRASI (B1):** Hash + secure storage.
+
+---
+
+## 🎯 PILOT-SPESIFIK KARARLAR
+
+### D-18: Sprint 8 EXECUTE — Seçenek (a) GO (5 May 2026)
+**Karar:** Pilot şubelerdeki 11 ekstra kişi aktif kalır.  
+**Neden:** Veri kaybetmek yerine fazlalık tut. Mahmut sonra inceler.
+
+---
+
+### D-19: monthly_payroll Pilot Süresince Aktif (5 May 2026)
+**Karar:** schema-12 monthlyPayroll kullanılır (51 aktif kayıt).  
+**schema-07 monthlyPayrolls boş kalır** (deprecated-candidate).  
+**Pilot SONRASI:** `docs/DECISIONS-MONTHLY-PAYROLL.md` Seçenek A.
+
+---
+
+### D-20: Feature Freeze (18 Apr - 15 Haz 2026)
+**Karar:** Pilot stabilize olana kadar yeni feature yok.  
+**İstisna:** Kritik bug fix, pilot bloker.  
+**Yeni feature talebi → "Sprint 17+ pilot sonrası"** yanıtı.
+
+---
+
+### D-21: payroll_parameters 2026 Tahmin Değerleri (5 May 2026)
+**Karar:** Migration tahmini değerler kullanır:
+- Asgari ücret 33.030 TL brüt / 28.075,50 TL net
+- SGK %14 işçi / %20.5 işveren
+- 5 vergi dilimi (%15 → %40)
+
+**Mahmut'un sorumluluğu:** Resmi Gazete + GİB ile DOĞRULAMA.
+
+---
+
+## 📐 SCHEMA / VERİ KARARLARI
+
+### D-22: Bordro Tablo Kanonik Karar (5 May 2026)
+**Detay:** `docs/DECISIONS-MONTHLY-PAYROLL.md`  
+**Pilot süresince:** monthlyPayroll (schema-12) aktif tablo.  
+**Pilot sonrası:** Seçenek A — monthlyPayrolls'a migrate, monthlyPayroll DROP.
+
+---
+
+### D-23: Skor Sistemi 5 Kategori 90 Puan (Sprint 8, 5 May 2026)
+**Karar:** Default skor parametreleri:
+- Devam (PDKS): max 20
+- Checklist: max 20
+- Görev: max 15
+- Müşteri: max 15
+- Yönetici: max 20
+- **Toplam:** 90 puan
+
+**Admin/CEO** kriter ekleyebilir/değiştirebilir.
+
+---
+
+### D-24: 35 Gerçek Personel (5 May 2026)
+**Karar:** Aslan'ın gönderdiği 2 Excel'den:
+- PERSONEL_o_zlu_k_app.xlsx (26 kişi)
+- Lara_Sube_Maas_2026_replit.xlsx (9 kişi Lara)
+
+**Toplam 35.** Migration ADIM 3'te UPSERT.
+
+---
+
+## 🚦 GIT VE WORKFLOW KARARLARI
+
+### D-25: Git Safety 5 Katman (5 May 2026)
+**Skill:** `dospresso-git-safety` (4 May)
+- L1: Build session başı `git fetch && git status -sb`
+- L2: Plan mode task agent `touched_paths`
+- L3: Commit öncesi sync check
+- L4: Conflict çıkarsa Replit Resolve UI (CLI değil)
+- L5: Push öncesi `git log @{u}..HEAD`
+
+**YASAK:** force push, `--theirs .` toptan, `reset --hard`, filter-branch.
+
+---
+
+### D-26: Mode Geçiş Kuralı (Apr 2026)
+**Build mode:** kod yazma, edit, doc, lint  
+**Plan mode:** DB write, schema, migration, env
+
+---
+
+### D-27: Triangle Conflict Çözümü (5 May 2026)
+**Karar:** Replit + Claude aynı dosyayı düzenlerse:
+- Conflict çıkarsa **GitHub UI** (görsel, hata az)
+- CLI `git checkout --theirs` SADECE iki taraf bilinçli emrederse
+- main'de doğrudan kod editi YASAK
+
+---
+
+## 🧠 BİLGİ YÖNETİMİ KARARLARI
+
+### D-28: Memory Edits 30 Madde Limit (Mart 2026)
+**Karar:** memory_user_edits max 30 satır, 100k char.  
+**Format:** Concise. Verbatim komut yok.
+
+---
+
+### D-29: Skill Files Mandatory at Session End (14 Apr 2026)
+4 skill dosyası her oturum sonu güncellenir.  
+Aksi: yarın Claude eksik bilgiyle çalışır.
+
+---
+
+### D-30: Devir-Teslim Tek Dosya Hafıza (Apr 2026)
+**Format:** `docs/DEVIR-TESLIM-X-NISAN-2026.md` veya `-MAYIS-`  
+**İçerik:** Yeni oturum sıfırdan başlasa devam edebilecek seviyede.
+
+---
+
+## 📊 İSTATİSTİK (5 May 2026 sonu itibarıyla)
+
+- **Toplam tablo:** 478+
+- **Toplam endpoint:** 1.963+
+- **Toplam sayfa:** 324+
+- **Aktif rol:** 23 (8 phantom)
+- **Bilinen bug:** 31 (debug-guide §1-31)
+- **Schema dosyası:** 25 (schema-01 → schema-25)
+- **Migration:** 14 (en yenisi 2026-05-05)
+
+---
+
+**Bu dosya değişmez kararları içerir.** Yeni karar eklenirse yeni satır olarak ekle, eski karar silinmez. Audit trail önemli.
+
+**Son güncelleme:** 5 May 2026, 23:30 (Sprint 16 sonrası)

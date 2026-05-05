@@ -1,184 +1,90 @@
-# TODAY.md — 5 MAYIS 2026 (Salı)
+# 📅 TODAY — 5 Mayıs 2026, Salı (Pilot T-7)
 
-> **Skill kuralı:** Her oturum sonu Claude bu dosyayı 30 saniyede okunabilir özet olarak tazeler.
-> **Bağlam:** Pilot 12 May 09:00 — **7 gün kaldı**.
+> **Bugün ne yapıldı, ne yarın devam edecek.** Yeni oturum başında oku.
 
 ---
 
-## ⚡ ŞU AN DURUM (5 May ~19:30) — SPRINT 7 KAPATILDI ✅
+## 🎯 BUGÜN NE YAPILDI (Özet)
 
-**Saat:** 5 May 19:30 (~31 saat maraton)
-**Main HEAD:** `6fdd9af` (Sprint 7 shifts hotfix merged)
-**Açık branch:** YOK (hepsi merged + delete edildi)
-**Pilot skoru:** 9.99+ (Sprint 7 tam fonksiyonel, smoke test 6/6 yeşil)
+**Çalışma süresi:** ~33 saat (12:00 → 23:30, Aslan + Claude maraton)  
+**Üretilen kod:** ~5000 satır, 14 commit, 19 yeni dosya  
+**Mergelendi:** PR #15, #17, #18, #19, #20 (Sprint 7-16)  
+**Bekleniyor:** Hotfix PR (conflict marker temizliği), Sprint 8 EXECUTE migration
 
-### Bugün GitHub'a merged (5 PR)
-| PR | Commit | Konu |
+---
+
+## ✅ TAMAMLANAN (Sprint 7-16 + Hotfix)
+
+| Sprint | İçerik | PR |
 |---|---|---|
-| #11 | 32f331b | Sprint 6 Bölüm 1+2 (Mahmut viewOnly + EDIT 403) |
-| #12 | 553079f | Sprint 6 Bölüm 3+4 (PDKS detay + Bordro CTA) |
-| #13 | eed2cc1 | Sprint 7 MEGA (Girdi/TÜRKOMP/PDF/Etiket) — 9 commit |
-| #14 | cea1ac7 | Hotfix: Route guard whitelist |
-| #15 | 6fdd9af | Sprint 7 hotfix: shiftAssignments → shifts |
-
-### Replit Production Durumu (5 May 19:15 smoke test)
-- ✅ Workflow çalışıyor, backend build temiz
-- ✅ raw_materials: 35 kolon (17→35), 307 satır (240+67)
-- ✅ suppliers: 13 tedarikçi (5+8 yeni)
-- ✅ Yeni 3 tablo aktif (turkomp_foods, tgk_labels, supplier_quality_records)
-- ✅ 6/6 API endpoint test yeşil
-- ✅ /api/personnel/:id/attendance-detail HTTP 200 (Sprint 6 Bölüm 3)
-- ✅ Frontend /girdi-yonetimi 5 tab render OK
-- ✅ /etiket-hesapla router'da kayıtlı
-
-
+| Sprint 7 v3 | TGK 2017/2284 etiket sistemi (smart matching, TÜRKOMP cache) | #15, #17 |
+| Sprint 8 | 329-satır migration, /performans-yonetim, /admin/skor-parametreleri, TGK onay UI | #18, #19, #20 |
+| Sprint 9 | /tedarikci-kalite, /turkomp, Mahmut bordro yetki | #20 |
+| Sprint 10 | performance-calculator.ts (5 kategori), endpoint hardening | #20 |
+| Sprint 11 | /bordro-merkezi (3 sayfa hub) | #20 |
+| Sprint 12 | manager-rating backend + /yonetici-puanlama | #20 |
+| Sprint 13 | /ik-merkezi + /pdks-manuel-giris | #20 |
+| Sprint 14 | /mali-rapor-giris | #20 |
+| Sprint 15 | Skor admin Yeni Kriter form (8 alan) | #20 |
+| Sprint 16 | payroll_parameters seed + monthly_payroll DECISION + scheduler spam fix | #20 |
+| Hotfix | Merge conflict marker temizliği (3 dosya, 30→0) | ⏳ Aslan PR aç |
 
 ---
 
-## 🎯 BUGÜN BİTENLER (5 MAYIS, 14+ saat)
+## 🔄 ŞU AN AKTİF DURUM (5 May 23:30)
 
-### ✅ SABAH-ÖĞLEN — main'e merged
+### Origin/Main
+- HEAD: `00204b5` (PR #20 mergelendi)
+- ⚠️ 30 conflict marker var (3 dosyada) — hotfix mergelenmedi
+- Hotfix branch: `claude/hotfix-merge-conflict-markers-2026-05-05` ✅ Temiz
 
-- Sprint 1 (PR #4 - f17123c): leaveBalances + 173 user seed (1592 gün)
-- Sprint 2 (PR #5 - 91141a2): HQ Kiosk 18 PIN + bcrypt güvenlik
-- Sprint 3 (PR #6 - 01c0b16): /api/ik/* Mahmut Dashboard (383 satır)
-- Sprint 4 (PR #8 - e1bc411): /api/me/* Personel Self-Service (408 satır)
-- Sprint 5 (PR #10 - 93b0c5b): 26 personel Excel sync (₺1.18M aylık)
-- Hotfix #9 (bb3a503): SalaryManagementSection useEffect
+### Replit
+- Plan mode'da
+- `.local/tasks/sprint-8-execute.md` plan dosyası hazır
+- Lokal'de hotfix uygulandı, beyaz ekran düzeldi
+- Sprint 8 EXECUTE bekliyor (isolated agent)
 
-### ✅ ÖĞLEDEN SONRA — Sprint 6 (Mahmut Hotfix) — PR #11 main'de
-
-- Bölüm 1 (fc94e82): viewOnly + kiosk filtre
-- Bölüm 2 (4241b0a): EDIT yetki kısıtı + İzin Yönetimi tüm şubeler
-
-### ⏳ Sprint 6 Bölüm 3+4 (branch'te, PR bekliyor)
-
-`claude/sprint-6-bolum-3-pdks-detail-2026-05-05`
-
-- b14db32 PDKS detay endpoint (311 satır)
-- 1b99683 Bordrom UX + İzin dropdown
-- 4ce915f SalaryManagementSection CTA "Maaş Hesaplama"
-
-### ⏳ Sprint 7 MEGA — Girdi Yönetimi / TGK 2017/2284 (branch'te, PR bekliyor)
-
-`claude/sprint-7-girdi-yonetimi-tgk-2026-05-05`
-
-**v1 (356fd7c) — Schema + 13 Endpoint + Frontend (~1500 satır):**
-- raw_materials'a 18 TGK kolonu (içerik, alerjen, besin, çapraz bulaşma)
-- suppliers'a 7 mevzuat kolonu (TR-XX-K-XXXXXX, ISO 22000, HACCP, halal)
-- 2 yeni tablo: supplier_quality_records, tgk_labels
-- 13 endpoint: /api/girdi/* CRUD, /api/tedarikci-kalite/*, /api/tgk-label/*
-- Frontend 700 satır 4-tab sayfa
-
-**v2 (f690a24) — TÜRKOMP + PDF + Numbers Import (~1700 satır):**
-- TÜRKOMP entegrasyonu (turkomp.tarimorman.gov.tr - devlet onaylı)
-- jsPDF TGK 2017/2284 etiket üreteci (A6, 14 alerjen tespit)
-- 67 hammadde + 13 tedarikçi import SQL
-- "TÜRKOMP'tan Getir" + "Etiket PDF İndir" butonları
-
-**v3 (ec25b18) — Reçete-Etiket Engine + Gap Analiz (~851 satır):**
-- recipe-label-engine.ts: Smart matching (FREE-TEXT → rawMaterials)
-- 4 endpoint: calculate-branch, calculate-factory, save, gap-analysis
-- Fabrika reçete sayfasında TGK etiket entegrasyonu
-- Girdi Yönetimi sayfası 5. tab eklenmiş
+### Aslan'ın Tek İşi
+PR aç + mergele: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/hotfix-merge-conflict-markers-2026-05-05
 
 ---
 
-## 📊 METRİKLER
+## 🚦 YARIN (6 Mayıs) DEVAM EDECEK
 
-| Metrik | Değer |
+1. **Aslan** → Hotfix PR mergele
+2. **Replit** → `git pull origin main` + workflow restart
+3. **Aslan** → Mode'u **Plan**'a çevir
+4. **Replit isolated agent** → Backup + 2 Migration EXECUTE + Smoke test (~45 dk)
+   - Migration 1: `2026-05-05-sprint-8-data-cleanup-personnel-sync.sql` (35 personel)
+   - Migration 2: `2026-05-05-payroll-parameters-2026-seed.sql` (2026 vergi/SGK)
+5. **Aslan** → PR mergele → Mode'u **Build**'e
+6. **Mahmut** → payroll_parameters 2026 değerleri doğrula (Resmi Gazete + GİB)
+7. **Replit** → docs/SISTEM-RAPORU-5-MAYIS.md güncelle
+
+---
+
+## 📊 PILOT 12 MAYIS HAZIRLIK
+
+| Kategori | Status |
 |---|---|
-| Süre (4 May 13:08 → şimdi) | ~30 saat |
-| Sprint tamamlanan main'de | 6 |
-| Sprint branch'te bekleyen | 2 (6 Bölüm 3+4 + 7 v1+v2+v3) |
-| PR merged bugün | 7 |
-| PR bekleyen | 2 |
-| Yeni endpoint | ~30 |
-| Yeni sayfa | 3 |
-| DB migration | 4 |
-| Production hatası | 0 |
-| 67 hammadde + 13 tedarikçi | Import SQL hazır |
+| Backend kod | ✅ Hazır |
+| Frontend sayfalar | ✅ Hazır |
+| DB migration'lar | ⏳ EXECUTE bekliyor |
+| Marker temizliği | ⏳ Hotfix PR bekliyor |
+| Bordro parametreleri | ⏳ Mahmut doğrulama |
+
+**Bloker:** Hotfix + Sprint 8 EXECUTE. Mahmut doğrulaması paralel yapılabilir.
 
 ---
 
-## 🔥 ŞİMDİ YAPILACAKLAR
+## 💡 KRİTİK HATIRLATMALAR
 
-### 1. Aslan → 2 PR aç + merge (10 dk)
-
-PR #12 — Sprint 6 Bölüm 3+4:
-https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-6-bolum-3-pdks-detail-2026-05-05
-
-PR #13 — Sprint 7 MEGA:
-https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-7-girdi-yonetimi-tgk-2026-05-05
-
-### 2. Replit Plan Mode — Migration DRY-RUN (15 dk)
-
-```
-Sprint 6 + 7 merged. Pull + 2 yeni migration:
-1) migrations/2026-05-05-girdi-yonetimi-tgk.sql (schema)
-2) migrations/2026-05-05-girdi-data-import.sql (67 hammadde + 13 tedarikçi)
-
-Plan mode + isolated agent + DRY-RUN sonra GO bekle, EXECUTE.
-```
-
-### 3. Smoke Test (10 dk)
-
-```
-GET /api/girdi/list (admin) → 67+ hammadde
-GET /api/girdi-stats/overview → toplam, alerjen, tedarikçi
-POST /api/recipe-label/gap-analysis → eşleşmeyen hammadde
-Frontend /girdi-yonetimi → 4 tab + filtreleme + PDF indirme
-```
-
-### 4. Skill Files Update (15 dk)
+- **Feature Freeze:** 18 Apr - 15 Jun. Yeni feature → "Sprint 17+ pilot sonrası"
+- **Triangle workflow:** Aslan biz / Claude code / Replit DB
+- **Mode kuralı:** DB write = Plan mode + isolated + backup + GO. Esnetme.
+- **Schema tuzakları:** users.firstName+lastName, monthlyPayroll (schema-12), tgkLabels.rejectedReason
 
 ---
 
-## 💡 KRİTİK KARARLAR (Bugün)
-
-1. **MEGA Sprint:** tek branch, çoklu commit, tek PR
-2. **Mahmut yetki:** Tüm şubeleri görsün ama sadece HQ+Fabrika+Işıklar yetkili → viewOnly
-3. **TGK 2017/2284:** Tam uyum (etiket + alerjen + besin + onay zinciri)
-4. **TÜRKOMP:** Devlet onaylı veri, sadece manuel arama (toplu scraping yasak)
-5. **PDF:** jsPDF (zaten kurulu, client-side, server yükü yok)
-6. **WRITE:** admin/ceo/satinalma/gida_muhendisi
-7. **APPROVE LABEL:** admin/gida_muhendisi (TGK Madde 18)
-8. **Branch reçete ingredients = FREE-TEXT** → smart matching engine
-
----
-
-## 📁 ANAHTAR DOSYALAR
-
-**Sprint 7:**
-- migrations/2026-05-05-girdi-yonetimi-tgk.sql
-- migrations/2026-05-05-girdi-data-import.sql (67 hammadde)
-- server/routes/girdi-yonetimi.ts (587)
-- server/routes/turkomp-integration.ts (496)
-- server/routes/recipe-label-engine.ts (505)
-- client/src/pages/girdi-yonetimi.tsx (903)
-- client/src/lib/tgk-label-pdf.ts (249)
-- shared/schema/schema-09.ts (1532)
-- shared/schema/schema-10.ts (1317)
-
----
-
-## 🚧 PENDING (yarın)
-
-1. Eren saha test (HQ Kiosk + 4 UX fix)
-2. Aroma seed (HQ Coach iş)
-3. Sistem genel taraması
-4. Branch reçete sayfasında "Etiket Hesapla" butonu (recete-detay.tsx)
-5. Satınalma entegrasyonu (yeni hammadde alımında auto-fill)
-6. Tedarikçi performans dashboard
-7. TÜRKOMP toplu seed (yaygın hammaddeler için)
-8. Mahmut'a final demo
-
----
-
-## ⚠️ RİSKLER
-
-1. TÜRKOMP yasal: Toplu scraping yasak. Manuel arama OK.
-2. Etiket onayı: TGK Madde 18 - gıda mühendisi onayı zorunlu.
-3. Reçete-hammadde free text: Smart matching score < 0.5 manuel kontrol.
-4. Eski hammaddeler: ON CONFLICT DO NOTHING ile çakışma korunmuş.
-5. Pilot 12 May: 7 gün kaldı, kritik özellikler hazır.
+**Son güncelleme:** 5 May 2026, 23:30  
+**Sonraki güncelleme:** Hotfix mergelendikten sonra

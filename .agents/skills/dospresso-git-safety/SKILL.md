@@ -266,3 +266,110 @@ git push origin main
 **Saat 20:36** — Aslan Replit Resolve merge conflicts UI'ını açtı → 3 conflicting + 12 changed file görünür
 
 **Ders:** Bu skill yazılmadan önce yoktu. 1 saat kaybedildi. Bir daha olmaması için L1-L5 zorunlu.
+
+---
+
+## 🆕 POST-MORTEM (5 Mayıs 2026, Gece) — Conflict Marker Vakası
+
+### Olay
+
+`git pull origin main` çalıştırıldı, conflict çıktı. Manuel resolve edilmeden direkt:
+```bash
+git add -A && git commit -m "merge" && git push origin main
+```
+
+→ Marker'lı 3 dosya production main'e gitti:
+- `recipe-label-engine.ts`: 9 marker
+- `etiket-hesapla.tsx`: 18 marker  
+- `personnel-attendance-detail.ts`: 3 marker
+
+→ Esbuild parse hatası → beyaz ekran → app down ~2 saat
+
+### Kök Neden
+
+Git "temiz" gösteriyordu (`git status` = clean) çünkü unstaged değişiklik kalmamıştı. Ama dosyalar **marker'lı** durumdaydı. `git add -A` marker'lı dosyaları stage'e aldı, commit oluştu.
+
+### YENİ KURAL (L4 Update)
+
+```bash
+# git pull/merge SONRASI ZORUNLU:
+git pull origin main 2>&1 | tee /tmp/pull.log
+
+# Conflict mesajı var mı:
+if grep -qE "CONFLICT \(content\)" /tmp/pull.log; then
+  echo "⚠️ CONFLICT VAR — DUR"
+  
+  # Status göster:
+  git status -sb | grep "^UU\|^AA\|^DD"
+  
+  # MANUEL ÇÖZ — opsiyonlar:
+  # A) Replit Resolve UI (görsel)
+  # B) git checkout --theirs <file>  (theirs = remote'tan al)
+  # C) git checkout --ours <file>    (ours = lokal'i koru)
+  # D) git checkout <hash> -- <file> (belirli commit'ten al)
+  
+  # Marker count 0 doğrula:
+  grep -rE '^<<<<<<<|^=======$|^>>>>>>>' . | grep -v node_modules
+  # ÇIKTI OLMAMALI. Çıktı varsa hâlâ marker var.
+fi
+
+# SONRA add + commit + push
+git add -A
+git commit -m "..."
+git push
+```
+
+### Hızlı Kontrol Komutu (Her Oturum Başında)
+
+```bash
+# Marker var mı? (5 saniyelik check)
+find . -path ./node_modules -prune -o \
+  \( -name "*.ts" -o -name "*.tsx" -o -name "*.sql" -o -name "*.md" \) \
+  -print 2>/dev/null | \
+  xargs grep -l '^<<<<<<<' 2>/dev/null | head -5
+
+# Boş çıktı OK. Dosya isimleri çıkıyorsa derhal hotfix.
+```
+
+### Kurtarma Senaryosu (5 May Vakası)
+
+```bash
+# 1. Hotfix branch:
+git checkout -b hotfix/resolve-merge-markers-YYYY-MM-DD
+
+# 2. Son temiz commit'ten dosyaları al:
+git log --oneline -20  # Marker öncesi son commit'i bul
+git checkout <CLEAN_HASH> -- <PATH1> <PATH2> ...
+
+# 3. Marker count 0 doğrula:
+grep -c '^<<<<<<<\|^=======$\|^>>>>>>>' <PATH1> <PATH2>
+
+# 4. Commit + push (yeni branch):
+git add -A
+git commit -m "hotfix: resolve merge conflict markers - take <CLEAN_HASH> baseline"
+git push origin hotfix/resolve-merge-markers-YYYY-MM-DD
+
+# 5. GitHub UI → PR aç → Squash and merge
+
+# 6. Local sync:
+git checkout main
+git pull origin main
+```
+
+### Ne ASLA Yapılmaz
+
+- ❌ Conflict marker'lı dosyayı `git add` etmek
+- ❌ `git commit` öncesi marker grep yapmamak
+- ❌ `git push --force` (marker'lı commit'i push reject olunca)
+- ❌ "Esbuild bunu nasıl çözer ki" varsayımı — çözmez, parse hatası verir
+- ❌ Beyaz ekran şikayetinde önce CSS/JS'e bakmak — önce marker check yap
+
+### Esbuild Hata Mesajı Tanı
+
+```
+Error [TransformError]: Transform failed with 1 error:
+.../<dosya>:<satir>:0: ERROR: Unexpected "<<"
+```
+
+`Unexpected "<<"` = conflict marker var. CSS/JS hatası DEĞİL.
+
