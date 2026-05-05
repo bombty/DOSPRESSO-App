@@ -251,7 +251,8 @@ router.use((req: any, res, next) => {
     try {
       const user = req.user!;
       const { role } = user;
-      const scopeResult = resolveBranchScope(req);
+      // Sprint 6 (5 May 2026 - Mahmut feedback): viewOnly=true → muhasebe_ik tüm şubeleri görür
+      const scopeResult = resolveBranchScope(req, { viewOnly: true });
       
       if ('error' in scopeResult) {
         return res.status(403).json({ message: scopeResult.error });
@@ -264,9 +265,17 @@ router.use((req: any, res, next) => {
           const emps = await storage.getAllEmployees(bid);
           employees.push(...emps);
         }
+      } else if (scopeResult.type === 'all') {
+        // Tüm şubelerin personeli
+        employees = await storage.getAllEmployees();
       } else {
         employees = await storage.getAllEmployees(scopeResult.branchId);
       }
+
+      // Sprint 6 (5 May 2026 - Mahmut feedback): Kiosk hesaplarını personel listesinden gizle
+      // sube_kiosk, fabrika_kiosk gibi sistem hesapları gerçek personel değil
+      const KIOSK_ROLES = ['sube_kiosk', 'fabrika_kiosk', 'kiosk', 'hq_kiosk'];
+      employees = employees.filter((e: any) => !KIOSK_ROLES.includes(e.role));
 
       res.json(sanitizeUsersForRole(employees, role as UserRoleType));
     } catch (error: unknown) {
@@ -5943,15 +5952,16 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
       
       // Build query based on scope
-      let whereClause = sql`u.is_active = true`;
+      // Sprint 6 (5 May 2026 - Mahmut feedback): kiosk hesapları gizle (sistem hesabı, gerçek personel değil)
+      let whereClause = sql`u.is_active = true AND u.role NOT IN ('sube_kiosk', 'fabrika_kiosk', 'kiosk', 'hq_kiosk')`;
       
       if (!scopeFilter.isGlobal) {
         if (scopeFilter.userId) {
           // SELF scope - only own data
-          whereClause = sql`u.is_active = true AND u.id = ${scopeFilter.userId}`;
+          whereClause = sql`u.is_active = true AND u.role NOT IN ('sube_kiosk', 'fabrika_kiosk', 'kiosk', 'hq_kiosk') AND u.id = ${scopeFilter.userId}`;
         } else if (scopeFilter.branchId) {
           // BRANCH scope - only branch data
-          whereClause = sql`u.is_active = true AND u.branch_id = ${scopeFilter.branchId}`;
+          whereClause = sql`u.is_active = true AND u.role NOT IN ('sube_kiosk', 'fabrika_kiosk', 'kiosk', 'hq_kiosk') AND u.branch_id = ${scopeFilter.branchId}`;
         }
       }
 

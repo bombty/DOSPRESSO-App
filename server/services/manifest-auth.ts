@@ -122,8 +122,12 @@ export interface ScopeResult {
  *   const scopeResult = resolveBranchScope(req);
  *   if ('error' in scopeResult) return res.status(403).json({ message: scopeResult.error });
  *   // scopeResult.type === 'single' | 'multiple' | 'all'
+ * 
+ * Sprint 6 (5 May 2026 - Mahmut feedback): viewOnly=true mode
+ *   muhasebe_ik/muhasebe için: tüm şubeleri GÖRÜR, ama sadece 3'te (5/23/24) yazma yetkisi
+ *   Read-only endpoint'lerde viewOnly=true kullanılır → managed_branches → all genişletilir
  */
-export function resolveBranchScope(req: any): ScopeResult | { error: string } {
+export function resolveBranchScope(req: any, opts?: { viewOnly?: boolean }): ScopeResult | { error: string } {
   const scope = (req as any).manifestScope;
   const user = req.user as any;
   const requestedBranch = req.query.branchId ? parseInt(req.query.branchId as string) : undefined;
@@ -135,6 +139,13 @@ export function resolveBranchScope(req: any): ScopeResult | { error: string } {
       return { type: 'single', branchId: user.branchId };
 
     case 'managed_branches': {
+      // Sprint 6: View-only için tüm şubeleri göster (yazma yetkisi farklı endpoint'lerde managed_branches'te kalır)
+      if (opts?.viewOnly) {
+        if (requestedBranch) return { type: 'single', branchId: requestedBranch };
+        return { type: 'all' };
+      }
+      
+      // Yazma işlemleri için: sadece 3 managed branch
       if (requestedBranch) {
         if (!MANAGED_BRANCH_IDS.includes(requestedBranch)) {
           return { error: 'Bu şubeye erişim yetkiniz yok' };
