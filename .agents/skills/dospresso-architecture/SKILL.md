@@ -745,3 +745,168 @@ WHERE t.relname LIKE 'branch_%'
 - `migrations/2026-05-03-branch-recipe-system.sql` — 9 tablo + 21 aroma seed
 - `migrations/2026-05-04-branch-recipe-templates-seed.sql` — 11 yeni aroma + 15 template + ~80 uyumluluğu
 - `migrations/2026-05-04-branch-recipe-dedup.sql` — UNIQUE constraint + duplicate temizlik
+
+---
+
+## 🆕 UPDATE (5 Mayıs 2026) — Sprint 7-16 Mega Sprint Sonrası
+
+### Yeni Sayfalar (19 yeni dosya, ~5000 satır)
+
+#### Frontend Pages
+| Path | Sprint | Yetki | Amaç |
+|---|---|---|---|
+| `/performans-yonetim` | 8 | HQ + manager/supervisor | Yönetici performans tablosu (şube/role filtre) |
+| `/admin/skor-parametreleri` | 8+15 | admin/ceo | Skor kriterleri CRUD + audit |
+| `/tedarikci-kalite` | 9 | quality + satinalma | QC kayıtları + tedarikçi performans |
+| `/turkomp` | 9 | quality + satinalma | TÜRKOMP arama + hammaddeye uygula |
+| `/bordro-merkezi` | 11 | tüm authenticated | Bordro hub (3 sayfa birleşimi) |
+| `/yonetici-puanlama` | 12 | manager + HQ | Yönetici takım puanlama |
+| `/ik-merkezi` | 13 | tüm authenticated | İK hub (4 kategori 13 modül) |
+| `/pdks-manuel-giris` | 13 | manager + HQ + muhasebe | Manuel PDKS kayıt |
+| `/mali-rapor-giris` | 14 | muhasebe | Manuel gelir/gider girişi |
+
+#### Backend
+- `server/routes/score-parameters.ts` (188 satır) — CRUD + history
+- `server/routes/manager-rating.ts` (234 satır) — 4 endpoint (team/get/update/history)
+- `server/services/performance-calculator.ts` (~250 satır) — 5 kategori skor hesabı
+- `shared/schema/schema-25-score-parameters.ts` (99 satır) — score_parameters + history
+
+### Yeni Endpoint'ler
+
+```typescript
+// Sprint 8
+GET    /api/performance/personnel?branchId=&role=&year=&month=
+       → { personnel, totalMaxPoints, period, calculationError }
+PUT    /api/tgk-label/:id/approve   // gida_muhendisi/admin/ceo/cgo
+PUT    /api/tgk-label/:id/reject    // + reason zorunlu (min 5 char)
+PUT    /api/tgk-label/:id/submit    // taslak → onay_bekliyor
+
+// Sprint 8 (CRUD)
+GET    /api/score-parameters
+POST   /api/score-parameters
+PUT    /api/score-parameters/:id
+DELETE /api/score-parameters/:id (soft delete - is_active=false)
+GET    /api/score-parameters/:id/history
+
+// Sprint 12
+GET    /api/manager-rating/team
+GET    /api/manager-rating/:userId/:year/:month
+PUT    /api/manager-rating/:userId
+GET    /api/manager-rating/history/:userId
+```
+
+### Schema Eklemeleri
+
+```typescript
+// shared/schema/schema-25-score-parameters.ts
+export const scoreParameters = pgTable("score_parameters", {
+  id, category, displayName, maxPoints, weight, formulaCode, formula,
+  applicableRoles, sortOrder, isActive, description, createdAt, updatedAt
+});
+export const scoreParametersHistory = pgTable(...)  // audit log
+
+// Default seed (5 kriter, total 90 puan):
+//   1. Devam (PDKS uyum) - 20 puan
+//   2. Checklist (tamamlama oranı) - 20 puan
+//   3. Görev (zamanında tamamlanan) - 15 puan
+//   4. Müşteri (NPS placeholder) - 15 puan
+//   5. Yönetici (manuel rating) - 20 puan
+```
+
+### Sidebar Mapping (module-menu-config.ts)
+
+#### IK_MENU (12 madde - güncel)
+```
+1. İK Merkezi (/ik-merkezi)
+2. Personel (/ik)
+3. Vardiya Planlama (/vardiya-planlama)
+4. PDKS & Devam (/pdks)
+5. Excel İçe Aktar (/pdks-excel-import)
+6. PDKS Manuel Giriş (/pdks-manuel-giris) ← YENİ
+7. Bordro (/bordrom)
+8. İzin Yönetimi (/izin-talepleri)
+9. Mesai Talepleri (/mesai-talepleri)
+10. Onboarding (/personel-onboarding-akisi)
+11. Performans (/performansim)
+12. Yönetici Performans (/performans-yonetim) ← YENİ
+13. Yönetici Puanlama (/yonetici-puanlama) ← YENİ
+14. İK Raporları (/ik-raporlari)
+15. Bordro Merkezi (/bordro-merkezi) ← YENİ
+16. Bordro Özeti (/sube-bordro-ozet)
+```
+
+#### FABRIKA_MENU (12 madde - güncel)
+```
++ Girdi Yönetimi (/girdi-yonetimi) ← YENİ
++ Etiket Hesapla (/etiket-hesapla) ← YENİ
++ Tedarikçi Kalite QC (/tedarikci-kalite) ← YENİ
++ TÜRKOMP (/turkomp) ← YENİ
+```
+
+#### FINANS_MENU
+```
++ Mali Rapor Giriş (/mali-rapor-giris) ← YENİ
+```
+
+### Performance Calculator Servisi (Sprint 10)
+
+`server/services/performance-calculator.ts`:
+```typescript
+export async function calculatePersonnelScore(
+  userId: string, startDate: Date, endDate: Date
+): Promise<PersonnelScoreResult>;
+
+export async function calculateBulkPersonnelScores(
+  userIds: string[], startDate: Date, endDate: Date
+): Promise<Map<string, PersonnelScoreResult>>;
+
+export function getMonthRange(year?, month?): { start, end };
+```
+
+5 Kategori (default 90 puan):
+- **devam** (max 20): PDKS uyum oranı (planlanan vardiya / kayıtlı giriş)
+- **checklist** (max 20): Tamamlanan / Toplam atanan
+- **gorev** (max 15): Zamanında tamamlanan / Toplam atanan
+- **musteri** (max 15): Şube ortalama müşteri puanı (5 üzerinden)
+- **yonetici** (max 20): Manager rating (manual, monthlyEmployeePerformance.managerRatingScore)
+
+### Migration Dosyaları (5 May)
+
+1. **`migrations/2026-05-05-sprint-8-data-cleanup-personnel-sync.sql`** (329 satır, 5 ADIM)
+   - ADIM 0: Baseline (4 SELECT)
+   - ADIM 1: 18 fake şube → is_active=false
+   - ADIM 2: 119 fake personel → is_active=false (HQ + pilot korunur)
+   - ADIM 3: 35 gerçek personel UPSERT (Fabrika 10 + Ofis 5 + Işıklar 11 + Lara 9)
+   - ADIM 4: Doğrulama
+   - ADIM 5: 5 default skor kriteri seed (toplam 90 puan)
+
+2. **`migrations/2026-05-05-payroll-parameters-2026-seed.sql`** (130 satır)
+   - 2026 yılı seed (asgari ücret, SGK, vergi dilimleri, muafiyetler)
+   - ⚠️ TAHMİN değerler — Mahmut resmi yayınlara göre UPDATE etmeli
+
+### Schema Tuzakları (DİKKAT - değişen yok ama tekrar)
+
+```typescript
+users.first_name + last_name + username   // NOT name
+users.hire_date                            // NOT start_date
+pdksRecords.recordDate + recordTime + recordType
+factoryRecipeIngredients.rawMaterialId     // aslında inventory.id (FK uyumsuz!)
+branchRecipeIngredients                     // FREE-TEXT, FK yok
+branch_staff_pins.hashed_password
+shifts.assignedToId                         // NOT userId
+shifts.deletedAt                            // filtrele!
+
+// DUPLICATE - DİKKAT:
+monthlyPayroll (schema-12)   // 51 aktif kayıt, PDKS bağlı
+monthlyPayrolls (schema-07)  // 0 kayıt, modül kanonik
+// docs/DECISIONS-MONTHLY-PAYROLL.md karara bak
+
+tgkLabels.rejectedReason     // NOT rejectionReason!
+```
+
+### MANAGED_BRANCH_IDS (Pilot Konfig)
+```typescript
+MANAGED_BRANCH_IDS = [5, 23, 24]   // Işıklar + HQ + Fabrika
+// Antalya Lara (id=8) → franchise, ayrı
+```
+

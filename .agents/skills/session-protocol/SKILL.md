@@ -346,3 +346,77 @@ ls /mnt/transcripts/ | tail -3
 ```
 
 5/5 ✅ = oturum temiz kapanır.
+
+---
+
+## 🆕 UPDATE (5 Mayıs 2026, Gece) — Sprint 7-16 Mega Maraton Sonrası
+
+### YENİ KURAL: DEVIR-TESLIM Dosyası ÖNCELİKLİ
+
+Yeni oturum açıldığında, **kullanıcı bir şey yazmadan ÖNCE**, eğer mevcut ise:
+
+```
+docs/DEVIR-TESLIM-{tarih}-{vakit}.md
+```
+
+dosyasını **OKU**. Bu dosya:
+- Önceki oturumun tam özeti
+- Aktif sprint durumu
+- Bekleyen işler
+- Kritik tuzaklar
+- Aslan'a sorulacak ilk soru
+
+şeklinde **100% hafıza** sağlar. TODAY/PENDING/DECIDED'tan önce gelir.
+
+### Devir Teslim Yazma Kuralları (Session End)
+
+Her büyük oturum sonunda (özellikle 5+ commit yapıldığında):
+
+1. **`docs/DEVIR-TESLIM-{DD-AY-YYYY}-{SABAH/AKSAM/GECE}.md`** yaz
+2. İçerik şablonu:
+   - 🎯 EN ÖNEMLİ DURUM (tek bakışta özet)
+   - 🚦 SONRAKİ CLAUDE'UN İLK İŞİ (numbered list)
+   - 📊 BUGÜN NE YAPILDI (sprint × commit tablosu)
+   - 🎯 ASLAN'IN TÜM TALEPLERİ KARŞILIĞI (✅/⏳ tablo)
+   - 🔴 BEKLEYEN İŞLER (kritik / önemli / backlog)
+   - 🛠️ TEKNİK STACK + KIMLIK DEĞERLERİ (her seferinde tekrar)
+   - 📋 PLATFORM METRİKLERİ
+   - 🔑 SCHEMA TUZAKLARI (UNUTMA!)
+   - 👥 ROL TANIMLARI
+   - ⚙️ ÇALIŞMA SİSTEMİ KURALLARI
+   - 🚨 SON 24 SAATTE ÖĞRENİLEN DERSLER
+   - 📁 ÖNEMLİ DOSYA YOLLARI
+   - 🤝 SONRAKI OTURUM AÇILIŞ KONUŞMASI ÖRNEĞİ
+   - 🔚 KAPANIŞ KONTROL LİSTESİ
+3. TODAY.md, PENDING.md, DECIDED.md güncellemelerini de aynı oturumda yap
+4. Hepsi tek commit'te git push
+
+### Compaction Sonrası Davranış
+
+Eğer transkript compact edilmişse (`/mnt/transcripts/...txt`):
+1. Compaction summary'yi oku (sistem otomatik gösterir)
+2. DEVIR-TESLIM dosyasını oku (en güncel)
+3. **Sonra** kullanıcının mesajına cevap ver
+4. Eksik bağlam varsa transkript dosyasından detay çek (`view` tool ile incremental)
+
+### Triangle Workflow Hatırlatması
+
+Her oturum başında sun: "Önceki oturumda Replit ne yaptı?" Çünkü:
+- Replit local commit'leri remote'ta görünmeyebilir (push yapmadıysa)
+- Replit conflict resolve sırasında bir şeyler bozmuş olabilir (5 May vakası: 30 marker)
+- `git fetch` + `git log --oneline origin/main..HEAD` ile **HER SESSION BAŞINDA** doğrula
+
+### Yeni Risk Sinyalleri (5 May Vakası Sonrası)
+
+Aşağıdakilerden biri varsa ÖNCE `git status` + marker kontrolü yap:
+
+```bash
+# Her oturum başında (Replit'in commit yaptığı gün):
+grep -rE '^<<<<<<<|^=======$|^>>>>>>>' \
+  client/src/pages/ \
+  server/routes/ \
+  shared/schema/ 2>/dev/null | head -10
+
+# 0 satır çıkmalı. 1+ satır varsa ESBUILD CRASH RİSKİ var, hotfix gerekli.
+```
+
