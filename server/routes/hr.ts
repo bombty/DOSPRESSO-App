@@ -2184,7 +2184,6 @@ JSON formatında yanıt ver:
         },
         calculationError, // null veya hata mesajı (frontend bunu gösterebilir)
       });
-      });
     } catch (error: unknown) {
       console.error('/api/performance/personnel error:', error);
       res.status(500).json({ message: 'Personel performansı yüklenemedi' });
