@@ -179,7 +179,9 @@ export default function MuhasebeCentrum() {
                   <div className="cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors">
                     <ListItem
                       title={s.userName}
-                      meta={`${Math.floor(s.hoursOpen)} saat açık →`}
+                      meta={s.hoursOpen != null && !isNaN(s.hoursOpen) 
+                        ? `${Math.floor(s.hoursOpen)} saat açık →`
+                        : 'Süre hesaplanamadı →'}
                       priority="!"
                       priorityColor="#f87171"
                     />
