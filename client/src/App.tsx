@@ -274,6 +274,8 @@ const PdksExcelImport = lazyWithRetry(() => import("@/pages/pdks-excel-import"))
 const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PersonelPuantajim = lazyWithRetry(() => import("@/pages/personel-puantajim"));  // Sprint 4 (5 May 2026)
+const GirdiYonetimi = lazyWithRetry(() => import("@/pages/girdi-yonetimi"));  // Sprint 7 (5 May 2026): TGK 2017/2284
+const EtiketHesapla = lazyWithRetry(() => import("@/pages/etiket-hesapla"));  // Sprint 7 v3 (5 May 2026): Reçete → Etiket
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
 // ── Orphan → Linked (Sistem Atölyesi kararı) ──
 const Announcements = lazyWithRetry(() => import("@/pages/announcements"));
@@ -690,6 +692,12 @@ function Router() {
           <Route path="/bordrom" component={BordromPage} />
           {/* Sprint 4 (5 May 2026): Personel Self-Service — kendi puantaj/izin/mesai */}
           <Route path="/personel-puantajim" component={PersonelPuantajim} />
+          <Route path="/girdi-yonetimi">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><GirdiYonetimi /></ProtectedRoute>}
+          </Route>
+          <Route path="/etiket-hesapla">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite","sef","recete_gm","coach","trainer"]}><EtiketHesapla /></ProtectedRoute>}
+          </Route>
           <Route path="/puantajim" component={PersonelPuantajim} />
           <Route path="/iletisim-merkezi" component={IletisimMerkeziRedirect} />
           {/* Sprint A1 (21 Nisan 2026) — 2 kırık link redirect (Karar 4 + Karar 5) */}

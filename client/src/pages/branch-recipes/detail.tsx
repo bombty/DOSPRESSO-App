@@ -236,16 +236,26 @@ export default function BranchRecipeDetailPage() {
 
   return (
     <div className="container mx-auto p-4 max-w-4xl pb-20">
-      {/* Geri butonu */}
-      <Button
-        variant="ghost"
-        onClick={() => setLocation("/branch-recipes")}
-        className="mb-4"
-        data-testid="button-back"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Reçeteler
-      </Button>
+      {/* Geri butonu + Etiket Hesapla butonu (Sprint 7 v3) */}
+      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+        <Button
+          variant="ghost"
+          onClick={() => setLocation("/branch-recipes")}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Reçeteler
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setLocation(`/etiket-hesapla?productId=${product.id}&productType=branch_product`)}
+          data-testid="button-calculate-label"
+        >
+          <Beaker className="h-4 w-4 mr-2" />
+          Etiket Hesapla (TGK)
+        </Button>
+      </div>
 
       {/* Ürün Header */}
       <Card className="mb-4 overflow-hidden">

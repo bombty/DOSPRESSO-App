@@ -21,7 +21,9 @@ import {
   Layers, Play, Edit, Eye, Timer, Flame, Snowflake,
   Link2, Unlink, DollarSign, Pencil, Search, BadgeCheck, ShieldAlert,
   ArrowRight, Plus, Minus, History, ChevronRight, ClipboardCheck, User,
+  Tag, Download,
 } from "lucide-react";
+import { downloadTGKLabel } from "@/lib/tgk-label-pdf";
 
 const APPROVAL_SCOPE_LABELS: Record<string, string> = {
   gramaj: "Gramaj (Üretim Formülü)",
@@ -69,6 +71,58 @@ export default function FabrikaReceteDetay() {
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [approvalScope, setApprovalScope] = useState<"gramaj" | "besin" | "alerjen">("gramaj");
   const [approvalNote, setApprovalNote] = useState("");
+  
+  // Sprint 7 v3 (5 May 2026): TGK Etiket önizleme dialog
+  const [tgkLabelDialogOpen, setTgkLabelDialogOpen] = useState(false);
+  const [tgkLabelData, setTgkLabelData] = useState<any>(null);
+  const [tgkLabelLoading, setTgkLabelLoading] = useState(false);
+
+  const handleCalculateTgkLabel = async () => {
+    setTgkLabelLoading(true);
+    try {
+      const res = await fetch(`/api/recipe-label/calculate-factory`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ factoryRecipeId: parseInt(recipeId || '0') }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: 'Hata', description: data.message || 'Hesaplanamadı', variant: 'destructive' });
+        return;
+      }
+      setTgkLabelData(data);
+      setTgkLabelDialogOpen(true);
+    } catch (e) {
+      toast({ title: 'Hata', description: 'TGK etiket hesaplanamadı', variant: 'destructive' });
+    } finally {
+      setTgkLabelLoading(false);
+    }
+  };
+
+  const handleDownloadTgkPdf = () => {
+    if (!tgkLabelData) return;
+    downloadTGKLabel({
+      productName: tgkLabelData.recipeName || recipe?.name || 'Ürün',
+      ingredientsText: tgkLabelData.ingredientsText || '',
+      allergenWarning: tgkLabelData.allergenWarning,
+      crossContaminationWarning: tgkLabelData.crossContaminationWarning,
+      netQuantityG: tgkLabelData.totalGramsKnown,
+      energyKcal: tgkLabelData.nutrition?.energyKcal,
+      energyKj: tgkLabelData.nutrition?.energyKj,
+      fat: tgkLabelData.nutrition?.fat,
+      saturatedFat: tgkLabelData.nutrition?.saturatedFat,
+      carbohydrate: tgkLabelData.nutrition?.carbohydrate,
+      sugar: tgkLabelData.nutrition?.sugar,
+      protein: tgkLabelData.nutrition?.protein,
+      salt: tgkLabelData.nutrition?.salt,
+      fiber: tgkLabelData.nutrition?.fiber,
+      manufacturerName: 'DOSPRESSO Coffee & Donut',
+      manufacturerAddress: 'Antalya, Türkiye',
+      version: 1,
+    });
+    toast({ title: 'PDF indirildi', description: 'TGK 2017/2284 uyumlu etiket' });
+  };
 
   const { data: recipe, isLoading } = useQuery<any>({
     queryKey: ["/api/factory/recipes", recipeId],

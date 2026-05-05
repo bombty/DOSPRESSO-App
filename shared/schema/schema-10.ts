@@ -332,12 +332,66 @@ export const rawMaterials = pgTable("raw_materials", {
   isKeyblend: boolean("is_keyblend").default(false),
   keyblendCost: numeric("keyblend_cost", { precision: 12, scale: 4 }).default("0"), // Admin tarafından girilen maliyet
   
+  // ═══════════════════════════════════════════════════════════════════
+  // Sprint 7 (5 May 2026) - TGK 2017/2284 Uyumu (Türkiye Gıda Kodeksi)
+  // ═══════════════════════════════════════════════════════════════════
+  brand: varchar("brand", { length: 255 }),
+  materialGroup: varchar("material_group", { length: 100 }),
+  supplierCode: varchar("supplier_code", { length: 100 }),
+  
+  // İçerik bilgisi (TGK Madde 9 - zorunlu içindekiler listesi)
+  contentInfo: text("content_info"),
+  
+  // Alerjen bilgisi (TGK Madde 9 - 14 büyük alerjen)
+  allergenPresent: boolean("allergen_present").default(false),
+  allergenDetail: text("allergen_detail"),
+  crossContamination: text("cross_contamination"),
+  
+  // Saklama ve kullanım
+  storageConditions: text("storage_conditions"),
+  usageInfo: text("usage_info"),
+  
+  // Besin değerleri (100g/100ml başına) — TGK Ek-13
+  energyKcal: numeric("energy_kcal", { precision: 10, scale: 2 }),
+  energyKj: numeric("energy_kj", { precision: 10, scale: 2 }),
+  fat: numeric("fat", { precision: 10, scale: 3 }),
+  saturatedFat: numeric("saturated_fat", { precision: 10, scale: 3 }),
+  carbohydrate: numeric("carbohydrate", { precision: 10, scale: 3 }),
+  sugar: numeric("sugar", { precision: 10, scale: 3 }),
+  protein: numeric("protein", { precision: 10, scale: 3 }),
+  salt: numeric("salt", { precision: 10, scale: 3 }),
+  fiber: numeric("fiber", { precision: 10, scale: 3 }),
+  
+  // TGK uyum durumu
+  tgkCompliant: boolean("tgk_compliant").default(false),
+  tgkVerifiedAt: timestamp("tgk_verified_at"),
+  tgkVerifiedById: varchar("tgk_verified_by_id").references(() => users.id),
+  tgkNotes: text("tgk_notes"),
+  
+  // Belge yönetimi
+  specDocumentUrl: text("spec_document_url"),
+  analysisCertificateUrl: text("analysis_certificate_url"),
+  halalCertificateUrl: text("halal_certificate_url"),
+  
+  // Diğer
+  expiryDays: integer("expiry_days"),
+  minimumShelfLifeDays: integer("minimum_shelf_life_days"),
+  countryOfOrigin: varchar("country_of_origin", { length: 100 }),
+  
+  // Sprint 7 v2 (5 May 2026) - TÜRKOMP referansı (devlet onaylı veri kaynağı)
+  // Eğer set edilirse: besin değerleri turkomp_foods.id'den çekilebilir
+  turkompFoodId: integer("turkomp_food_id"), // turkomp_foods.id (FK migration'da eklenir)
+  nutritionSource: varchar("nutrition_source", { length: 30 }).default("manual"), // 'manual' | 'turkomp' | 'supplier_doc' | 'estimated'
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("rm_code_idx").on(table.code),
   index("rm_category_idx").on(table.category),
   index("rm_inventory_idx").on(table.inventoryId),
+  index("rm_brand_idx").on(table.brand),
+  index("rm_group_idx").on(table.materialGroup),
+  index("rm_tgk_idx").on(table.tgkCompliant),
 ]);
 
 export const insertRawMaterialSchema = createInsertSchema(rawMaterials).omit({

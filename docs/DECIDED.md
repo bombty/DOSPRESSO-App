@@ -1,61 +1,111 @@
-# DECIDED — Mimari & Operasyonel Kararlar
+# DECIDED — 5 Mayıs 2026
 
-## 5 Mayıs 2026 (Mahmut feedback sonrası)
+## Sprint 6 Kararları (Aslan + Mahmut feedback)
 
 ### Yetki Modeli
-- **muhasebe_ik VIEW endpoint'leri:** tüm şubeleri görür (viewOnly=true)
-- **muhasebe_ik WRITE endpoint'leri:** sadece managed_branches (5/23/24)
-- Kural: `/api/employees`, `/api/leave-requests` → tüm şubeler
-- Kural: `PUT /api/employees/:id`, `PATCH /api/leave-requests/:id` → sadece managed
+- **Mahmut tüm şubeleri görsün** ama sadece HQ+Fabrika+Işıklar EDIT yetkili
+- viewOnly mantığı: GET endpoint'leri tüm scope, PUT/DELETE managed branches kontrolü
+- managed_branches array: [5, 23, 24] (Işıklar, HQ, Fabrika)
 
-### Personel Listesi
-- Kiosk hesapları (sube_kiosk, fabrika_kiosk, kiosk, hq_kiosk) personel listesinde GÖSTERİLMEZ
-- Bunlar sistem hesabı, gerçek personel değil
-- Maaş tab'ı, İK personel tab'ı, izin yönetimi — hepsinde kiosk filtre uygulanır
+### UX
+- /bordrom = personel kişisel (Aslan'ın gördüğü)
+- /maas = HQ toplu hesaplama (Mahmut'un işi)
+- /ik?tab=maas = Maaş tanımları (yeni özellikler için)
+- Karışıklığı önlemek için "Maaş Hesaplama" CTA mavi banner her yerde
 
-### Bordro Mimarisi
-- **/bordrom** → personel için kişisel bordro görünümü
-- **/maas** → HQ/admin için toplu hesaplama + onay
-- Bordrom sayfasında HQ rolleri için "Toplu Hesaplama" linki (yönlendirme)
-- PDKS verisi yoksa "henüz hazırlanmadı" + yöneticiye yönlendirme mesajı
+## Sprint 7 Kararları (Aslan)
 
-### PDKS Detay
-- Yeni endpoint: `GET /api/personnel/:userId/attendance-detail?startDate=&endDate=`
-- 5 veri kaynağı entegre: pdks_records + factory_shift_sessions + shift_assignments + leave_requests + overtime_requests
-- Otomatik anomali tespiti: no_show, no_check_out, no_check_in, late_NNmin
-- Frontend: /personel-detay/:id → "attendance" tab tamamen yenilendi
+### Kapsam
+- **Tam TGK 2017/2284 uyumu**: Etiket + alerjen + besin değeri + onay
+- **Tüm endpoints** (A-G), bugün 6.5 saat - hedef 00:30 → revize edildi 22:00 → revize edildi 18:00 (ec25b18 ile)
 
-### İK Dashboard Anomali Etkileşimi
-- Anormallik kartlarındaki personel listesi tıklanabilir
-- Tıklayınca → /personel-detay/:userId?tab=attendance
-- Mahmut anomalili personeli hızlı görür → detay sayfasında uygunsuzluğu inceler
+### Veri Kaynağı
+- **TÜRKOMP** (turkomp.tarimorman.gov.tr) - Türkiye Tarım Bakanlığı resmi
+- **Hibrit yaklaşım**: Önce manuel girilmiş, yoksa TÜRKOMP cache, yoksa TÜRKOMP'tan tek tek çek
+- **Toplu scraping YASAK** (ücretli lisans gerekli)
 
-### Personel Kartı Hızlı Eylemler (HQ rolleri için)
-- 📊 PDKS → /personel-detay/:id?tab=attendance
-- 🏖️ İzin → /personel-detay/:id?tab=leave
-- 📝 Tutanak → /personel-detay/:id?tab=disciplinary
+### Yetki
+- READ:  admin, ceo, cgo, satinalma, gida_muhendisi, kalite_kontrol, fabrika_mudur, fabrika_sorumlu, kalite, sef, recete_gm
+- WRITE: admin, ceo, satinalma, gida_muhendisi, sef, recete_gm
+- APPROVE LABEL: admin, gida_muhendisi (TGK Madde 18 - gıda mühendisi onayı zorunlu)
 
-## Önceki Kararlar (Hatırlatma)
+### Teknoloji
+- **PDF**: jsPDF (zaten kurulu, client-side, server'a yük yok) - öneriden Aslan onayladı
+- **PDF formatı**: A6 (105×148mm) - etiket için ideal boyut
+- **PDF dil**: TR (önce), EN sonradan eklenebilir
+
+### Veri Kararları
+- 67 hammadde Numbers'tan import (HAM001-HAM067)
+- 13 tedarikçi normalize edilmiş (büyük/küçük harf birleştirildi)
+- Marka 11 unique → marka kolonu rawMaterials'a eklendi (yeni)
+- TGK uyum flag (`tgk_compliant`): kritik olanlar (un, şeker, tuz, su, zeytinyağı) TRUE
+- nutrition_source: 'manual' (default) | 'turkomp' | 'supplier_doc' | 'estimated'
+
+## Genel Kurallar
+
+### Çalışma Sistemi v2.0 (devam)
+- 4 skill files mandatory at every session end
+- Plan mode + isolated agent + DRY-RUN + GO bekle for DB writes
+- 5 perspektifli review (Principal Engineer / Franchise F&B Ops / Senior QA / PM / Compliance)
+- Schema kolon adlarını DB'ye yazmadan önce GREP ZORUNLU
 
 ### Triangle Workflow
-- **Claude (Sandbox):** Architecture, code, GitHub push
-- **Replit:** DB migration, build, smoke test
-- **Aslan:** Business/UX/priority kararları + GitHub UI merge
+- Claude: kod yazar, GitHub push, devir-teslim
+- Aslan: GitHub UI ile PR merge, business kararlar
+- Replit Agent: DB migration + build + smoke test
 
-### Schema Lessons
-- `users.hire_date` (NOT start_date)
-- `pdks_records`: recordDate + recordTime + recordType (giris/cikis)
-- `factory_shift_sessions`: checkInTime + checkOutTime + workMinutes
-- `MANAGED_BRANCH_IDS = [5, 23, 24]` (HQ + Fabrika + Işıklar)
+### Commit Mesaj Standardı (5 May 2026 - güncellenmiş)
+- Başlık: "Sprint X (Bölüm Y) - Kısa açıklama" veya "Sprint X vN - ..."
+- Body: SPRINT amacı, KARAR, IMPLEMENTATION, FILES değişiklikleri, NOTES
+- Footer: DİFF satır sayısı + dosya sayısı
+- Emoji yok (clean)
 
-### Çalışma Sistemi v2.0
-- Skill files her session sonunda güncellenir
-- 5 perspektifli review zorunlu (Engineer / F&B Ops / QA / PM / Compliance)
-- DB write öncesi: backup + DRY-RUN + GO zorunlu
-- Schema kolon adlarını grep'le doğrula, asla varsayma
+### Big Sprint Stratejisi (yeni)
+- "Tek branch çoklu commit, tek mega PR"
+- PR yorgunluğu azaltır, atomic merge daha güvenli
+- Sprint bittiğinde bir tek mega PR aç
 
-### Pilot Lokasyonları (12 May 2026)
-- #5 Antalya Işıklar (HQ-owned)
-- #8 Antalya Lara (franchise)
-- #23 Merkez HQ
-- #24 Fabrika
+## Sprint 7 Kararları (5 May 2026 öğleden sonra)
+
+### Girdi Yönetimi Kapsamı
+- **Tam TGK 2017/2284 uyumlu**: etiket oluşturma + alerjen + besin değeri otomasyonu
+- 67 hammadde Numbers'tan import (HAM001-HAM067)
+- 13 tedarikçi normalize (İçim, Puratos, Hekimoğlu vs.)
+
+### Yetki Modeli (Sprint 7)
+- **WRITE:** admin, ceo, satinalma, gida_muhendisi
+- **READ:** + cgo, kalite_kontrol, fabrika_mudur, fabrika_sorumlu, kalite, sef, recete_gm
+- **TGK Etiket Onayı:** SADECE admin + gida_muhendisi (TGK Madde 18 uyumlu)
+- **TÜRKOMP kullanım:** admin, ceo, satinalma, gida_muhendisi, kalite_kontrol, kalite
+
+### TÜRKOMP Veri Kaynağı
+- Türkiye Tarım ve Orman Bakanlığı resmi veritabanı
+- URL: https://turkomp.tarimorman.gov.tr (645 gıda × 100 bileşen)
+- ⚠️ **Yasal:** Toplu scraping ücretli lisans gerektirir, modül sadece manual arama
+- Cache table: turkomp_foods (kullanıcı arar → tek tek getirir)
+
+### PDF Etiket Teknolojisi
+- **jsPDF** (zaten kurulu, dependency yok)
+- Client-side oluşturma (server'a yük binmez)
+- A6 boyut (105×148 mm)
+- TGK Ek-13 besin değeri tablosu
+- 14 alerjen otomatik tespit + vurgu
+
+### Smart Matching Mantığı (Reçete → Etiket)
+- branchRecipeIngredients FREE-TEXT → rawMaterials fuzzy match gerekli
+- 4 seviye:
+  1. Tam eşleşme (lowercase) → matchScore: 1.0
+  2. CONTAINS → 0.85 (tek), 0.7 (çoklu - en kısa seç)
+  3. İlk kelime → 0.5
+  4. Hiç eşleşmedi → null + alternatif öner
+- Eşleşmeyen ingredient'ler kullanıcıya "manuel bağla" uyarısı
+
+### Schema Uyumsuzluğu (Bilinen Sorun)
+- `factoryRecipeIngredients.rawMaterialId` aslında `inventory.id` (rawMaterials değil)
+- recipe-label-engine bunu fuzzy match ile bypass ediyor
+- Pilot sonrası migration ile düzeltilebilir (riskli)
+
+### Versiyonlama (TGK Etiket)
+- tgk_labels.version: her save'de +1
+- Eski versiyonlar isActive=false, kayıtta tutulur (TGK denetim)
+- Sadece son versiyon onay için sunulur
