@@ -1,127 +1,105 @@
-# TODAY.md — 4 MAYIS 2026 (Pazartesi → 5 May'a geçiş)
+# TODAY — 5 Mayıs 2026 (Pazartesi)
 
-> **Skill kuralı:** Her oturum sonu Claude bu dosyayı 30 saniyede okunabilir özet olarak tazeler.
-> **Bağlam:** Pilot 12 May 09:00 — **8 gün kaldı**.
+**Pilot: 12 May 2026 (7 gün kaldı)** ⏰
 
----
+## ✅ Tamamlananlar (chronological)
 
-## ⚡ ŞU AN DURUM
+### Sabah - Öğleden Sonra (Aslan)
 
-**Saat:** 4 May 22:50+ (Aslan2 gece vardıyası, Replit Plan mode aktif)
-**Branch (gece son):** `claude/fabrika-p1-pilot-2026-05-04` (6 commit) + `claude/night-utility-2026-05-04` (yeni)
-**Replit Plan Mode:** ⏳ Çalışıyor — `fabrika-pilot-prep-4-mayis-2026` task (4 iş, ~30 dk)
-**Pilot skoru:** 9.6 → ~9.97
+**4 Sprint İK Sistemi (PARALEL) - PR'lar #4-#10 merged ✅**
+- Sprint 1 (PR #4): leaveBalances 173 user seed (1592 gün)
+- Sprint 2 (PR #5): HQ Kiosk 18 PIN + bcrypt güvenlik
+- Sprint 3 (PR #6): Mahmut IK Dashboard (3 endpoint)
+- Sprint 4 (PR #8): Personel Self-Service /me endpoints (3 endpoint)
+- Sprint 5 (PR #10): 26 personel Excel master sync (₺1.18M aylık)
+- Hotfix (PR #9): SalaryManagementSection useEffect + Quick Filter
 
----
+**Sprint 6 - Mahmut Hotfix**
+- Bölüm 1+2 (PR #11, fc94e82+4241b0a, MERGED main'de ✅)
+  - Kiosk filtresi + viewOnly + EDIT yetki kısıtı + İzin tüm şubeler
+- Bölüm 3+4 (branch'te, PR henüz açılmadı): b14db32, 1b99683, 4ce915f
+  - PDKS detaylı rapor endpoint + frontend
+  - Bordro UX CTA (/maas yönlendirme)
 
-## 🎯 BUGÜN BİTENLER (4 MAYIS — 13:08 → 23:00, ~10 saat)
+**Sprint 7 - Girdi Yönetimi MEGA / TGK 2017/2284 (branch'te, 3 commit)**
+- v1 (356fd7c): Schema + 13 endpoint + frontend (4 tab)
+- v2 (f690a24): TÜRKOMP entegrasyonu + jsPDF + 67 hammadde import SQL
+- v3 (ec25b18): Recipe-label engine + 5. tab Üretim Gap analiz
 
-### Aslan ile (16 task)
+## 🔥 ŞU AN BEKLEYEN — SENİN İŞİN
 
-#### Hızlı Temizlik (3)
-- ✅ 6 [TEST] banner arşivlendi
-- ✅ 2 test projesi + 1 milestone arşivlendi
-- ✅ 36 eski test görev iptal
+### 1. PR Aç + Merge (3+3 = 6 dk)
 
-#### 5 P0 Feature
-- ✅ Mobil + Bordro + Dobody dedup (`f750929` → merge `2f3b440`)
-- ✅ Vardıya HQ şube seçici (merge `53d2bae`)
-- ✅ Reçete editörü TASK-EDIT-001 (merge `2f3b440`)
-- ✅ Aroma sistemi TASK-AROMA-001 (5 endpoint, 32 aroma)
-- ✅ Quiz üretici TASK-QUIZ-001 (merge `f7a1fbb`, 41/44 quiz)
+**Sprint 6 Bölüm 3+4:**
+👉 https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-6-bolum-3-pdks-detail-2026-05-05
 
-#### Bonus + Ekstra
-- ✅ Dobody LLM "json" prompt fix (`9c7d1fc`)
-- ✅ Akademi onboarding TASK-ONBOARDING-001 (merge `d884f2f`, 16 step seed)
-- ✅ Recipe Finder skill TASK-DOBODY-001 (merge `958d15e`, 38. skill)
+**Sprint 7 (TÜM):**  
+👉 https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-7-girdi-yonetimi-tgk-2026-05-05
 
-#### Üretim Planlama V2 (TASK-URETIM-PLANLAMA-V2)
-- ✅ Sistem A vs B karar — Replit DB sorgusu ile veri konuştu
-- ✅ DailyRecordTab + ResponsibilitiesTab + Comparison KPI iyileştirme
-- ✅ Default tab haftalik, Sistem A "eski" badge
-- ✅ Merge `e1324fd` (~1184 satır kod)
+### 2. Replit Komutu
 
-#### Audit + Doc'lar
-- ✅ Fabrika modülü kapsamlı denetim raporu (282 satır)
-- ✅ Lessons Learned 4 May 2026 — 7 ders (338 satır)
-- ✅ Besin değer otomatik hesaplama UI butonu (`1d3617b`)
-- ✅ TGK 2017/2284 etiket form UI (`b2e4124`)
+İkisi merged olduktan sonra:
 
-### Aslan2 ile (3 task — gece vardıyası)
-- ✅ PDKS bug analizi doc (`ea0f911`, 168 satır)
-- ✅ Etiket smoke test rehberi (250+ satır)
-- ✅ Devir-Teslim 4 May Gece + Replit Plan Mode prompt
-- ✅ Tüm dosyalar `claude/fabrika-p1-pilot-2026-05-04` branch'inde push (`0a7c976`)
+```bash
+cd /home/runner/workspace && git pull origin main && git log --oneline -5
+```
 
-### Aslan2 + Replit ile (5 task — Plan mode)
-- ⏳ Branch merge → main (3 commit: 1d3617b, b2e4124, ea0f911)
-- ⏳ TGK migration EXECUTE (4 yeni kolon)
-- ⏳ Orphan vardıya kapatma (id 113, 114)
-- ⏳ Backup + Dry-run + Smoke test
-- ⏳ Aslan'a sabah devir-teslim eki
+### 3. Replit Migration Komutu
 
----
+```
+2 yeni migration:
+1) migrations/2026-05-05-girdi-yonetimi-tgk.sql
+   - raw_materials'a 18+ TGK kolon
+   - suppliers'a 7 mevzuat kolonu
+   - 3 yeni tablo: supplier_quality_records, tgk_labels, turkomp_foods
 
-## 📊 PLATFORM METRİKLERİ
+2) migrations/2026-05-05-girdi-data-import.sql
+   - 13 tedarikçi UPSERT
+   - 67 hammadde INSERT (HAM001-HAM067)
 
-| Metrik | Değer (4 May sonu) |
-|---|---|
-| Tablolar | ~482 (4 yeni TGK kolonu sonrası) |
-| Endpoint'ler | ~2000 |
-| Sayfalar | ~325 |
-| Roller | 31 |
-| Kullanıcılar | 409 |
-| Mr.Dobody Skills | 38 |
-| Aktif scheduler | 42 |
-| Bugünkü kod | ~7500 satır |
-| Bugünkü doc | 8 dosya |
-| Production hatası | 0 |
+Plan mode + isolated agent + DRY-RUN + GO bekle + EXECUTE.
 
----
+Smoke test:
+- GET /api/girdi/list (admin) → 67 hammadde döner
+- GET /api/girdi-stats/overview → counts döner
+- GET /api/turkomp/cache/list → boş (henüz veri yok)
+- Frontend /girdi-yonetimi → sayfa açılır, 5 tab görünür
+- Tedarikçi tab → 13 tedarikçi
+- Bir hammadde detay → 'Etiket PDF İndir' butonu çalışır mı?
+```
 
-## 🔥 SABAH ASLAN İÇİN (5 May)
+## 📊 METRİKLER (5 May, 17:50)
 
-### P0 — Hemen
-1. **Replit Plan mode sonucu kontrol** — gece çalıştı, 4 iş bitmiş olmalı
-   ```bash
-   git fetch origin && git log --oneline -10
-   ```
-   Beklenen son commit'ler: branch merge + 2 migration
-2. **Recipe Finder skill ilk run kontrol** (07:00 sonrası)
-   ```bash
-   grep "RecipeFinder" /tmp/logs/Start_application_*.log | tail -10
-   ```
-   ```sql
-   SELECT COUNT(*), MAX(created_at), subcategory
-   FROM agent_pending_actions WHERE category='egitim'
-   GROUP BY subcategory;
-   ```
+- **Süre**: ~30+ saat (4 May 13:08 → 5 May 17:50)
+- **Sprint**: 7 (Sprint 1-5 done, 6 partial, 7 done)
+- **PR merged**: 7 (#4, #5, #6, #8, #9, #10, #11)
+- **PR bekleyen**: 2 (Sprint 6 Bölüm 3+4 + Sprint 7)
+- **Yeni endpoint**: ~30 (sabah 7 + PDKS 1 + girdi 13 + TÜRKOMP 5+1 + recipe-label 4)
+- **Yeni sayfa**: 3 (puantajim + muhasebe-centrum + girdi-yonetimi)
+- **DB migration**: 4 (leave_balances + personel-data-sync + girdi-yonetimi-tgk + girdi-data-import)
+- **Yeni dosya**: ~15
+- **Yeni satır**: ~6500+
+- **Production hatası**: 0
+- **67 hammadde + 13 tedarikçi import hazır**
+- **TÜRKOMP entegrasyonu hazır**
+- **TGK 2017/2284 PDF etiket üreteci hazır**
 
-### P1 — Sabah Yarısı
-3. **Eren ile kiosk testi** (1 saat) — `docs/audit/PDKS-TEST-CHECKLIST-DETAYLI-5-MAYIS-2026.md` (Replit'in detaylı versiyon)
-4. **Etiket smoke test** (30 dk) — `docs/audit/ETIKET-SMOKE-TEST-5-MAYIS-2026.md`
-5. **Aroma compatibility seed** — `docs/audit/AROMA-SEED-REHBERI-5-MAYIS-2026.md` (yeni!)
+## 🎯 Yarın (6 May) Yapılacaklar
 
-### P2 — Sabah Sonrası
-6. Eski branch'leri temizle (`git branch -d`)
-7. HQ Coach ekibi onboarding step content review
+1. **Eren saha test** (HQ kiosk + 4 UX fix)
+2. **Aroma seed** (HQ Coach iş)
+3. **Sistem genel taraması**
+4. **Mahmut'a final demo** - Sprint 6+7 hepsiyle
+5. **Branch reçete sayfasına 'Etiket Hesapla' butonu** (recete-detay.tsx)
+6. **Satınalma entegrasyonu** (yeni hammadde alımında auto-fill TÜRKOMP'tan)
+7. **TÜRKOMP toplu seed** (yaygın 50 hammadde için manuel)
 
----
+## 💡 Bugün Öğrenilen
 
-## 🟢 RİSKLER
-
-### Yeşil
-- Kod tarafı %100 hazır
-- Mr.Dobody çalışıyor (38 skill)
-- Quiz havuzu 41/44
-- Onboarding 16 step seed
-- TGK schema hazır (DB migration Replit'te)
-
-### Sarı (takip)
-- Sistem B kullanıcı testi gerek (boş veri)
-- MRP-Light 4 endpoint UI'sız (P1 post-pilot)
-- Etiket hiç basılmamış (yarın smoke test)
-- Recipe Finder skill ilk run yarın 07:00
-
-### Kırmızı
-- Yok (PDKS bug Eren testi sonrası fix planlanacak, post-pilot)
+- **Mega sprint stratejisi**: Tek branch çoklu commit, tek mega PR (PR yorgunluğu yok)
+- **TÜRKOMP**: Türkiye Tarım Bakanlığı resmi gıda veri tabanı (turkomp.tarimorman.gov.tr) - 645 gıda × 100 bileşen
+- **Yasal not**: TÜRKOMP toplu scraping ücretli, manual arama ücretsiz - bu kullanım stratejisini koruyalım
+- **Schema tuzağı**: factoryRecipeIngredients.rawMaterialId aslında inventory.id (rawMaterials değil) - dikkat!
+- **Smart matching**: branchRecipeIngredients FREE-TEXT, fuzzy matching gerekli
+- **PDF**: jsPDF zaten kurulu, server-side puppeteer'a ihtiyaç yok
+- **Replit ile paralel çalışma**: Aynı session'da Replit benim çalışmamı tamamlayabilir (fabrika-recete-detay.tsx + turkomp ek endpoint)
