@@ -29,6 +29,7 @@ export interface ModuleMenuConfig {
 const IK_MENU: ModuleMenuConfig = {
   title: "İK & Personel",
   items: [
+    { id: "ik-merkezi", label: "İK Merkezi", path: "/ik-merkezi", icon: Users },
     { id: "personel", label: "Personel", path: "/ik", icon: Users },
     { id: "vardiya", label: "Vardiya Planlama", path: "/vardiya-planlama", icon: Clock },
     { id: "pdks", label: "PDKS & Devam", path: "/pdks", icon: Calendar },
@@ -40,6 +41,7 @@ const IK_MENU: ModuleMenuConfig = {
     { id: "performans", label: "Performans", path: "/performansim", icon: TrendingUp },
     { id: "performans-yonetim", label: "Yönetici Performans", path: "/performans-yonetim", icon: TrendingUp, allowedRoles: ["admin","ceo","cgo","coach","trainer","muhasebe","muhasebe_ik","manager","supervisor"] },
     { id: "yonetici-puanlama", label: "Yönetici Puanlama", path: "/yonetici-puanlama", icon: Star, allowedRoles: ["admin","ceo","cgo","manager","supervisor","fabrika_mudur"] },
+    { id: "pdks-manuel", label: "PDKS Manuel Giriş", path: "/pdks-manuel-giris", icon: Clock, allowedRoles: ["admin","ceo","cgo","muhasebe","muhasebe_ik","manager","supervisor"] },
     { id: "ik-raporlar", label: "İK Raporları", path: "/ik-raporlari", icon: BarChart2 },
     { id: "bordro-merkezi", label: "Bordro Merkezi", path: "/bordro-merkezi", icon: Wallet, allowedRoles: ["admin","ceo","cgo","muhasebe","muhasebe_ik","manager","supervisor"] },
     { id: "sube-bordro", label: "Bordro Özeti", path: "/sube-bordro-ozet", icon: CreditCard },
@@ -211,6 +213,7 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/admin/skor-parametreleri": IK_MENU,
   "/bordro-merkezi": IK_MENU,
   "/yonetici-puanlama": IK_MENU,
+  "/pdks-manuel-giris": IK_MENU,
   "/ekipman": EKIPMAN_MENU,
   "/ariza": EKIPMAN_MENU,
   "/ariza-yeni": EKIPMAN_MENU,

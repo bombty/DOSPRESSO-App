@@ -2126,12 +2126,21 @@ JSON formatında yanıt ver:
       const branchList = await db.select().from(branches);
       const branchMap = new Map(branchList.map(b => [b.id, b.name]));
 
-      // Sprint 10: Gerçek skor hesaplama (bulk)
+      // Sprint 10: Gerçek skor hesaplama (bulk) - graceful degradation
       const { calculateBulkPersonnelScores, getMonthRange } = await import('../services/performance-calculator');
       const { start, end } = getMonthRange(yearParam, monthParam);
       
       const userIds = personnelList.map(p => p.id);
-      const scoreMap = await calculateBulkPersonnelScores(userIds, start, end);
+      let scoreMap = new Map<string, any>();
+      let calculationError: string | null = null;
+      
+      try {
+        scoreMap = await calculateBulkPersonnelScores(userIds, start, end);
+      } catch (err: any) {
+        // Eğer skor hesaplaması patlarsa endpoint çökmesin, placeholder ile devam
+        console.error('[performance/personnel] Skor hesaplama hatası:', err?.message);
+        calculationError = err?.message || 'Skor hesaplama servisi yanıt vermedi';
+      }
 
       const result = personnelList.map((p) => {
         const fullName = [p.firstName, p.lastName].filter(Boolean).join(' ').trim() || p.username || 'Bilinmiyor';
@@ -2173,6 +2182,8 @@ JSON formatında yanıt ver:
           start: start.toISOString().slice(0, 10), 
           end: end.toISOString().slice(0, 10) 
         },
+        calculationError, // null veya hata mesajı (frontend bunu gösterebilir)
+      });
       });
     } catch (error: unknown) {
       console.error('/api/performance/personnel error:', error);
