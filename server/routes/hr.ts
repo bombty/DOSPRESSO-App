@@ -251,7 +251,8 @@ router.use((req: any, res, next) => {
     try {
       const user = req.user!;
       const { role } = user;
-      const scopeResult = resolveBranchScope(req);
+      // Sprint 6 (5 May 2026 - Mahmut feedback): viewOnly=true → muhasebe_ik tüm şubeleri görür
+      const scopeResult = resolveBranchScope(req, { viewOnly: true });
       
       if ('error' in scopeResult) {
         return res.status(403).json({ message: scopeResult.error });
@@ -264,9 +265,17 @@ router.use((req: any, res, next) => {
           const emps = await storage.getAllEmployees(bid);
           employees.push(...emps);
         }
+      } else if (scopeResult.type === 'all') {
+        // Tüm şubelerin personeli
+        employees = await storage.getAllEmployees();
       } else {
         employees = await storage.getAllEmployees(scopeResult.branchId);
       }
+
+      // Sprint 6 (5 May 2026 - Mahmut feedback): Kiosk hesaplarını personel listesinden gizle
+      // sube_kiosk, fabrika_kiosk gibi sistem hesapları gerçek personel değil
+      const KIOSK_ROLES = ['sube_kiosk', 'fabrika_kiosk', 'kiosk', 'hq_kiosk'];
+      employees = employees.filter((e: any) => !KIOSK_ROLES.includes(e.role));
 
       res.json(sanitizeUsersForRole(employees, role as UserRoleType));
     } catch (error: unknown) {
@@ -360,6 +369,17 @@ router.use((req: any, res, next) => {
       const employee = await storage.getEmployeeForBranch(employeeId, allowedBranchId);
       if (!employee) {
         return res.status(404).json({ message: "Çalışan bulunamadı" });
+      }
+
+      // Sprint 6 (5 May 2026 - Mahmut feedback): muhasebe_ik/muhasebe için managed_branches yazma kısıtı
+      // Mahmut tüm şubeleri GÖRÜR ama sadece HQ+Fabrika+Işıklar (5/23/24) personelini DÜZENLEYEBİLİR
+      const RESTRICTED_WRITE_ROLES = ['muhasebe_ik', 'muhasebe'];
+      if (RESTRICTED_WRITE_ROLES.includes(role)) {
+        if (!employee.branchId || !MANAGED_BRANCH_IDS.includes(employee.branchId)) {
+          return res.status(403).json({ 
+            message: `Bu personel ${employee.branchId} şubesinde — düzenleme yetkiniz sadece HQ, Fabrika ve Işıklar şubelerinde var.` 
+          });
+        }
       }
 
       // Validate base schema
@@ -2248,21 +2268,10 @@ JSON formatında yanıt ver:
       if (!isSupervisorOrAbove) {
         conditions.push(eq(leaveRequests.userId, user.id));
       } else if (user.role === 'muhasebe' || user.role === 'muhasebe_ik') {
-        // Muhasebe can see factory floor + Işıklar branch leave requests, plus their own
-        const isiklarBranches = await db.select({ id: branches.id }).from(branches).where(
-          or(
-            sql`${branches.name} ILIKE '%Işıklar%'`,
-            sql`${branches.name} ILIKE '%Isiklar%'`
-          )
-        );
-        const isiklarBranchIds = isiklarBranches.map(b => b.id);
-
-        const factoryRoles = Array.from(FACTORY_FLOOR_ROLES);
-        const factoryCondition = inArray(users.role, factoryRoles);
-        const isiklarCondition = isiklarBranchIds.length > 0 ? inArray(users.branchId, isiklarBranchIds) : sql`false`;
-        const ownCondition = eq(leaveRequests.userId, user.id);
-
-        conditions.push(or(factoryCondition, isiklarCondition, ownCondition));
+        // Sprint 6 (5 May 2026 - Mahmut feedback): muhasebe_ik tüm şubelerin izin taleplerini GÖRÜR
+        // Yazma yetkisi (onay/red) hala managed_branches kontrolü ile sınırlı (PATCH endpoint'inde)
+        // Eski kısıtlama: sadece factory + Işıklar görüyordu — kaldırıldı
+        // (CEO/admin gibi "all" davranışı)
       } else if (user.role === 'ceo' || user.role === 'admin') {
         // CEO and admin see all
       } else if (isHQRole(user.role)) {
@@ -5943,15 +5952,16 @@ MUTLAKA aşağıdaki JSON formatında yanıt ver:
       }
       
       // Build query based on scope
-      let whereClause = sql`u.is_active = true`;
+      // Sprint 6 (5 May 2026 - Mahmut feedback): kiosk hesapları gizle (sistem hesabı, gerçek personel değil)
+      let whereClause = sql`u.is_active = true AND u.role NOT IN ('sube_kiosk', 'fabrika_kiosk', 'kiosk', 'hq_kiosk')`;
       
       if (!scopeFilter.isGlobal) {
         if (scopeFilter.userId) {
           // SELF scope - only own data
-          whereClause = sql`u.is_active = true AND u.id = ${scopeFilter.userId}`;
+          whereClause = sql`u.is_active = true AND u.role NOT IN ('sube_kiosk', 'fabrika_kiosk', 'kiosk', 'hq_kiosk') AND u.id = ${scopeFilter.userId}`;
         } else if (scopeFilter.branchId) {
           // BRANCH scope - only branch data
-          whereClause = sql`u.is_active = true AND u.branch_id = ${scopeFilter.branchId}`;
+          whereClause = sql`u.is_active = true AND u.role NOT IN ('sube_kiosk', 'fabrika_kiosk', 'kiosk', 'hq_kiosk') AND u.branch_id = ${scopeFilter.branchId}`;
         }
       }
 
