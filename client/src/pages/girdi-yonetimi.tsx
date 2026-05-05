@@ -98,6 +98,12 @@ export default function GirdiYonetimiPage() {
     queryKey: ["/api/tgk-label/list"],
   });
 
+  // Sprint 7 v3 (5 May 2026): Üretim ↔ Hammadde gap analizi
+  const { data: gapAnalysis, isLoading: gapLoading, refetch: refetchGap } = useQuery<any>({
+    queryKey: ["/api/recipe-label/gap-analysis"],
+    enabled: false, // Manuel tetikle (yavaş query)
+  });
+
   // Mutations
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -200,7 +206,7 @@ export default function GirdiYonetimiPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="liste" data-testid="tab-girdi-liste">
             <Package className="h-4 w-4 mr-1" />
             Girdi Listesi
@@ -215,7 +221,11 @@ export default function GirdiYonetimiPage() {
           </TabsTrigger>
           <TabsTrigger value="tedarikci" data-testid="tab-tedarikci-performans">
             <Building2 className="h-4 w-4 mr-1" />
-            Tedarikçi Performans
+            Tedarikçi
+          </TabsTrigger>
+          <TabsTrigger value="gap" data-testid="tab-uretim-gap">
+            <Sparkles className="h-4 w-4 mr-1" />
+            Üretim Gap
           </TabsTrigger>
         </TabsList>
 
@@ -487,6 +497,120 @@ export default function GirdiYonetimiPage() {
                 <p>Tedarikçi performans verisi gelecek QC kayıtlarından hesaplanacak.</p>
                 <p className="text-xs mt-2">QC kayıt eklemek için: Hammadde girişinde "Kalite Kontrol" butonuyla başlayın</p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 5: Üretim ↔ Hammadde Gap Analizi (Sprint 7 v3) */}
+        <TabsContent value="gap" className="mt-4 space-y-3">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-emerald-500" />
+                    Üretim ↔ Hammadde Tutarlılık Analizi
+                  </CardTitle>
+                  <CardDescription>
+                    Hangi ürünlerin etiketi tam çıkıyor? Eksik hammaddeler hangileri?
+                  </CardDescription>
+                </div>
+                <Button 
+                  size="sm" 
+                  onClick={() => refetchGap()}
+                  disabled={gapLoading}
+                  data-testid="button-run-gap-analysis"
+                >
+                  {gapLoading ? "Analiz ediliyor..." : "Analizi Çalıştır"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!gapAnalysis ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Sparkles className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>"Analizi Çalıştır" butonuna tıklayın</p>
+                  <p className="text-xs mt-2">Tüm aktif şube ürünleri taranacak (~1-2 dakika)</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Özet kartları */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    <Card><CardContent className="p-3">
+                      <div className="text-xs text-muted-foreground">Toplam Ürün</div>
+                      <div className="text-xl font-bold">{gapAnalysis.summary?.totalProducts || 0}</div>
+                    </CardContent></Card>
+                    <Card><CardContent className="p-3">
+                      <div className="text-xs text-muted-foreground">Tam Eşleşme</div>
+                      <div className="text-xl font-bold text-green-600">{gapAnalysis.summary?.fullyMatched || 0}</div>
+                    </CardContent></Card>
+                    <Card><CardContent className="p-3">
+                      <div className="text-xs text-muted-foreground">Kısmi</div>
+                      <div className="text-xl font-bold text-orange-500">{gapAnalysis.summary?.partial || 0}</div>
+                    </CardContent></Card>
+                    <Card><CardContent className="p-3">
+                      <div className="text-xs text-muted-foreground">Hammadde Yok</div>
+                      <div className="text-xl font-bold text-red-600">{gapAnalysis.summary?.missingMaterials || 0}</div>
+                    </CardContent></Card>
+                    <Card><CardContent className="p-3">
+                      <div className="text-xs text-muted-foreground">Reçete Yok</div>
+                      <div className="text-xl font-bold text-muted-foreground">{gapAnalysis.summary?.noRecipe || 0}</div>
+                    </CardContent></Card>
+                  </div>
+
+                  {/* Hazırlık yüzdesi */}
+                  <Card className="bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-950/30 dark:to-blue-950/30">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium">Etiket Üretim Hazırlığı</div>
+                          <div className="text-xs text-muted-foreground">Tam etiketi olan ürünlerin oranı</div>
+                        </div>
+                        <div className="text-3xl font-bold text-emerald-600">
+                          %{gapAnalysis.summary?.readinessPercent || 0}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Ürün listesi */}
+                  <div className="rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Ürün</TableHead>
+                          <TableHead>Kategori</TableHead>
+                          <TableHead className="text-center">Durum</TableHead>
+                          <TableHead className="text-right">Eşleşme</TableHead>
+                          <TableHead>Eksik Hammaddeler</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(gapAnalysis.products || []).map((p: any) => (
+                          <TableRow key={p.productId}>
+                            <TableCell className="font-medium">{p.productName}</TableCell>
+                            <TableCell className="text-xs">{p.category || '-'}</TableCell>
+                            <TableCell className="text-center">
+                              {p.status === 'fully_matched' && <Badge className="bg-green-600">Tam</Badge>}
+                              {p.status === 'partial' && <Badge variant="outline" className="text-orange-600 border-orange-300">Kısmi</Badge>}
+                              {p.status === 'no_match' && <Badge variant="destructive">Hammadde Yok</Badge>}
+                              {p.status === 'no_recipe' && <Badge variant="secondary">Reçete Yok</Badge>}
+                              {p.status === 'no_ingredients' && <Badge variant="secondary">Boş Reçete</Badge>}
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              {p.matchedCount || 0} / {p.totalIngredients || 0}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {(p.missingIngredients || []).slice(0, 3).join(', ')}
+                              {p.missingIngredients?.length > 3 && ` +${p.missingIngredients.length - 3}`}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

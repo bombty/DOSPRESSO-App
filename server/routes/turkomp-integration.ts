@@ -328,3 +328,169 @@ router.get('/api/turkomp/cache/list', isAuthenticated, async (req: any, res: Res
 });
 
 export default router;
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 7 v3 (5 May 2026) - Reçete'den TGK Etiket Hesaplama
+// ═══════════════════════════════════════════════════════════════════
+// Bu endpoint factory-recipe veya branch-recipe için reçete ingredient'larını
+// alıp besin değerlerini hesaplar — kullanıcı PDF üretebilsin diye
+// ═══════════════════════════════════════════════════════════════════
+
+router.post('/api/recete/:type/:id/calculate-label', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canUseTurkomp(user.role)) {
+      return res.status(403).json({ message: 'Etiket hesaplama yetkiniz yok' });
+    }
+
+    const recipeType = req.params.type; // 'factory' | 'branch'
+    const recipeId = parseInt(req.params.id);
+    if (!['factory', 'branch'].includes(recipeType)) {
+      return res.status(400).json({ message: 'Geçersiz reçete tipi (factory|branch)' });
+    }
+
+    // Reçeteyi al (raw SQL — schema cross-reference)
+    const recipeQuery = recipeType === 'factory' 
+      ? sql`SELECT id, name, total_yield_g FROM factory_recipes WHERE id = ${recipeId}`
+      : sql`SELECT id, name_tr as name FROM recipes WHERE id = ${recipeId}`;
+    
+    const recipeResult = await db.execute(recipeQuery);
+    const recipe = recipeResult.rows[0] as any;
+    if (!recipe) return res.status(404).json({ message: 'Reçete bulunamadı' });
+
+    // Reçete malzemelerini al
+    const ingredientsQuery = recipeType === 'factory'
+      ? sql`
+        SELECT 
+          fri.raw_material_id, 
+          fri.quantity_g as quantity, 
+          'g' as unit,
+          rm.name as ingredient_name,
+          rm.energy_kcal, rm.fat, rm.saturated_fat, rm.carbohydrate, 
+          rm.sugar, rm.protein, rm.salt, rm.fiber,
+          rm.allergen_present, rm.allergen_detail, rm.cross_contamination
+        FROM factory_recipe_ingredients fri
+        INNER JOIN raw_materials rm ON fri.raw_material_id = rm.id
+        WHERE fri.factory_recipe_id = ${recipeId}
+      `
+      : sql`
+        SELECT 
+          pri.ingredient_id as raw_material_id,
+          pri.quantity,
+          pri.unit,
+          rm.name as ingredient_name,
+          rm.energy_kcal, rm.fat, rm.saturated_fat, rm.carbohydrate,
+          rm.sugar, rm.protein, rm.salt, rm.fiber,
+          rm.allergen_present, rm.allergen_detail, rm.cross_contamination
+        FROM product_recipe_ingredients pri
+        INNER JOIN raw_materials rm ON pri.ingredient_id = rm.id
+        WHERE pri.product_id = ${recipeId}
+      `;
+
+    const ingredientsResult = await db.execute(ingredientsQuery);
+    const ingredients = ingredientsResult.rows as any[];
+
+    if (!ingredients.length) {
+      return res.json({
+        message: 'Bu reçete için hammadde bulunamadı veya hammaddeler eşlenmemiş',
+        recipe: { id: recipeId, name: recipe.name, type: recipeType },
+        ingredients: [],
+        nutrition: null,
+        warnings: ['Hammaddeleri TGK uyumlu hammadde DB\'sine bağlamanız gerekir.'],
+      });
+    }
+
+    // Toplam ağırlığı hesapla (g)
+    const totalWeight = ingredients.reduce((sum, ing) => {
+      const qty = parseFloat(ing.quantity || 0);
+      let grams = qty;
+      if (ing.unit === 'kg') grams = qty * 1000;
+      else if (ing.unit === 'lt' || ing.unit === 'l') grams = qty * 1000;
+      else if (ing.unit === 'ml') grams = qty;
+      return sum + grams;
+    }, 0);
+
+    if (totalWeight === 0) {
+      return res.json({ 
+        message: 'Toplam ağırlık 0 — birim/miktar kontrol edin', 
+        ingredients, nutrition: null,
+      });
+    }
+
+    // 100g normalize için çarpan
+    const per100Multiplier = 100 / totalWeight;
+
+    let totalEnergy = 0, totalFat = 0, totalSatFat = 0, totalCarb = 0;
+    let totalSugar = 0, totalProtein = 0, totalSalt = 0, totalFiber = 0;
+    const allergens = new Set<string>();
+    const crossContams = new Set<string>();
+    const ingredientsList: string[] = [];
+    const warnings: string[] = [];
+    let missingNutrition = 0;
+
+    for (const ing of ingredients) {
+      const qty = parseFloat(ing.quantity || 0);
+      let grams = qty;
+      if (ing.unit === 'kg') grams = qty * 1000;
+      else if (ing.unit === 'lt' || ing.unit === 'l') grams = qty * 1000;
+      
+      const ratio = grams / 100; // hammadde 100g başına verildiği için
+
+      // Besin değeri toplamı (eksik veriler için warning)
+      if (!ing.energy_kcal) {
+        missingNutrition++;
+        warnings.push(`${ing.ingredient_name} — besin değeri eksik (TÜRKOMP'tan getirin)`);
+      }
+
+      if (ing.energy_kcal) totalEnergy += parseFloat(ing.energy_kcal) * ratio;
+      if (ing.fat) totalFat += parseFloat(ing.fat) * ratio;
+      if (ing.saturated_fat) totalSatFat += parseFloat(ing.saturated_fat) * ratio;
+      if (ing.carbohydrate) totalCarb += parseFloat(ing.carbohydrate) * ratio;
+      if (ing.sugar) totalSugar += parseFloat(ing.sugar) * ratio;
+      if (ing.protein) totalProtein += parseFloat(ing.protein) * ratio;
+      if (ing.salt) totalSalt += parseFloat(ing.salt) * ratio;
+      if (ing.fiber) totalFiber += parseFloat(ing.fiber) * ratio;
+
+      // Alerjen toplama
+      if (ing.allergen_present && ing.allergen_detail) allergens.add(ing.allergen_detail);
+      if (ing.cross_contamination && ing.cross_contamination.toLowerCase() !== 'yok') {
+        crossContams.add(ing.cross_contamination);
+      }
+
+      ingredientsList.push(`${ing.ingredient_name} (${qty} ${ing.unit})`);
+    }
+
+    const nutrition = {
+      energyKcal: parseFloat((totalEnergy * per100Multiplier).toFixed(1)),
+      energyKj: parseFloat((totalEnergy * per100Multiplier * 4.184).toFixed(1)),
+      fat: parseFloat((totalFat * per100Multiplier).toFixed(2)),
+      saturatedFat: parseFloat((totalSatFat * per100Multiplier).toFixed(2)),
+      carbohydrate: parseFloat((totalCarb * per100Multiplier).toFixed(2)),
+      sugar: parseFloat((totalSugar * per100Multiplier).toFixed(2)),
+      protein: parseFloat((totalProtein * per100Multiplier).toFixed(2)),
+      salt: parseFloat((totalSalt * per100Multiplier).toFixed(3)),
+      fiber: parseFloat((totalFiber * per100Multiplier).toFixed(2)),
+    };
+
+    // Eksik veri varsa uyarı
+    if (missingNutrition > 0) {
+      warnings.unshift(`${missingNutrition} hammaddenin besin değeri eksik. Etiket eksik olabilir!`);
+    }
+
+    res.json({
+      recipe: { id: recipeId, name: recipe.name, type: recipeType },
+      totalWeightG: totalWeight,
+      ingredientsCount: ingredients.length,
+      ingredientsText: ingredientsList.join(', '),
+      allergenWarning: Array.from(allergens).join(' '),
+      crossContaminationWarning: Array.from(crossContams).join(' '),
+      nutrition,
+      ingredients,
+      warnings,
+      missingNutritionCount: missingNutrition,
+    });
+  } catch (error: unknown) {
+    console.error('/api/recete/:type/:id/calculate-label error:', error);
+    res.status(500).json({ message: 'Etiket hesaplanamadı', error: String(error) });
+  }
+});
