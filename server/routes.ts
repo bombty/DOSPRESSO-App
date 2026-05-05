@@ -414,6 +414,7 @@ import payrollRouter from "./routes/payroll";
 import payrollConfigRouter from "./routes/payroll-config";
 import ikDashboardRouter from "./routes/ik-dashboard";  // Sprint 3 (5 May 2026): Mahmut Bey IK Dashboard
 import meSelfServiceRouter from "./routes/me-self-service";  // Sprint 4 (5 May 2026): Personel Self-Service
+import personnelAttendanceDetailRouter from "./routes/personnel-attendance-detail";  // Sprint 6 Bölüm 3 (5 May 2026): Mahmut Bey personnel detail
 import factoryRecipesRouter from "./routes/factory-recipes";
 import factoryRecipeNutritionRouter from "./routes/factory-recipe-nutrition";
 import factoryAllergensRouter from "./routes/factory-allergens";
