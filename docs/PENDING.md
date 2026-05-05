@@ -1,8 +1,80 @@
 # 📋 DOSPRESSO — PENDING.md
 
-**Son güncelleme:** 4 May 2026 Pazartesi 22:55 (Aslan2 + Claude)
+**Son güncelleme:** 5 May 2026 Pazartesi 17:50 (Aslan + Claude — Sprint 7 v3 tamamlandı)
 **Format:** TASK-XXX (iş) / DECISION-XXX (Aslan kararı)
-**Bağlam:** Pilot 12 May 09:00 — **8 gün uzakta**.
+**Bağlam:** Pilot 12 May 09:00 — **7 gün uzakta**.
+
+---
+
+## 🚨 BU AKŞAM (5 May, ŞİMDİ)
+
+### TASK-2026-05-05-A: Sprint 6 Bölüm 3+4 PR aç + merge
+**Branch:** `claude/sprint-6-bolum-3-pdks-detail-2026-05-05` (3 commit: b14db32, 1b99683, 4ce915f)
+**Link:** https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-6-bolum-3-pdks-detail-2026-05-05
+**İçerik:** PDKS detaylı rapor endpoint+frontend + Bordro UX CTA
+
+### TASK-2026-05-05-B: Sprint 7 PR aç + merge (3 commit)
+**Branch:** `claude/sprint-7-girdi-yonetimi-tgk-2026-05-05` (3 commit: 356fd7c, f690a24, ec25b18)
+**Link:** https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-7-girdi-yonetimi-tgk-2026-05-05
+**İçerik:** Girdi Yönetimi TGK (schema + 22 endpoint + frontend + 67 hammadde import + TÜRKOMP + PDF + recipe-label-engine)
+
+### TASK-2026-05-05-C: Replit migration EXECUTE
+İki migration:
+1. `migrations/2026-05-05-girdi-yonetimi-tgk.sql` — Schema (raw_materials 18 kolon, suppliers 7 kolon, 3 yeni tablo: supplier_quality_records, tgk_labels, turkomp_foods)
+2. `migrations/2026-05-05-girdi-data-import.sql` — 13 tedarikçi + 67 hammadde
+
+DRY-RUN sonra GO.
+
+### TASK-2026-05-05-D: Smoke test
+- `GET /api/girdi/list` → 67 hammadde
+- `GET /api/girdi-stats/overview` → toplam, tgk, alerjen, tedarikçi
+- `POST /api/recipe-label/calculate-branch` (test branchProductId) → smart match
+- `GET /api/recipe-label/gap-analysis` → uyumluluk yüzdesi
+- `GET /api/turkomp/cache/list` → 0 (henüz boş)
+
+---
+
+## 📋 YARIN (6 May Salı)
+
+### TASK-2026-05-06-A: Mahmut Bey final demo (Sprint 6+7)
+- Tüm şubeleri görüyor mu (viewOnly)
+- Bordro hesaplama akışı (/maas)
+- Girdi Yönetimi sayfası tanıtımı
+- TGK etiket örneği
+
+### TASK-2026-05-06-B: Eren saha test
+- HQ Kiosk (18 PIN aktif)
+- 4 UX fix doğrulama (Anasayfa, 30sn auto-return, Mola 2 buton, QC user list)
+
+### TASK-2026-05-06-C: Aroma seed (HQ Coach)
+- Mr. Dobody aroma data setine ihtiyaç var
+
+### TASK-2026-05-06-D: Sistem genel taraması
+- Pilot öncesi son kontrol (24+ saat öncesi)
+- Console error scan
+- 27 quality gate çalıştır
+
+### TASK-2026-05-06-E: Sprint 7 Frontend İyileştirmeler (Pilot için kritik DEĞİL)
+- [ ] Reçete sayfasında "Etiket Hesapla" butonu (recipe-label-engine'i çağırır)
+- [ ] Etiket önizleme modal (besin değeri tablosu + alerjen vurgu)
+- [ ] Onay zinciri UI (gıda mühendisi onayı)
+
+---
+
+## 📋 PİLOT SONRASI (13 May+)
+
+### TASK-2026-05-13-A: Satınalma → Girdi auto-fill
+- Yeni hammadde alımında purchaseOrders → rawMaterials otomatik link
+- "Bilgileri tamamla" wizard
+
+### TASK-2026-05-13-B: Tedarikçi performans dashboard
+- supplierQualityRecords üzerinden aggregate
+- Trend grafik (kabul/şartlı/red oranı zaman içinde)
+- Otomatik uyarı (red oranı %X üstü ise)
+
+### TASK-2026-05-13-C: TÜRKOMP cache batch
+- En çok kullanılan 50 hammadde için TÜRKOMP'tan veri çek (manuel arama → "Getir" butonu ile)
+- Cache durumu dashboard
 
 ---
 

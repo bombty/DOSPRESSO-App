@@ -64,3 +64,48 @@
 - "Tek branch çoklu commit, tek mega PR"
 - PR yorgunluğu azaltır, atomic merge daha güvenli
 - Sprint bittiğinde bir tek mega PR aç
+
+## Sprint 7 Kararları (5 May 2026 öğleden sonra)
+
+### Girdi Yönetimi Kapsamı
+- **Tam TGK 2017/2284 uyumlu**: etiket oluşturma + alerjen + besin değeri otomasyonu
+- 67 hammadde Numbers'tan import (HAM001-HAM067)
+- 13 tedarikçi normalize (İçim, Puratos, Hekimoğlu vs.)
+
+### Yetki Modeli (Sprint 7)
+- **WRITE:** admin, ceo, satinalma, gida_muhendisi
+- **READ:** + cgo, kalite_kontrol, fabrika_mudur, fabrika_sorumlu, kalite, sef, recete_gm
+- **TGK Etiket Onayı:** SADECE admin + gida_muhendisi (TGK Madde 18 uyumlu)
+- **TÜRKOMP kullanım:** admin, ceo, satinalma, gida_muhendisi, kalite_kontrol, kalite
+
+### TÜRKOMP Veri Kaynağı
+- Türkiye Tarım ve Orman Bakanlığı resmi veritabanı
+- URL: https://turkomp.tarimorman.gov.tr (645 gıda × 100 bileşen)
+- ⚠️ **Yasal:** Toplu scraping ücretli lisans gerektirir, modül sadece manual arama
+- Cache table: turkomp_foods (kullanıcı arar → tek tek getirir)
+
+### PDF Etiket Teknolojisi
+- **jsPDF** (zaten kurulu, dependency yok)
+- Client-side oluşturma (server'a yük binmez)
+- A6 boyut (105×148 mm)
+- TGK Ek-13 besin değeri tablosu
+- 14 alerjen otomatik tespit + vurgu
+
+### Smart Matching Mantığı (Reçete → Etiket)
+- branchRecipeIngredients FREE-TEXT → rawMaterials fuzzy match gerekli
+- 4 seviye:
+  1. Tam eşleşme (lowercase) → matchScore: 1.0
+  2. CONTAINS → 0.85 (tek), 0.7 (çoklu - en kısa seç)
+  3. İlk kelime → 0.5
+  4. Hiç eşleşmedi → null + alternatif öner
+- Eşleşmeyen ingredient'ler kullanıcıya "manuel bağla" uyarısı
+
+### Schema Uyumsuzluğu (Bilinen Sorun)
+- `factoryRecipeIngredients.rawMaterialId` aslında `inventory.id` (rawMaterials değil)
+- recipe-label-engine bunu fuzzy match ile bypass ediyor
+- Pilot sonrası migration ile düzeltilebilir (riskli)
+
+### Versiyonlama (TGK Etiket)
+- tgk_labels.version: her save'de +1
+- Eski versiyonlar isActive=false, kayıtta tutulur (TGK denetim)
+- Sadece son versiyon onay için sunulur
