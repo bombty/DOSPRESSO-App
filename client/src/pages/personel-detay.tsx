@@ -158,6 +158,26 @@ export default function PersonelDetay() {
     enabled: !!id,
   });
 
+  // ═══════════════════════════════════════════════════════════════════
+  // Sprint 6 Bölüm 3 (5 May 2026 - Mahmut feedback): PDKS detay tarih aralığı
+  // ═══════════════════════════════════════════════════════════════════
+  // Tarih aralığı seçici state — varsayılan: bu ayın 1'inden bugüne
+  const todayStr = new Date().toISOString().split('T')[0];
+  const monthStartStr = new Date(new Date().setDate(1)).toISOString().split('T')[0];
+  const [pdksStartDate, setPdksStartDate] = useState(monthStartStr);
+  const [pdksEndDate, setPdksEndDate] = useState(todayStr);
+
+  const { data: pdksDetail, isLoading: pdksDetailLoading } = useQuery<any>({
+    queryKey: ["/api/personnel/attendance-detail", id, pdksStartDate, pdksEndDate],
+    queryFn: async () => {
+      const url = `/api/personnel/${id}/attendance-detail?startDate=${pdksStartDate}&endDate=${pdksEndDate}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('PDKS detayı alınamadı');
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
   // Performans Skorları
   const { data: performanceScores, isLoading: performanceLoading } = useQuery<any[]>({
     queryKey: ["/api/performance", id],
@@ -983,63 +1003,221 @@ export default function PersonelDetay() {
         </TabsContent>
 
         <TabsContent value="attendance" className="flex flex-col gap-3">
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* Sprint 6 Bölüm 3 (5 May 2026 - Mahmut feedback): PDKS Detay  */}
+          {/* Tarih aralığı + günlük tablo + anomali vurgusu              */}
+          {/* ═══════════════════════════════════════════════════════════════ */}
+          
+          {/* Tarih Aralığı Seçici */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Clock className="h-4 w-4" />
-                Vardiya Geçmişi
+                PDKS Detaylı Rapor
               </CardTitle>
-              <CardDescription>Personelin giriş-çıkış kayıtları</CardDescription>
+              <CardDescription>
+                Personelin uygunsuzlukları, mesaileri ve günlük çalışma kayıtları
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {attendanceLoading ? (
-                <div className="flex flex-col gap-3 sm:gap-4">
-                  <Skeleton className="h-16 w-full" />
-                  <Skeleton className="h-16 w-full" />
+              <div className="flex flex-col sm:flex-row gap-3 items-end">
+                <div className="flex-1">
+                  <Label htmlFor="pdks-start" className="text-xs">Başlangıç</Label>
+                  <Input
+                    id="pdks-start"
+                    type="date"
+                    value={pdksStartDate}
+                    onChange={(e) => setPdksStartDate(e.target.value)}
+                    data-testid="input-pdks-start-date"
+                  />
                 </div>
-              ) : attendanceHistory && attendanceHistory.length > 0 ? (
-                <div className="rounded-md border">
-                  <div className="overflow-x-auto">
+                <div className="flex-1">
+                  <Label htmlFor="pdks-end" className="text-xs">Bitiş</Label>
+                  <Input
+                    id="pdks-end"
+                    type="date"
+                    value={pdksEndDate}
+                    onChange={(e) => setPdksEndDate(e.target.value)}
+                    data-testid="input-pdks-end-date"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPdksStartDate(monthStartStr);
+                      setPdksEndDate(todayStr);
+                    }}
+                    data-testid="button-pdks-this-month"
+                  >
+                    Bu Ay
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const lastMonth = new Date();
+                      lastMonth.setMonth(lastMonth.getMonth() - 1);
+                      const lastMonthStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+                      const lastMonthEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
+                      setPdksStartDate(lastMonthStart.toISOString().split('T')[0]);
+                      setPdksEndDate(lastMonthEnd.toISOString().split('T')[0]);
+                    }}
+                    data-testid="button-pdks-last-month"
+                  >
+                    Geçen Ay
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Özet Metrikler */}
+          {pdksDetail?.summary && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Çalışılan Saat</div>
+                  <div className="text-2xl font-bold" data-testid="metric-total-hours">
+                    {pdksDetail.summary.totalHoursWorked}s
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {pdksDetail.summary.totalDays} gün
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Onaylı Mesai</div>
+                  <div className="text-2xl font-bold text-blue-500" data-testid="metric-overtime">
+                    {Math.floor((pdksDetail.summary.totalOvertimeApprovedMinutes || 0) / 60)}s
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {(pdksDetail.summary.totalOvertimeApprovedMinutes || 0) % 60}dk
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="text-xs text-muted-foreground mb-1">İzin Günü</div>
+                  <div className="text-2xl font-bold text-green-500" data-testid="metric-leave-days">
+                    {pdksDetail.summary.totalLeaveDays || 0}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className={`p-4 text-center ${pdksDetail.summary.totalAnomalies > 0 ? 'bg-red-50 dark:bg-red-950/30' : ''}`}>
+                  <div className="text-xs text-muted-foreground mb-1">Uygunsuzluk</div>
+                  <div className={`text-2xl font-bold ${pdksDetail.summary.totalAnomalies > 0 ? 'text-red-500' : ''}`} data-testid="metric-anomalies">
+                    {pdksDetail.summary.totalAnomalies || 0}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {pdksDetail.summary.totalAnomalies > 0 ? 'kontrol edin' : 'temiz'}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Günlük Tablo */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Günlük Detay</CardTitle>
+              <CardDescription>
+                {pdksDetail?.dailyRecords?.length || 0} kayıt — {pdksStartDate} → {pdksEndDate}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {pdksDetailLoading ? (
+                <div className="flex flex-col gap-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : pdksDetail?.dailyRecords && pdksDetail.dailyRecords.length > 0 ? (
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Tarih</TableHead>
+                        <TableHead>Plan</TableHead>
                         <TableHead>Giriş</TableHead>
                         <TableHead>Çıkış</TableHead>
-                        <TableHead>Toplam Süre</TableHead>
+                        <TableHead>Süre</TableHead>
+                        <TableHead>Mesai</TableHead>
                         <TableHead>Durum</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {attendanceHistory.slice(0, 20).map((record) => (
-                        <TableRow key={record.id} data-testid={`row-attendance-${record.id}`}>
-                          <TableCell className="font-medium">
-                            {new Date(record.date).toLocaleDateString("tr-TR")}
-                          </TableCell>
-                          <TableCell>
-                            {record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {record.checkOutTime ? new Date(record.checkOutTime).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }) : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {record.totalMinutes ? `${Math.floor(record.totalMinutes / 60)}s ${record.totalMinutes % 60}dk` : "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={record.status === "checked_out" ? "outline" : "default"}>
-                              {record.status === "checked_in" ? "Aktif" : record.status === "checked_out" ? "Çıkış Yapıldı" : record.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {pdksDetail.dailyRecords.map((day: any) => {
+                        const dateObj = new Date(day.date);
+                        const isAnomaly = !!day.anomaly && day.anomaly !== null;
+                        const dayName = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'][dateObj.getDay()];
+                        return (
+                          <TableRow 
+                            key={day.date} 
+                            className={isAnomaly ? 'bg-red-50/50 dark:bg-red-950/20' : ''}
+                            data-testid={`row-pdks-day-${day.date}`}
+                          >
+                            <TableCell className="font-medium whitespace-nowrap">
+                              <div>{dateObj.toLocaleDateString("tr-TR", { day: '2-digit', month: '2-digit' })}</div>
+                              <div className="text-xs text-muted-foreground">{dayName}</div>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {day.plannedShift ? `${day.plannedShift.start}-${day.plannedShift.end}` : '-'}
+                            </TableCell>
+                            <TableCell className={day.giris ? '' : 'text-muted-foreground'}>
+                              {day.giris || '—'}
+                            </TableCell>
+                            <TableCell className={day.cikis ? '' : 'text-muted-foreground'}>
+                              {day.cikis || '—'}
+                            </TableCell>
+                            <TableCell>
+                              {day.minutes > 0 ? `${Math.floor(day.minutes / 60)}s ${day.minutes % 60}dk` : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {day.overtimeApproved ? (
+                                <Badge variant="default" className="bg-blue-600">
+                                  +{Math.floor(day.overtimeApproved / 60)}s {day.overtimeApproved % 60}dk
+                                </Badge>
+                              ) : day.overtimePending ? (
+                                <Badge variant="outline" className="text-yellow-600">
+                                  Bekleyen: {Math.floor(day.overtimePending / 60)}s
+                                </Badge>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {day.onLeave ? (
+                                <Badge variant="default" className="bg-green-600">
+                                  İzin ({day.onLeave.type})
+                                </Badge>
+                              ) : day.anomaly === 'no_show' ? (
+                                <Badge variant="destructive">Gelmedi</Badge>
+                              ) : day.anomaly === 'no_check_out' ? (
+                                <Badge variant="destructive">Çıkış Yok</Badge>
+                              ) : day.anomaly === 'no_check_in' ? (
+                                <Badge variant="destructive">Giriş Yok</Badge>
+                              ) : day.anomaly?.startsWith('late_') ? (
+                                <Badge variant="outline" className="text-orange-600">
+                                  {day.anomaly.replace('late_', 'Geç ')}
+                                </Badge>
+                              ) : day.giris && day.cikis ? (
+                                <Badge variant="outline">Tamam</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-muted-foreground">-</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
-                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Henüz vardiya kaydı bulunmuyor</p>
+                  <p>Bu tarih aralığında PDKS kaydı bulunmuyor</p>
                 </div>
               )}
             </CardContent>

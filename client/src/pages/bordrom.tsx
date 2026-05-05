@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import { Banknote, CalendarDays, Clock, UserX, AlertCircle } from "lucide-react";
+import { Banknote, CalendarDays, Clock, UserX, AlertCircle, Calculator, ArrowRight, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const MONTHS = [
@@ -13,15 +14,23 @@ const MONTHS = [
   { value: "10", label: "Ekim" }, { value: "11", label: "Kasım" }, { value: "12", label: "Aralık" },
 ];
 
+// Sprint 6 (5 May 2026 - Mahmut feedback): HQ rolleri Maaş Hesaplama sayfasına yönlendirilmeli
+// Bordrom = personel için kişisel görünüm
+// /maas = HQ/admin için toplu hesaplama
+const HQ_PAYROLL_ROLES = ['admin', 'ceo', 'cgo', 'muhasebe_ik', 'muhasebe'];
+
 function formatCurrency(kurus: number): string {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(kurus / 100);
 }
 
 export default function BordromPage() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1));
   const [selectedYear] = useState(String(now.getFullYear()));
+
+  const isHQPayrollRole = user && HQ_PAYROLL_ROLES.includes(user.role);
 
   const payrollQuery = useQuery<any[], Error>({
     queryKey: ['/api/pdks-payroll/my', selectedYear, selectedMonth],
@@ -36,7 +45,27 @@ export default function BordromPage() {
 
   return (
     <div className="p-4 max-w-6xl mx-auto space-y-4">
-      <h1 className="text-xl font-bold" data-testid="text-bordrom-title">Bordrom</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold" data-testid="text-bordrom-title">Bordrom</h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Bu sayfa kişisel bordronuzu gösterir. Bordro hesaplaması her ayın sonunda HQ tarafından yapılır.
+          </p>
+        </div>
+        {isHQPayrollRole && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setLocation('/maas')}
+            data-testid="button-go-to-maas"
+            className="shrink-0"
+          >
+            <Calculator className="h-4 w-4 mr-2" />
+            Toplu Maaş Hesaplama
+            <ArrowRight className="h-3 w-3 ml-2" />
+          </Button>
+        )}
+      </div>
 
       <Select value={selectedMonth} onValueChange={setSelectedMonth}>
         <SelectTrigger className="w-36" data-testid="select-bordrom-month">
@@ -60,8 +89,26 @@ export default function BordromPage() {
         <div className="p-8 text-center text-muted-foreground">Yükleniyor...</div>
       ) : !payroll ? (
         <Card>
-          <CardContent className="p-8 text-center text-muted-foreground">
-            {MONTHS[Number(selectedMonth) - 1]?.label} {selectedYear} dönemi için bordro henüz hesaplanmadı.
+          <CardContent className="p-8 text-center space-y-3">
+            <Info className="h-12 w-12 text-blue-500 mx-auto opacity-70" />
+            <div className="text-base font-medium">
+              {MONTHS[Number(selectedMonth) - 1]?.label} {selectedYear} bordrosu henüz hazırlanmadı
+            </div>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              {isHQPayrollRole 
+                ? "Yönetici hesabıyla giriş yaptınız. Toplu hesaplama için 'Maaş Hesaplama' sayfasına geçin." 
+                : "Bordrolar her ay sonunda hazırlanıp paylaşılır. Sorularınız için yöneticinize danışın."}
+            </p>
+            {isHQPayrollRole && (
+              <Button
+                onClick={() => setLocation('/maas')}
+                className="mt-2"
+                data-testid="button-empty-go-to-maas"
+              >
+                <Calculator className="h-4 w-4 mr-2" />
+                Maaş Hesaplama Sayfası
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (

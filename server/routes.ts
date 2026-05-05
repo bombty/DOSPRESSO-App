@@ -414,6 +414,7 @@ import payrollRouter from "./routes/payroll";
 import payrollConfigRouter from "./routes/payroll-config";
 import ikDashboardRouter from "./routes/ik-dashboard";  // Sprint 3 (5 May 2026): Mahmut Bey IK Dashboard
 import meSelfServiceRouter from "./routes/me-self-service";  // Sprint 4 (5 May 2026): Personel Self-Service
+import personnelAttendanceDetailRouter from "./routes/personnel-attendance-detail";  // Sprint 6 Bölüm 3 (5 May 2026): Mahmut Bey personnel detail
 import girdiYonetimiRouter from "./routes/girdi-yonetimi";  // Sprint 7 (5 May 2026): Girdi Yönetimi / TGK 2017/2284
 import turkompIntegrationRouter from "./routes/turkomp-integration";  // Sprint 7 v2 (5 May 2026): TÜRKOMP veri tabanı entegrasyonu
 import recipeLabelEngineRouter from "./routes/recipe-label-engine";  // Sprint 7 v3 (5 May 2026): Reçete → TGK Etiket otomatik hesaplama
@@ -896,6 +897,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(payrollConfigRouter);
   app.use(ikDashboardRouter);  // Sprint 3 (5 May 2026): /api/ik/* endpoint'leri (Mahmut Bey Dashboard)
   app.use(meSelfServiceRouter);  // Sprint 4 (5 May 2026): /api/me/* endpoint'leri (Personel Self-Service)
+  app.use(personnelAttendanceDetailRouter);  // Sprint 6 Bölüm 3 (5 May 2026): /api/personnel/:userId/attendance-detail
   app.use(girdiYonetimiRouter);  // Sprint 7 (5 May 2026): /api/girdi/*, /api/tedarikci-kalite/*, /api/tgk-label/* (TGK 2017/2284)
   app.use(turkompIntegrationRouter);  // Sprint 7 v2 (5 May 2026): /api/turkomp/* (Türkiye Tarım Bakanlığı veri tabanı)
   app.use(recipeLabelEngineRouter);  // Sprint 7 v3 (5 May 2026): /api/recipe-label/* (otomatik etiket hesaplama)
