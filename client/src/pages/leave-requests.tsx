@@ -73,6 +73,8 @@ export default function LeaveRequestsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");  // Sprint 6 / Mahmut Bey önerisi
+  const [leaveTypeFilter, setLeaveTypeFilter] = useState<string>("all");  // Sprint 6 / Mahmut Bey önerisi
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const { data: leaveRequests = [], isLoading, isError, refetch } = useQuery<any[]>({
@@ -94,6 +96,12 @@ export default function LeaveRequestsPage() {
     enabled: !!user && (user.role === "supervisor" || user.role === "supervisor_buddy" || isHQRole(user.role as any)),
   });
 
+  const { data: branches = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["/api/branches"],
+    staleTime: 300000,
+    enabled: !!user && isHQRole(user.role as any),
+  });
+
   const canApprove = user?.role && (user.role === "supervisor" || user.role === "supervisor_buddy" || isHQRole(user.role as any));
 
   const getUserName = (userId: string) => {
@@ -101,10 +109,21 @@ export default function LeaveRequestsPage() {
     return foundUser ? `${foundUser.firstName} ${foundUser.lastName}` : "Kullanıcı";
   };
 
+  // Get branch ID for a leave request via user lookup
+  const getRequestBranchId = (req: any): number | null => {
+    const reqUser = users.find((u) => u.id === req.userId);
+    return reqUser?.branchId ?? null;
+  };
+
   const filteredRequests = leaveRequests.filter((req) => {
     if (statusFilter !== "all" && req.status !== statusFilter) return false;
+    if (branchFilter !== "all" && getRequestBranchId(req) !== parseInt(branchFilter)) return false;
+    if (leaveTypeFilter !== "all" && req.leaveType !== leaveTypeFilter) return false;
     return true;
   });
+
+  // Aktif filtre sayısı
+  const activeFilterCount = [statusFilter, branchFilter, leaveTypeFilter].filter(f => f !== "all").length;
 
   
   if (isLoading) return <LoadingState />;
@@ -122,6 +141,124 @@ export default function LeaveRequestsPage() {
           Yeni İzin Talebi
         </Button>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* QUICK FILTER CHIPS — Sprint 6 / Mahmut Bey önerisi (5 May 2026)  */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {canApprove && (
+        <Card className="bg-muted/20 border-dashed">
+          <CardContent className="p-3 space-y-3">
+            {/* Durum Filtreleri */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground mr-1">Durum:</span>
+              {[
+                { value: "all", label: "Tümü", emoji: "📋" },
+                { value: "pending", label: "Bekleyen", emoji: "⏳" },
+                { value: "approved", label: "Onaylı", emoji: "✅" },
+                { value: "rejected", label: "Red", emoji: "❌" },
+              ].map((s) => {
+                const count = s.value === "all" 
+                  ? leaveRequests.length 
+                  : leaveRequests.filter(r => r.status === s.value).length;
+                return (
+                  <button
+                    key={s.value}
+                    onClick={() => setStatusFilter(s.value)}
+                    className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                      statusFilter === s.value
+                        ? "bg-primary text-primary-foreground border-primary font-semibold"
+                        : "bg-background hover:bg-muted border-border"
+                    }`}
+                    data-testid={`chip-status-${s.value}`}
+                  >
+                    {s.emoji} {s.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Şube Filtreleri (sadece HQ) */}
+            {isHQRole(user?.role as any) && branches.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-muted-foreground mr-1">Şube:</span>
+                <button
+                  onClick={() => setBranchFilter("all")}
+                  className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                    branchFilter === "all"
+                      ? "bg-primary text-primary-foreground border-primary font-semibold"
+                      : "bg-background hover:bg-muted border-border"
+                  }`}
+                >
+                  🌐 Tüm Şubeler
+                </button>
+                {branches.map((b) => {
+                  const count = leaveRequests.filter(r => getRequestBranchId(r) === b.id).length;
+                  if (count === 0) return null;
+                  const icon = b.id === 24 ? "🏭" : b.id === 23 ? "🏢" : "☕";
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => setBranchFilter(String(b.id))}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                        branchFilter === String(b.id)
+                          ? "bg-primary text-primary-foreground border-primary font-semibold"
+                          : "bg-background hover:bg-muted border-border"
+                      }`}
+                    >
+                      {icon} {b.name} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* İzin Tipi Filtreleri */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground mr-1">Tip:</span>
+              {[
+                { value: "all", label: "Tümü", emoji: "🗂️" },
+                { value: "annual", label: "Yıllık", emoji: "🏖️" },
+                { value: "sick", label: "Hastalık", emoji: "🤒" },
+                { value: "excuse", label: "Mazeret", emoji: "📝" },
+                { value: "unpaid", label: "Ücretsiz", emoji: "💸" },
+              ].map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => setLeaveTypeFilter(t.value)}
+                  className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                    leaveTypeFilter === t.value
+                      ? "bg-primary text-primary-foreground border-primary font-semibold"
+                      : "bg-background hover:bg-muted border-border"
+                  }`}
+                >
+                  {t.emoji} {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Aktif filtre sayısı + reset */}
+            {activeFilterCount > 0 && (
+              <div className="flex items-center justify-between pt-2 border-t border-dashed">
+                <span className="text-xs text-muted-foreground">
+                  {activeFilterCount} aktif filtre • {filteredRequests.length} sonuç
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setStatusFilter("all");
+                    setBranchFilter("all");
+                    setLeaveTypeFilter("all");
+                  }}
+                  className="h-7 text-xs"
+                >
+                  Filtreleri Temizle
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

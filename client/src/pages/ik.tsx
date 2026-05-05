@@ -743,13 +743,53 @@ export default function IKPage() {
 
                   {/* Active Employees Tab */}
                   <TabsContent value="active" className="space-y-4 mt-4">
+                    {/* ═══════════════════════════════════════════════════════════════ */}
+                    {/* QUICK FILTER CHIPS — Mahmut Bey önerisi (5 May 2026)             */}
+                    {/* Tek tıkla şube filtreleme — uzun listeler kafa karıştırıcı       */}
+                    {/* ═══════════════════════════════════════════════════════════════ */}
+                    {ikScope.showBranchFilter && branches.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/20 rounded-lg border border-dashed">
+                        <span className="text-xs font-semibold text-muted-foreground mr-1">Hızlı Filtre:</span>
+                        <button
+                          onClick={() => setBranchFilter("all")}
+                          className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                            branchFilter === "all"
+                              ? "bg-primary text-primary-foreground border-primary font-semibold"
+                              : "bg-background hover:bg-muted border-border"
+                          }`}
+                          data-testid="chip-all-branches"
+                        >
+                          🌐 Tümü ({employees.length})
+                        </button>
+                        {branches.map((b) => {
+                          const count = employees.filter(e => e.branchId === b.id).length;
+                          if (count === 0) return null;
+                          const icon = b.id === 24 ? "🏭" : b.id === 23 ? "🏢" : "☕";
+                          return (
+                            <button
+                              key={b.id}
+                              onClick={() => setBranchFilter(String(b.id))}
+                              className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
+                                branchFilter === String(b.id)
+                                  ? "bg-primary text-primary-foreground border-primary font-semibold"
+                                  : "bg-background hover:bg-muted border-border"
+                              }`}
+                              data-testid={`chip-branch-${b.id}`}
+                            >
+                              {icon} {b.name} ({count})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {/* Filters Card - Collapsible */}
                     <Card className="bg-muted/30 border-dashed">
                       <CardHeader className="pb-0 cursor-pointer" onClick={() => setFiltersOpen(!filtersOpen)}>
                         <CardTitle className="text-sm flex items-center justify-between gap-2">
                           <span className="flex items-center gap-2">
                             <Filter className="h-4 w-4" />
-                            Filtreler
+                            Detaylı Filtreler
                             {activeFilterCount > 0 && (
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{activeFilterCount} aktif</Badge>
                             )}
