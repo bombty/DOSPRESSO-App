@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,13 +6,37 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, Clock, TrendingUp, DollarSign, AlertTriangle } from "lucide-react";
 
+// Sprint 8 (5 May 2026) #F: HQ rolleri için branch seçici
+const HQ_ROLES_WITH_BRANCH_ACCESS = ['admin', 'ceo', 'cgo', 'coach', 'trainer', 'muhasebe', 'muhasebe_ik'];
+
 export default function SubeBordroOzet() {
   const { user } = useAuth();
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 
-  const branchId = user?.branchId;
+  // Sprint 8 #F: HQ kullanıcılar branch seçer; diğerleri kendi şubelerini görür
+  const isHQRole = user?.role && HQ_ROLES_WITH_BRANCH_ACCESS.includes(user.role);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  
+  const branchId = isHQRole ? selectedBranchId : (user?.branchId ?? null);
+
+  // HQ rolleri için tüm aktif şubeleri çek
+  const { data: branches = [] } = useQuery<any[]>({
+    queryKey: ["/api/branches"],
+    enabled: !!isHQRole,
+    staleTime: 600000,
+  });
+
+  // İlk açılışta default branch'i seç (HQ için)
+  useEffect(() => {
+    if (isHQRole && branches.length > 0 && !selectedBranchId) {
+      // managed_branches'te HQ + Fabrika + Işıklar varsa onları öncele
+      const managed = branches.filter((b: any) => [5, 23, 24].includes(b.id) && b.isActive);
+      const firstActive = managed[0] || branches.find((b: any) => b.isActive);
+      if (firstActive) setSelectedBranchId(firstActive.id);
+    }
+  }, [isHQRole, branches, selectedBranchId]);
 
   const { data: employees = [], isLoading: empLoading } = useQuery<any[]>({
     queryKey: ["/api/employees", branchId],
@@ -75,6 +99,37 @@ export default function SubeBordroOzet() {
 
   const months = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
 
+  // Sprint 8 #F: HQ rolü için branch seçici göster, branch role için yetki kontrolü
+  if (isHQRole && !selectedBranchId) {
+    return (
+      <div className="space-y-4 p-4 max-w-4xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Şube Bordro Özeti</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              Bordro özetini görmek için şube seçin:
+            </p>
+            <Select 
+              value={selectedBranchId ? String(selectedBranchId) : ''} 
+              onValueChange={(v) => setSelectedBranchId(Number(v))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Şube seçin..." />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.filter((b: any) => b.isActive).map((b: any) => (
+                  <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!branchId) return (
     <div className="flex items-center justify-center min-h-[40vh]">
       <p className="text-sm text-muted-foreground">Bu sayfayı görüntülemek için şube erişiminiz olmalı.</p>
@@ -87,12 +142,32 @@ export default function SubeBordroOzet() {
 
   return (
     <div className="space-y-4 p-4 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold">Şube Bordro Özeti</h1>
-          <p className="text-sm text-muted-foreground">Personel bazlı çalışma saati ve bordro durumu</p>
+          <p className="text-sm text-muted-foreground">
+            {isHQRole && selectedBranchId 
+              ? `${branches.find((b: any) => b.id === selectedBranchId)?.name || 'Şube'} · Personel bazlı çalışma saati ve bordro durumu`
+              : 'Personel bazlı çalışma saati ve bordro durumu'}
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {/* Sprint 8 #F: HQ rolü için branch dropdown */}
+          {isHQRole && (
+            <Select 
+              value={selectedBranchId ? String(selectedBranchId) : ''} 
+              onValueChange={(v) => setSelectedBranchId(Number(v))}
+            >
+              <SelectTrigger className="w-40 text-xs" data-testid="select-branch">
+                <SelectValue placeholder="Şube..." />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.filter((b: any) => b.isActive).map((b: any) => (
+                  <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select value={String(selectedMonth)} onValueChange={v => setSelectedMonth(parseInt(v))}>
             <SelectTrigger className="w-32 text-xs">
               <SelectValue />

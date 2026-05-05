@@ -46,9 +46,16 @@ export default function GirdiYonetimiPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
+  
+  // Sprint 8 #350: TGK etiket onay UI state
+  const [tgkStatusFilter, setTgkStatusFilter] = useState<'hepsi' | 'taslak' | 'onay_bekliyor' | 'onaylandi' | 'reddedildi'>('hepsi');
+  const [rejectingLabel, setRejectingLabel] = useState<any | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const canWrite = user && WRITE_ROLES.includes(user.role);
   const canRead = user && READ_ROLES.includes(user.role);
+  // Sprint 8: Etiket onay yetkisi (gıda mühendisi, admin, ceo, cgo)
+  const canApprove = user && ['admin', 'ceo', 'cgo', 'gida_muhendisi'].includes(user.role);
 
   // Yetki kontrolü
   if (!canRead) {
@@ -134,6 +141,42 @@ export default function GirdiYonetimiPage() {
       setEditForm({});
     },
     onError: () => toast({ title: "Hata", description: "Ekleme başarısız", variant: "destructive" }),
+  });
+
+  // Sprint 8 #350: TGK etiket onay/red/submit mutations
+  const submitLabelMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("PUT", `/api/tgk-label/${id}/submit`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "Etiket onaya gönderildi", description: "Gıda mühendisi inceleyecek" });
+      queryClient.invalidateQueries({ queryKey: ["/api/tgk-label/list"] });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message || "İşlem başarısız", variant: "destructive" }),
+  });
+
+  const approveLabelMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("PUT", `/api/tgk-label/${id}/approve`, {});
+    },
+    onSuccess: () => {
+      toast({ title: "✓ Etiket onaylandı", description: "PDF artık indirilebilir" });
+      queryClient.invalidateQueries({ queryKey: ["/api/tgk-label/list"] });
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message || "Onay başarısız", variant: "destructive" }),
+  });
+
+  const rejectLabelMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: number; reason: string }) => {
+      return apiRequest("PUT", `/api/tgk-label/${id}/reject`, { reason });
+    },
+    onSuccess: () => {
+      toast({ title: "Etiket reddedildi", description: "Etiket sahibine bildirildi" });
+      queryClient.invalidateQueries({ queryKey: ["/api/tgk-label/list"] });
+      setRejectingLabel(null);
+      setRejectReason('');
+    },
+    onError: (e: any) => toast({ title: "Hata", description: e.message || "Red başarısız", variant: "destructive" }),
   });
 
   // Unique groups (filter için)
@@ -425,7 +468,7 @@ export default function GirdiYonetimiPage() {
           </Card>
         </TabsContent>
 
-        {/* Tab 3: TGK Etiketleri */}
+        {/* Tab 3: TGK Etiketleri (Sprint 8 #350: Onay akışı) */}
         <TabsContent value="etiket" className="mt-4 space-y-3">
           <Card>
             <CardHeader>
@@ -434,10 +477,31 @@ export default function GirdiYonetimiPage() {
                 TGK 2017/2284 Etiketleri
               </CardTitle>
               <CardDescription>
-                Reçeteden otomatik besin değeri hesaplama + gıda mühendisi onayı
+                Reçeteden otomatik besin değeri hesaplama + gıda mühendisi onay akışı
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Status filter */}
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs text-muted-foreground">Filtre:</span>
+                {(['hepsi', 'taslak', 'onay_bekliyor', 'onaylandi', 'reddedildi'] as const).map(s => (
+                  <Button
+                    key={s}
+                    variant={tgkStatusFilter === s ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTgkStatusFilter(s)}
+                    className="text-xs h-7"
+                    data-testid={`filter-tgk-${s}`}
+                  >
+                    {s === 'hepsi' ? `Hepsi (${tgkLabels.length})` :
+                     s === 'taslak' ? `Taslak (${tgkLabels.filter((l:any) => l.status==='taslak').length})` :
+                     s === 'onay_bekliyor' ? `Onay Bekliyor (${tgkLabels.filter((l:any) => l.status==='onay_bekliyor').length})` :
+                     s === 'onaylandi' ? `Onaylı (${tgkLabels.filter((l:any) => l.status==='onaylandi').length})` :
+                     `Reddedilen (${tgkLabels.filter((l:any) => l.status==='reddedildi').length})`}
+                  </Button>
+                ))}
+              </div>
+
               {tgkLabels.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Tag className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -445,34 +509,114 @@ export default function GirdiYonetimiPage() {
                   <p className="text-xs mt-2">Reçete sayfasından "Etiket Oluştur" butonuyla başlayın</p>
                 </div>
               ) : (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Ürün</TableHead>
-                        <TableHead>Versiyon</TableHead>
+                        <TableHead className="text-center">v</TableHead>
                         <TableHead>Durum</TableHead>
+                        <TableHead className="text-center">Kalori</TableHead>
+                        <TableHead className="text-center">Alerjen</TableHead>
                         <TableHead>Oluşturma</TableHead>
+                        <TableHead className="text-right">İşlemler</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {tgkLabels.map((l: any) => (
-                        <TableRow key={l.id}>
+                      {tgkLabels
+                        .filter((l: any) => tgkStatusFilter === 'hepsi' || l.status === tgkStatusFilter)
+                        .map((l: any) => (
+                        <TableRow key={l.id} data-testid={`tgk-label-row-${l.id}`}>
                           <TableCell className="font-medium">{l.productName}</TableCell>
-                          <TableCell>v{l.version}</TableCell>
+                          <TableCell className="text-center text-xs text-muted-foreground">v{l.version}</TableCell>
                           <TableCell>
                             <Badge variant={
                               l.status === 'onaylandi' ? 'default' :
                               l.status === 'onay_bekliyor' ? 'outline' :
                               l.status === 'reddedildi' ? 'destructive' : 'secondary'
-                            }>
-                              {l.status === 'onaylandi' ? 'Onaylı' :
-                               l.status === 'onay_bekliyor' ? 'Onay Bekliyor' :
-                               l.status === 'reddedildi' ? 'Reddedildi' : 'Taslak'}
+                            } className={l.status === 'onaylandi' ? 'bg-green-600 hover:bg-green-700' : ''}>
+                              {l.status === 'onaylandi' ? '✓ Onaylı' :
+                               l.status === 'onay_bekliyor' ? '⏳ Onay Bekliyor' :
+                               l.status === 'reddedildi' ? '✗ Reddedildi' : '📝 Taslak'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
+                          <TableCell className="text-center text-xs">
+                            {l.energyKcal ? `${Math.round(Number(l.energyKcal))} kcal` : '-'}
+                          </TableCell>
+                          <TableCell className="text-xs max-w-[200px] truncate" title={l.allergenWarning || '-'}>
+                            {l.allergenWarning || '-'}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
                             {new Date(l.createdAt).toLocaleDateString("tr-TR")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center gap-1 justify-end">
+                              {/* Taslak → Onaya Gönder (herkes) */}
+                              {l.status === 'taslak' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => submitLabelMutation.mutate(l.id)}
+                                  className="text-xs h-7"
+                                  data-testid={`button-submit-${l.id}`}
+                                >
+                                  Onaya Gönder
+                                </Button>
+                              )}
+
+                              {/* Onay Bekliyor → Onayla/Reddet (gıda mühendisi/admin/ceo/cgo) */}
+                              {l.status === 'onay_bekliyor' && canApprove && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="default"
+                                    onClick={() => {
+                                      if (confirm(`"${l.productName}" etiketini ONAYLIYOR musunuz?`)) {
+                                        approveLabelMutation.mutate(l.id);
+                                      }
+                                    }}
+                                    className="text-xs h-7 bg-green-600 hover:bg-green-700"
+                                    data-testid={`button-approve-${l.id}`}
+                                  >
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    Onayla
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => { setRejectingLabel(l); setRejectReason(''); }}
+                                    className="text-xs h-7"
+                                    data-testid={`button-reject-${l.id}`}
+                                  >
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Reddet
+                                  </Button>
+                                </>
+                              )}
+
+                              {/* Onaylı → PDF indir */}
+                              {l.status === 'onaylandi' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => downloadTGKLabel(l)}
+                                  className="text-xs h-7"
+                                  data-testid={`button-pdf-${l.id}`}
+                                >
+                                  📄 PDF İndir
+                                </Button>
+                              )}
+
+                              {/* Reddedildi → Sebep göster */}
+                              {l.status === 'reddedildi' && l.rejectedReason && (
+                                <span 
+                                  className="text-xs text-red-500 italic cursor-help" 
+                                  title={l.rejectedReason}
+                                >
+                                  ⚠ Sebep: {l.rejectedReason.length > 30 ? l.rejectedReason.slice(0,30) + '...' : l.rejectedReason}
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -480,8 +624,58 @@ export default function GirdiYonetimiPage() {
                   </Table>
                 </div>
               )}
+
+              {/* Onay yetkisi bilgisi */}
+              {!canApprove && tgkLabels.some((l:any) => l.status === 'onay_bekliyor') && (
+                <div className="mt-3 p-2 text-xs text-muted-foreground bg-yellow-50 dark:bg-yellow-950/30 rounded border border-yellow-200">
+                  💡 Onay için <strong>gıda mühendisi, admin, CEO veya CGO</strong> yetkisi gerekli
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Red Dialog */}
+          <Dialog open={!!rejectingLabel} onOpenChange={(o) => !o && setRejectingLabel(null)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Etiketi Reddet</DialogTitle>
+                <DialogDescription>
+                  "{rejectingLabel?.productName}" etiketini reddediyorsunuz. Sebep zorunludur.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <label className="text-xs font-medium">Red Sebebi *</label>
+                <Textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  placeholder="Örn: Allerjen bilgisi eksik, fındık etiketi yok..."
+                  rows={4}
+                  data-testid="textarea-reject-reason"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  En az 5 karakter. Bu sebep audit'e kaydedilir, etiket sahibine bildirilir.
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRejectingLabel(null)}>İptal</Button>
+                <Button 
+                  variant="destructive"
+                  onClick={() => {
+                    if (rejectReason.trim().length < 5) {
+                      toast({ title: 'Red sebebi en az 5 karakter olmalı', variant: 'destructive' });
+                      return;
+                    }
+                    rejectLabelMutation.mutate({ id: rejectingLabel.id, reason: rejectReason });
+                  }}
+                  disabled={rejectLabelMutation.isPending || rejectReason.trim().length < 5}
+                  data-testid="button-confirm-reject"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Reddet
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Tab 4: Tedarikçi Performans */}

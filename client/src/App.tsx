@@ -278,6 +278,8 @@ const GirdiYonetimi = lazyWithRetry(() => import("@/pages/girdi-yonetimi"));  //
 const EtiketHesapla = lazyWithRetry(() => import("@/pages/etiket-hesapla"));  // Sprint 7 v3 (5 May 2026): Reçete → Etiket
 const PerformansYonetim = lazyWithRetry(() => import("@/pages/performans-yonetim"));  // Sprint 8 (5 May 2026): Yönetici performans
 const SkorParametreleri = lazyWithRetry(() => import("@/pages/admin/skor-parametreleri"));  // Sprint 8 (5 May 2026): Skor admin paneli
+const TedarikciKalite = lazyWithRetry(() => import("@/pages/tedarikci-kalite"));  // Sprint 9 #348 (5 May 2026): Tedarikçi QC
+const Turkomp = lazyWithRetry(() => import("@/pages/turkomp"));  // Sprint 9 #348 (5 May 2026): TÜRKOMP arama
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
 // ── Orphan → Linked (Sistem Atölyesi kararı) ──
 const Announcements = lazyWithRetry(() => import("@/pages/announcements"));
@@ -705,6 +707,12 @@ function Router() {
           </Route>
           <Route path="/admin/skor-parametreleri">
             {() => <ProtectedRoute allowedRoles={["admin","ceo"]}><SkorParametreleri /></ProtectedRoute>}
+          </Route>
+          <Route path="/tedarikci-kalite">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><TedarikciKalite /></ProtectedRoute>}
+          </Route>
+          <Route path="/turkomp">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><Turkomp /></ProtectedRoute>}
           </Route>
           <Route path="/puantajim" component={PersonelPuantajim} />
           <Route path="/iletisim-merkezi" component={IletisimMerkeziRedirect} />
