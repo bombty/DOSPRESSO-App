@@ -1,12 +1,27 @@
 # 📋 DOSPRESSO — PENDING.md
 
-**Son güncelleme:** 5 May 2026 Pazartesi 17:50 (Aslan + Claude — Sprint 7 v3 tamamlandı)
+**Son güncelleme:** 5 May 2026 Salı 18:30 (Aslan + Claude — Sprint 7 v3 + frontend tamamlandı)
 **Format:** TASK-XXX (iş) / DECISION-XXX (Aslan kararı)
 **Bağlam:** Pilot 12 May 09:00 — **7 gün uzakta**.
 
 ---
 
-## 🚨 BU AKŞAM (5 May, ŞİMDİ)
+## 🚨 BU AKŞAM (5 May, 18:30 ŞİMDİ)
+
+**TASK-S7-MERGE — 2 PR aç + merge** (Aslan, 6 dk)
+- Sprint 6 Bölüm 3+4 PR: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-6-bolum-3-pdks-detail-2026-05-05
+- Sprint 7 (v1+v2+v3+frontend) PR: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/sprint-7-girdi-yonetimi-tgk-2026-05-05
+
+**TASK-S7-MIGRATION — Replit DRY-RUN + EXECUTE** (Aslan→Replit, 30 dk)
+- 2 migration: 2026-05-05-girdi-yonetimi-tgk.sql + 2026-05-05-girdi-data-import.sql
+- DRY-RUN sonra GO bekle
+
+**TASK-S7-SMOKE — Smoke test** (Aslan→Replit, 15 dk)
+- /api/girdi/list → 67+ hammadde
+- /api/girdi-stats/overview → toplam, alerjen
+- /api/turkomp/cache/list → boş (henüz veri yok)
+- /etiket-hesapla?productId=X → reçete + auto besin değeri + PDF
+- /girdi-yonetimi → tedarikçi performans tab dolu
 
 ### TASK-2026-05-05-A: Sprint 6 Bölüm 3+4 PR aç + merge
 **Branch:** `claude/sprint-6-bolum-3-pdks-detail-2026-05-05` (3 commit: b14db32, 1b99683, 4ce915f)
