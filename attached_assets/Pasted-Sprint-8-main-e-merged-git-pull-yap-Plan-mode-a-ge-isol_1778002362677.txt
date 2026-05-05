@@ -1,0 +1,81 @@
+Sprint 8 main'e merged. git pull yap.
+
+Plan mode'a geç, isolated agent ile şu BÜYÜK migration'ı yap:
+
+═══════════════════════════════════════════════════════════
+ADIM 1: DRY-RUN (sadece SELECT)
+═══════════════════════════════════════════════════════════
+
+migrations/2026-05-05-sprint-8-data-cleanup-personnel-sync.sql
+ADIM 0 bölümünü çalıştır (4 SELECT). Bana raporla:
+
+A) Tüm aktif şubeler (id + name + is_active)
+   → 22 şube olmalı
+
+B) Şube başına aktif personel sayısı
+   → en kalabalık şube hangileri?
+
+C) HQ rolleri (branch_id NULL) personel sayısı
+   → admin, ceo, coach, trainer, muhasebe, vs.
+
+D) Pilot 4 lokasyon (id 5, 8, 23, 24) gerçek isimleri:
+   → Beklenen: Işıklar, Lara, Merkez Ofis, Fabrika
+   → DEĞİLSE bana yaz, ID'ler farklı olabilir
+
+═══════════════════════════════════════════════════════════
+ADIM 2: GO BEKLE
+═══════════════════════════════════════════════════════════
+
+DRY-RUN sonuçlarını bana yapıştır. Pilot lokasyon ID'lerini doğrulayalım.
+Sonra GO + EXECUTE.
+
+═══════════════════════════════════════════════════════════
+ADIM 3: EXECUTE (DRY-RUN onayı sonrası)
+═══════════════════════════════════════════════════════════
+
+Migration ADIM 1, 2, 3, 4, 5 sırayla çalıştır:
+
+ADIM 1: 18 fake şube → is_active=false
+   Beklenen: 18 şube pasifleşti
+
+ADIM 2: 119 fake personel → is_active=false
+   (HQ rolleri ve pilot şubelerdeki personel KORUNUR)
+   Beklenen: ~120 personel pasifleşti
+
+ADIM 3: 35 gerçek personel UPSERT
+   Excel'den gelen kayıtları INSERT/UPDATE yapar.
+   Beklenen: 35 yeni personel veya UPDATE
+
+ADIM 4: Doğrulama sorguları
+   - Aktif şube: 4
+   - Aktif personel: ~40 (35 + HQ admin/ceo/coach)
+   - Şube başına: Işıklar=11, Fabrika=10, Lara=9, Ofis=5
+
+ADIM 5: 5 default skor kriteri seed (score_parameters)
+   Beklenen: count=5, total_max=90
+
+═══════════════════════════════════════════════════════════
+ADIM 4: BUILD + RESTART + SMOKE TEST
+═══════════════════════════════════════════════════════════
+
+- npx vite build (frontend)
+- npx esbuild (backend)
+- Workflow restart
+- Smoke test:
+  * GET /api/personnel → 35-40 kişi (test data temizlendi)
+  * GET /api/branches?active=true → 4 şube
+  * GET /api/score-parameters → 5 kriter, totalMaxPoints=90
+  * GET /api/score-parameters/1/history → en az 1 kayıt
+  * Frontend: /personel-detay/<gerçek-id> → ad/soyad GÖRÜNÜR (Replit'in fix'i)
+  * Frontend: /performans-yonetim → 35 kişi tablo (skorlar boş ama tablo dolu)
+  * Frontend: /admin/skor-parametreleri → 5 kriter görünür, edit çalışır mı?
+
+═══════════════════════════════════════════════════════════
+KRİTİK
+═══════════════════════════════════════════════════════════
+
+- DRY-RUN'da pilot ID'leri (5,8,23,24) yanlışsa, Aslan'a sorduğum 
+  branch listesini paylaş, ID'leri düzelteyim
+- Hata varsa rollback, GO bekle
+- Excel'deki AD SOYAD karşılaştırırken Türkçe büyük harf sorununa dikkat
+  (UPPER('İ') = 'i' problemi olabilir)
