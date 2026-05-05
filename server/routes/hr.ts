@@ -371,6 +371,17 @@ router.use((req: any, res, next) => {
         return res.status(404).json({ message: "Çalışan bulunamadı" });
       }
 
+      // Sprint 6 (5 May 2026 - Mahmut feedback): muhasebe_ik/muhasebe için managed_branches yazma kısıtı
+      // Mahmut tüm şubeleri GÖRÜR ama sadece HQ+Fabrika+Işıklar (5/23/24) personelini DÜZENLEYEBİLİR
+      const RESTRICTED_WRITE_ROLES = ['muhasebe_ik', 'muhasebe'];
+      if (RESTRICTED_WRITE_ROLES.includes(role)) {
+        if (!employee.branchId || !MANAGED_BRANCH_IDS.includes(employee.branchId)) {
+          return res.status(403).json({ 
+            message: `Bu personel ${employee.branchId} şubesinde — düzenleme yetkiniz sadece HQ, Fabrika ve Işıklar şubelerinde var.` 
+          });
+        }
+      }
+
       // Validate base schema
       const parsed = updateUserSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -2257,21 +2268,10 @@ JSON formatında yanıt ver:
       if (!isSupervisorOrAbove) {
         conditions.push(eq(leaveRequests.userId, user.id));
       } else if (user.role === 'muhasebe' || user.role === 'muhasebe_ik') {
-        // Muhasebe can see factory floor + Işıklar branch leave requests, plus their own
-        const isiklarBranches = await db.select({ id: branches.id }).from(branches).where(
-          or(
-            sql`${branches.name} ILIKE '%Işıklar%'`,
-            sql`${branches.name} ILIKE '%Isiklar%'`
-          )
-        );
-        const isiklarBranchIds = isiklarBranches.map(b => b.id);
-
-        const factoryRoles = Array.from(FACTORY_FLOOR_ROLES);
-        const factoryCondition = inArray(users.role, factoryRoles);
-        const isiklarCondition = isiklarBranchIds.length > 0 ? inArray(users.branchId, isiklarBranchIds) : sql`false`;
-        const ownCondition = eq(leaveRequests.userId, user.id);
-
-        conditions.push(or(factoryCondition, isiklarCondition, ownCondition));
+        // Sprint 6 (5 May 2026 - Mahmut feedback): muhasebe_ik tüm şubelerin izin taleplerini GÖRÜR
+        // Yazma yetkisi (onay/red) hala managed_branches kontrolü ile sınırlı (PATCH endpoint'inde)
+        // Eski kısıtlama: sadece factory + Işıklar görüyordu — kaldırıldı
+        // (CEO/admin gibi "all" davranışı)
       } else if (user.role === 'ceo' || user.role === 'admin') {
         // CEO and admin see all
       } else if (isHQRole(user.role)) {
