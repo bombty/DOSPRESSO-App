@@ -39,10 +39,35 @@ Bugün (6 May) keşfedildi + HQ PIN UI bugün yapıldı (`/admin/hq-pin-yonetimi
 4. "PIN Listesini Kopyala" → her kullanıcıya **özel WhatsApp DM**
 5. Pilot Day-1'de herkes giriş yapsın
 
-### P-Replit-Migration (Sprint 10 P-7) 🟠 REPLIT
-**Süre:** 30 dk | **Sahibi:** Replit Agent
+### P-Replit-Migration (Sprint 10 P-7) ✅ EXECUTED — 7 May 2026 sabah
+**Replit Agent EXECUTE edildi (Task #356)**
 
-Replit'e prompt verildi (saat 22:00). Plan mode + isolated agent + pg_dump ile EXECUTE bekliyor. 0 yeni INSERT yapacak (sadece audit trail).
+PRE_CHECK sonuçları (canlı DB):
+- HQ user phone_number NOT NULL: **0** (hepsi NULL)
+- Existing HQ branch_staff_pins (branch_id=23): **18 satır** (zaten bcrypt'te)
+- pgcrypto installed: ❌ → CREATE EXTENSION çalıştı
+
+Migration etkisi:
+- INSERT: **0 satır** (phone NULL olduğu için WHERE eşleşmedi — beklenen)
+- pgcrypto extension: ✅ kuruldu
+- audit_logs: ✅ 1 kayıt (`action=migration.bcrypt_hash`, `event_type=kiosk.hq_pin_bulk_migration`)
+- branch_staff_pins toplam HQ PIN: **18 satır** (değişmedi)
+
+POST_CHECK ✅ — Lazy migration fallback kalıcı (HQ user'lar PIN reset UI'sından PIN alacak).
+
+Backup'lar: schema 1.3M + data 1.2M (`docs/audit/backups/` git-ignored).
+
+### P-Sprint-8c (position_salaries UNIQUE Constraint) ✅ EXECUTED — 7 May 2026 sabah
+**Replit Agent EXECUTE edildi (Task #352)**
+
+PRE_CHECK:
+- Constraint zaten exists: `position_salaries_code_effective_unique` (commit `55978c171` daha önceden uygulanmış)
+- Duplicate (position_code + effective_from): **0 satır** ✅
+- Toplam kayıt: **19 satır** temiz
+
+Migration: idempotent çalıştı (DO $$ bloğu "already exists" dedi, hata vermedi).
+Backup: schema 1.2MB + data 2.7KB.
+EXIT_CODE: 0 ✅
 
 ### P-2/3/4: Sprint 9 Devamı 🟢 ÇALIŞMA HAZIR
 **Bağımlılık:** P-1 (Mahmut brüt rakamları)
