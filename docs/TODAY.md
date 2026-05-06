@@ -1,100 +1,90 @@
-# 📅 TODAY — 5 Mayıs 2026, Salı (Pilot T-7)
+# 📅 TODAY — 6 Mayıs 2026, Çarşamba (Pilot T-6)
 
 > **Bugün ne yapıldı, ne yarın devam edecek.** Yeni oturum başında oku.
 
 ---
 
-## 🎯 BUGÜN NE YAPILDI (Özet)
+## 🎯 BUGÜN NE YAPILDI (6 Mayıs)
 
-**Çalışma süresi:** ~33 saat (12:00 → 23:30, Aslan + Claude maraton)  
-**Üretilen kod:** ~5000 satır, 14 commit, 19 yeni dosya  
-**Mergelendi:** PR #15, #17, #18, #19, #20 (Sprint 7-16)  
-**Bekleniyor:** Hotfix PR (conflict marker temizliği), Sprint 8 EXECUTE migration
+**Çalışma:** Sprint 8 DB migration serisi (8a + 8b + 8c)  
+**Tamamlanan:** 3 migration ✅  
+**Ertelenen:** Sprint 8d (payroll/net-brüt) ve Sprint 8e (35 personel UPSERT) → yarına
 
 ---
 
-## ✅ TAMAMLANAN (Sprint 7-16 + Hotfix)
+## ✅ TAMAMLANAN (6 Mayıs)
 
-| Sprint | İçerik | PR |
+| Task | İçerik | Durum |
 |---|---|---|
-| Sprint 7 v3 | TGK 2017/2284 etiket sistemi (smart matching, TÜRKOMP cache) | #15, #17 |
-| Sprint 8 | 329-satır migration, /performans-yonetim, /admin/skor-parametreleri, TGK onay UI | #18, #19, #20 |
-| Sprint 9 | /tedarikci-kalite, /turkomp, Mahmut bordro yetki | #20 |
-| Sprint 10 | performance-calculator.ts (5 kategori), endpoint hardening | #20 |
-| Sprint 11 | /bordro-merkezi (3 sayfa hub) | #20 |
-| Sprint 12 | manager-rating backend + /yonetici-puanlama | #20 |
-| Sprint 13 | /ik-merkezi + /pdks-manuel-giris | #20 |
-| Sprint 14 | /mali-rapor-giris | #20 |
-| Sprint 15 | Skor admin Yeni Kriter form (8 alan) | #20 |
-| Sprint 16 | payroll_parameters seed + monthly_payroll DECISION + scheduler spam fix | #20 |
-| Hotfix | Merge conflict marker temizliği (3 dosya, 30→0) | ✅ PR #21 mergelendi |
+| Sprint 8a (#351) | `score_parameters` + `score_parameter_history` DDL — 19/8 kolon, 7 index, 3 FK | ✅ MERGED (PR #27) |
+| Sprint 8b (#352) | `position_salaries` — intern/Stajyer satırı eklendi (33.000 TL net = 3.300.000 kuruş) | ✅ MERGED |
+| Sprint 8c (#354) | `position_salaries` UNIQUE(position_code, effective_from) constraint | ✅ DB'de aktif |
+
+### Sprint 8c Detay (Bu Oturum)
+- PRE_CHECK_DUPLICATES: 0 satır ✅
+- POST_CHECK_CONSTRAINT: `position_salaries_code_effective_unique` ✅
+- POST_CHECK_ROW_COUNT: 19 = 19 ✅
+- Idempotent re-run: "CONSTRAINT ALREADY EXISTS: skipping" ✅
+- Backup: `backups/pre-sprint-8c-constraint-20260506-075824-*`
+- Artık `ON CONFLICT (position_code, effective_from)` çalışır
 
 ---
 
-## 🔄 ŞU AN AKTİF DURUM (6 May 00:30)
+## 🔄 ŞU AN AKTİF DB DURUMU
 
-### Origin/Main
-- HEAD: `6e82044` (Hotfix #21 mergelendi - PR #21 sonrası)
-- ✅ Marker count: 3 dosyada 0/0/0 (temiz)
-- Hotfix #21 mergelendi ✅
-
-### Devir Teslim
-- Branch: `claude/devir-teslim-2026-05-05-temiz` ✅ Push'ta
-- 3 commit: 901980c + 972d42a + fd7e8bb
-- PR #22 (açık) - Aslan mergeleyecek
-
-### Replit
-- Plan mode'da
-- `.local/tasks/sprint-8-execute.md` plan dosyası hazır
-- Lokal'de hotfix uygulandı, beyaz ekran düzeldi
-- Sprint 8 EXECUTE bekliyor (isolated agent)
-
-### Token Durumu
-- Eski token GitHub Push Protection algıladı (5 May incident)
-- Muhtemelen revoke edildi → yarın test gerekir
-
-### Aslan'ın Tek İşi (Şu An)
-PR aç + mergele: https://github.com/bombty/DOSPRESSO-App/pull/new/claude/devir-teslim-2026-05-05-temiz
+```
+score_parameters:       0 satır  ← seed bekliyor (Sprint 8e'de gelecek)
+score_parameter_history: 0 satır
+position_salaries:     19 satır  ✅  UNIQUE constraint aktif
+health:                HEALTHY, db: connected
+conflict markers:      0 ✅
+```
 
 ---
 
-## 🚦 YARIN (6 Mayıs) DEVAM EDECEK
+## 🚦 YARIN (7 Mayıs) DEVAM EDECEK
 
-1. **Aslan** → Hotfix PR mergele
-2. **Replit** → `git pull origin main` + workflow restart
-3. **Aslan** → Mode'u **Plan**'a çevir
-4. **Replit isolated agent** → Backup + 2 Migration EXECUTE + Smoke test (~45 dk)
-   - Migration 1: `2026-05-05-sprint-8-data-cleanup-personnel-sync.sql` (35 personel)
-   - Migration 2: `2026-05-05-payroll-parameters-2026-seed.sql` (2026 vergi/SGK)
-5. **Aslan** → PR mergele → Mode'u **Build**'e
-6. **Mahmut** → payroll_parameters 2026 değerleri doğrula (Resmi Gazete + GİB)
-7. **Replit** → docs/SISTEM-RAPORU-5-MAYIS.md güncelle
+### Sıra DEĞİŞTİ — Aslan Kararı (6 May Gece)
+
+1. **Sprint 8d** — payroll-engine net/brüt revizyonu (Task #355)
+   - tax-calculator.ts doğrulanacak
+   - payroll-engine.ts net maaş → brüt hesaplama düzeltmesi
+   - `payroll_parameters` 2026 seed (asgari ücret, SGK, vergi dilimi)
+   - **Sebep:** 35 personel UPSERT'te `users.netSalary=0` girmeyelim, önce engine hazır olsun
+
+2. **Sprint 8e** — 35 gerçek personel UPSERT (Task #353 → yeniden değerlendirilecek)
+   - 18 fake şube → is_active=false
+   - 119 fake personel → is_active=false
+   - 35 gerçek personel UPSERT (Fabrika 10, Ofis 5, Işıklar 11, Lara 9)
+   - 5 skor kriteri seed (score_parameters 0→5)
+   - payroll_parameters 2026 seed
+   - **Bağımlılık:** Sprint 8d bitmeli önce
 
 ---
 
-## 📊 PILOT 12 MAYIS HAZIRLIK
+## 📊 PILOT 12 MAYIS HAZIRLIK (T-6)
 
 | Kategori | Status |
 |---|---|
 | Backend kod | ✅ Hazır |
 | Frontend sayfalar | ✅ Hazır |
-| DB migration'lar | ⏳ EXECUTE bekliyor |
-| Marker temizliği | ✅ Hotfix PR #21 mergelendi |
-| Bordro parametreleri | ⏳ Mahmut doğrulama |
-| Devir teslim | ⏳ PR #22 mergelenecek |
-
-**Bloker:** Sprint 8 EXECUTE. Mahmut doğrulaması paralel yapılabilir.
+| score_parameters DDL | ✅ Hazır (0 satır, seed bekliyor) |
+| position_salaries | ✅ 19 satır + UNIQUE constraint |
+| payroll-engine net/brüt | ⏳ Sprint 8d |
+| 35 gerçek personel UPSERT | ⏳ Sprint 8e |
+| payroll_parameters 2026 | ⏳ Sprint 8d/8e |
+| score_parameters 5 kriter | ⏳ Sprint 8e |
 
 ---
 
 ## 💡 KRİTİK HATIRLATMALAR
 
+- **Maaşlar NET:** position_salaries'deki tüm tutarlar net TL × 100 kuruş (brüt DEĞİL)
 - **Feature Freeze:** 18 Apr - 15 Jun. Yeni feature → "Sprint 17+ pilot sonrası"
-- **Triangle workflow:** Aslan biz / Claude code / Replit DB
-- **Mode kuralı:** DB write = Plan mode + isolated + backup + GO. Esnetme.
 - **Schema tuzakları:** users.firstName+lastName, monthlyPayroll (schema-12), tgkLabels.rejectedReason
+- **DRY-RUN notu:** Migration BEGIN/COMMIT içeriyorsa dış ROLLBACK çalışmıyor — idempotency ile doğrula
 
 ---
 
-**Son güncelleme:** 6 May 2026, 00:30 (Hotfix #21 mergelendi + Devir teslim PR #22 açık)  
-**Sonraki güncelleme:** Sprint 8 EXECUTE bittikten sonra
+**Son güncelleme:** 6 May 2026, ~09:00 (Sprint 8c ✅, 8d/8e yarına ertelendi)  
+**Sonraki güncelleme:** Sprint 8d tamamlandıktan sonra
