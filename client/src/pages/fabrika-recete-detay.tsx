@@ -685,44 +685,102 @@ export default function FabrikaReceteDetay() {
 
           {/* BESİN DEĞERLERİ TAB */}
           <TabsContent value="besin" className="pb-8">
-            {recipe.nutritionFacts ? (
+            <div className="space-y-4">
+              {/* Hesapla Butonu + Bağlam Şeridi */}
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Scale className="h-4 w-4" />
-                    Besin Değer Tablosu (100gr)
-                  </CardTitle>
-                  {recipe.nutritionConfidence && (
-                    <p className="text-[10px] text-muted-foreground">
-                      AI Güven: %{recipe.nutritionConfidence} · {recipe.nutritionCalculatedAt && new Date(recipe.nutritionCalculatedAt).toLocaleDateString("tr-TR")}
-                    </p>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-1.5">
-                  {[
-                    { label: "Enerji", value: recipe.nutritionFacts.energy_kcal, unit: "kcal" },
-                    { label: "Yağ", value: recipe.nutritionFacts.fat_g, unit: "g" },
-                    { label: "  Doymuş yağ", value: recipe.nutritionFacts.saturated_fat_g, unit: "g" },
-                    { label: "Karbonhidrat", value: recipe.nutritionFacts.carbohydrate_g, unit: "g" },
-                    { label: "  Şeker", value: recipe.nutritionFacts.sugar_g, unit: "g" },
-                    { label: "Lif", value: recipe.nutritionFacts.fiber_g, unit: "g" },
-                    { label: "Protein", value: recipe.nutritionFacts.protein_g, unit: "g" },
-                    { label: "Tuz", value: recipe.nutritionFacts.salt_g, unit: "g" },
-                  ].map(row => (
-                    <div key={row.label} className={cn("flex justify-between text-sm py-0.5", row.label.startsWith("  ") && "pl-4 text-muted-foreground")}>
-                      <span>{row.label.trim()}</span>
-                      <span className="font-mono tabular-nums">{row.value != null ? `${row.value} ${row.unit}` : "—"}</span>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium flex items-center gap-2">
+                        <Scale className="h-4 w-4 text-blue-500" />
+                        Besin Değer Hesaplaması
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Malzemelerden TÜRKOMP verisine göre 100g başına otomatik hesaplama
+                      </p>
                     </div>
-                  ))}
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/factory/recipes/${recipe.id}/calculate-nutrition`, {
+                            method: "POST",
+                            credentials: "include",
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || "Hesaplama başarısız");
+                          toast({
+                            title: "Besin değerleri hesaplandı",
+                            description: `${data.coveredCount}/${data.ingredientCount} malzeme kapsama (%${data.coveragePct})`,
+                          });
+                          queryClient.invalidateQueries({ queryKey: [`/api/factory/recipes/${recipe.id}`] });
+                        } catch (err: any) {
+                          toast({ title: "Hata", description: err.message, variant: "destructive" });
+                        }
+                      }}
+                      data-testid="button-calculate-nutrition"
+                    >
+                      <Scale className="h-4 w-4 mr-1.5" />
+                      {recipe.nutritionFacts ? "Yeniden Hesapla" : "Şimdi Hesapla"}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
-            ) : (
-              <div className="text-center py-8">
-                <Scale className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-                <p className="text-sm text-muted-foreground">Besin değerleri henüz hesaplanmamış</p>
-                <p className="text-xs text-muted-foreground mt-1">Malzeme listesi tamamlandığında AI otomatik hesaplayacak</p>
-              </div>
-            )}
+
+              {/* Coverage Uyarısı */}
+              {recipe.nutritionFacts && recipe.nutritionConfidence != null && recipe.nutritionConfidence < 80 && (
+                <div className="p-3 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 text-xs">
+                      <strong>Düşük kapsama (%{recipe.nutritionConfidence}):</strong> Bazı malzemeler için TÜRKOMP verisi eksik.
+                      Hammadde sayfasından ({" "}
+                      <a href="/turkomp" className="underline">TÜRKOMP'ta ara</a>
+                      {" "}) eksik veriyi tamamlayın, sonra "Yeniden Hesapla" yapın.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {recipe.nutritionFacts ? (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Scale className="h-4 w-4" />
+                      Besin Değer Tablosu (100gr)
+                    </CardTitle>
+                    {recipe.nutritionConfidence && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Kapsama: %{recipe.nutritionConfidence} · {recipe.nutritionCalculatedAt && new Date(recipe.nutritionCalculatedAt).toLocaleDateString("tr-TR")}
+                      </p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-1.5">
+                    {[
+                      { label: "Enerji", value: recipe.nutritionFacts.energy_kcal ?? recipe.nutritionFacts.energyKcal, unit: "kcal" },
+                      { label: "Yağ", value: recipe.nutritionFacts.fat_g ?? recipe.nutritionFacts.fatG, unit: "g" },
+                      { label: "  Doymuş yağ", value: recipe.nutritionFacts.saturated_fat_g ?? recipe.nutritionFacts.saturatedFatG, unit: "g" },
+                      { label: "Karbonhidrat", value: recipe.nutritionFacts.carbohydrate_g ?? recipe.nutritionFacts.carbohydrateG, unit: "g" },
+                      { label: "  Şeker", value: recipe.nutritionFacts.sugar_g ?? recipe.nutritionFacts.sugarG, unit: "g" },
+                      { label: "Lif", value: recipe.nutritionFacts.fiber_g ?? recipe.nutritionFacts.fiberG, unit: "g" },
+                      { label: "Protein", value: recipe.nutritionFacts.protein_g ?? recipe.nutritionFacts.proteinG, unit: "g" },
+                      { label: "Tuz", value: recipe.nutritionFacts.salt_g ?? recipe.nutritionFacts.saltG, unit: "g" },
+                    ].map(row => (
+                      <div key={row.label} className={cn("flex justify-between text-sm py-0.5", row.label.startsWith("  ") && "pl-4 text-muted-foreground")}>
+                        <span>{row.label.trim()}</span>
+                        <span className="font-mono tabular-nums">{row.value != null ? `${typeof row.value === "number" ? row.value.toFixed(1) : row.value} ${row.unit}` : "—"}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="text-center py-8">
+                  <Scale className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
+                  <p className="text-sm text-muted-foreground">Besin değerleri henüz hesaplanmamış</p>
+                  <p className="text-xs text-muted-foreground mt-1">"Şimdi Hesapla" butonuna tıklayın</p>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* TEKNİK NOTLAR TAB */}
