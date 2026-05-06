@@ -4163,13 +4163,107 @@ router.post('/api/hq/kiosk/login', async (req, res) => {
       return res.status(401).json({ message: KIOSK_GENERIC_LOGIN_ERROR });
     }
     
-    // NOT: HQ kiosk login PIN'i hala plaintext phoneNumber.slice(-4) ile kontrol ediliyor.
-    // Bu A-3 görev kapsamı dışında bırakıldı; ayrı bir yamada bcrypt'e geçirilmeli.
-    const userPin = user.phoneNumber ? user.phoneNumber.slice(-4) : '0000';
-    if (pin !== userPin) {
+    // ─────────────────────────────────────────────────────────────────
+    // Sprint 10 P-7 (6 May 2026) — HQ Kiosk PIN bcrypt geçişi
+    // Audit Security 4.1 — D-17 plaintext kararı revize
+    //
+    // Eski: pin === user.phoneNumber.slice(-4)  (plaintext, kullanıcı değiştiremez)
+    // Yeni: branchStaffPins.hashedPin (bcrypt) — phone-fallback ile lazy migration
+    //
+    // Akış:
+    //   1. branchStaffPins'ta HQ branch (23) için bu user'a hashedPin var mı?
+    //      → VAR: bcrypt.compare ile doğrula
+    //   2. YOKSA (geçiş kullanıcısı): phone son 4 fallback + WARN log + audit
+    //      → Doğruysa: arka planda bcrypt.hash + branchStaffPins'a yaz (lazy migration)
+    //      → Sonraki login bcrypt path kullanır
+    //
+    // Tam migration: scripts/sprint-10-p7-migrate-hq-kiosk-pins.sql
+    // Bu lazy migration runtime'da geçişi otomatikleştirir, sıfır breaking change.
+    // ─────────────────────────────────────────────────────────────────
+    const HQ_BRANCH_ID = 23;
+    let pinValid = false;
+    let usedFallback = false;
+
+    // 1. branchStaffPins'tan hash'lenmiş PIN ara
+    const [storedPin] = await db.select().from(branchStaffPins)
+      .where(and(
+        eq(branchStaffPins.userId, userId),
+        eq(branchStaffPins.branchId, HQ_BRANCH_ID),
+        eq(branchStaffPins.isActive, true)
+      ))
+      .limit(1);
+
+    if (storedPin) {
+      // Hash'lenmiş PIN var — bcrypt.compare ile doğrula
+      pinValid = await bcrypt.compare(pin, storedPin.hashedPin);
+    } else {
+      // Hash yok — geçiş kullanıcısı, phone fallback
+      usedFallback = true;
+      const userPin = user.phoneNumber ? user.phoneNumber.slice(-4) : '0000';
+      pinValid = (pin === userPin);
+
+      if (pinValid) {
+        // Lazy migration: bcrypt.hash + branchStaffPins'a yaz
+        // Hata olursa login devam etsin (await değil, fire-and-forget background)
+        (async () => {
+          try {
+            const hashedPin = await bcrypt.hash(pin, 10);
+            await db.insert(branchStaffPins).values({
+              userId,
+              branchId: HQ_BRANCH_ID,
+              hashedPin,
+              pinFailedAttempts: 0,
+              isActive: true,
+            }).onConflictDoNothing();
+            console.log(`[HQ-PIN-MIGRATION] userId=${userId} phone-PIN bcrypt'e geçirildi`);
+          } catch (migrationError) {
+            console.warn(`[HQ-PIN-MIGRATION] userId=${userId} migration başarısız:`, migrationError);
+            // Login etkilenmez, sonraki login'de tekrar denenir
+          }
+        })();
+      }
+    }
+
+    if (!pinValid) {
+      // Audit log: başarısız PIN denemesi
+      await db.insert(auditLogs).values({
+        eventType: 'kiosk.hq_pin_failed',
+        userId: userId,
+        actorRole: user.role,
+        scopeBranchId: HQ_BRANCH_ID,
+        action: 'kiosk.login_failed',
+        resource: 'hq_kiosk',
+        resourceId: userId,
+        details: { fallbackPath: usedFallback, reason: 'invalid_pin' },
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+      }).catch(() => {/* audit log hatası login'i etkilemez */});
       return res.status(401).json({ message: "Hatali PIN" });
     }
-    
+
+    // Fallback kullanıldıysa WARN log (security operasyon ekibi için)
+    if (usedFallback) {
+      console.warn(
+        `[HQ-PIN-FALLBACK] userId=${userId} role=${user.role} phone-PIN ile giriş yaptı, ` +
+        `arka planda bcrypt'e geçiriliyor. Plaintext kullanım izlendi (audit_logs).`
+      );
+      await db.insert(auditLogs).values({
+        eventType: 'kiosk.hq_pin_phone_fallback',
+        userId: userId,
+        actorRole: user.role,
+        scopeBranchId: HQ_BRANCH_ID,
+        action: 'kiosk.login_phone_fallback',
+        resource: 'hq_kiosk',
+        resourceId: userId,
+        details: { 
+          migrationStarted: true, 
+          note: 'Lazy migration: arka planda bcrypt hash oluşturuluyor' 
+        },
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+      }).catch(() => {/* audit log hatası login'i etkilemez */});
+    }
+
     const [activeSession] = await db.select().from(hqShiftSessions)
       .where(and(
         eq(hqShiftSessions.userId, userId),
