@@ -309,6 +309,22 @@ export default function FabrikaReceteDetay() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            {/* Aslan 7 May 2026: Ürün Spesifikasyon PDF butonu */}
+            {['admin', 'ceo', 'cgo', 'gida_muhendisi', 'kalite_kontrol', 'kalite_yoneticisi', 'recete_gm'].includes(user?.role || '') && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const url = `/api/factory/recipes/${recipe.id}/specification.pdf`;
+                  window.open(url, '_blank');
+                }}
+                data-testid="button-spec-pdf"
+                title="SD-XX format TGK uyumlu 5 sayfa spesifikasyon PDF"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Spesifikasyon PDF
+              </Button>
+            )}
             {recipe.grammageApproval?.canApprove && (!recipe.grammageApproval?.approved || recipe.ingredientChangesSinceApproval?.hasChangesAfterApproval) && (
               <Button
                 size="sm"
@@ -335,6 +351,25 @@ export default function FabrikaReceteDetay() {
             {canEdit && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/fabrika/receteler/${recipeId}/duzenle`)}>
                 <Edit className="h-3.5 w-3.5 mr-1" /> Düzenle
+              </Button>
+            )}
+            {/* SPESİFİKASYON PDF — Aslan 7 May 2026 talebi: yetkili roller (admin/ceo/cgo/gida_muhendisi/kalite) tıklayarak çıktı */}
+            {['admin', 'ceo', 'cgo', 'gida_muhendisi', 'kalite_kontrol', 'kalite_yoneticisi', 'recete_gm'].includes(user?.role || '') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const { downloadProductSpecPDF } = await import('@/lib/product-spec-pdf');
+                    downloadProductSpecPDF(recipe);
+                    toast({ title: "✅ Spesifikasyon PDF indirildi", description: `SD-${String(recipe.id).padStart(2, '0')} - ${recipe.name}` });
+                  } catch (err: any) {
+                    toast({ title: "PDF üretilemedi", description: err.message, variant: "destructive" });
+                  }
+                }}
+                data-testid="button-spec-pdf"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" /> Spesifikasyon PDF
               </Button>
             )}
             <Button size="sm" onClick={() => navigate(`/fabrika/receteler/${recipeId}/uretim`)}>
