@@ -55,9 +55,28 @@ export function requireManifestAccess(
 
       next();
     } catch (error) {
-      console.error(`[ManifestAuth] Error checking ${flagKey}/${action}:`, error);
-      // Hata durumunda erişime izin ver (fail-open) — mevcut sistemi bozma
-      next();
+      // Sprint 10 P-5 (6 May 2026): FAIL-CLOSED — Audit Security 4.2
+      // ÖNCEKİ DAVRANIŞ (BUG): Hata olursa next() çağrılıyordu (fail-open)
+      //   → DB hatası, manifest yükleme hatası, vs. durumlarda yetkisiz erişim
+      // YENİ DAVRANIŞ: Her hata = 403 yetki reddi
+      //   → Mahmut Bey'in muhasebe ekranına saldırı denemesinde DB exception olsa bile geçemez
+      //
+      // Operasyonel: Bu fail-closed davranışı bir endpoint'i kullanılamaz hale getirebilir
+      // (örn. module_flags tablosu ulaşılamazsa). Bu durumda log inceleyip altyapı sorunu çözülür.
+      // Yetkisiz erişim riski > geçici endpoint downtime riski.
+      const userId = (req.user as any)?.id ?? 'anonymous';
+      const userRole = (req.user as any)?.role ?? 'unknown';
+      console.error(
+        `[ManifestAuth] Yetki kontrolü başarısız (fail-closed) — userId=${userId} role=${userRole} module=${flagKey} action=${action}:`,
+        error
+      );
+      return res.status(403).json({
+        error: 'Yetki kontrolü yapılamadı, erişim reddedildi',
+        module: flagKey,
+        action,
+        // production'da error detail gösterilmez (information leak), sadece dev modda
+        ...(process.env.NODE_ENV !== 'production' && { detail: String(error) }),
+      });
     }
   };
 }
