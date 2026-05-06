@@ -185,8 +185,8 @@ export default function TedarikciKalite() {
                     <Badge variant="outline" className="bg-red-50">✗ {s.redCount}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground mt-2">
-                    Hata oranı: <strong className={s.defectRate > 10 ? 'text-red-500' : 'text-green-500'}>
-                      %{s.defectRate.toFixed(1)}
+                    Hata oranı: <strong className={(s.defectRate ?? 0) > 10 ? 'text-red-500' : 'text-green-500'}>
+                      %{(s.defectRate ?? 0).toFixed(1)}
                     </strong>
                   </div>
                 </div>

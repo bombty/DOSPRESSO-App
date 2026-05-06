@@ -74,7 +74,10 @@ const FABRIKA_MENU: ModuleMenuConfig = {
     { id: "gida", label: "Gıda Güvenliği", path: "/fabrika/gida-guvenligi", icon: Shield },
     // Sprint 7-9 (5 May 2026): Girdi Yönetimi + TGK Etiket + Tedarikçi QC + TÜRKOMP
     { id: "girdi", label: "Girdi Yönetimi (TGK)", path: "/girdi-yonetimi", icon: Package, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
-    { id: "etiket", label: "Etiket Hesapla", path: "/etiket-hesapla", icon: FileBarChart, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite","sef","recete_gm","coach","trainer"] },
+    // Sprint 13 (6 May 2026): "Etiket Hesapla" sidebar link'i kaldırıldı.
+    // Sebep: productId parametresi olmadan crash veriyordu (Eksik parametre hatası).
+    // Sprint 14 planı: Etiket çalışması reçete detay sayfasının "Etiket" sekmesi olarak taşınacak.
+    // Eski link: { id: "etiket", label: "Etiket Hesapla", path: "/etiket-hesapla", icon: FileBarChart, ... }
     { id: "tedarikci-kalite", label: "Tedarikçi Kalite QC", path: "/tedarikci-kalite", icon: Shield, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
     { id: "turkomp", label: "TÜRKOMP", path: "/turkomp", icon: Beaker, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
   ],

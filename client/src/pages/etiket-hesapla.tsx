@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   ArrowLeft, Beaker, Download, Save, AlertTriangle, CheckCircle2, 
-  XCircle, Loader2, ShieldCheck, FileText, Sparkles
+  XCircle, Loader2, ShieldCheck, FileText, Sparkles, ChefHat
 } from "lucide-react";
 import { downloadTGKLabel } from "@/lib/tgk-label-pdf";
 
@@ -167,10 +167,30 @@ export default function EtiketHesaplaPage() {
 
   if (!productId) {
     return (
-      <div className="p-8 text-center">
-        <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-3" />
-        <h2 className="text-xl font-bold">Eksik parametre</h2>
-        <p className="text-muted-foreground">URL'de productId belirtilmedi.</p>
+      <div className="container mx-auto p-4 max-w-3xl">
+        <Card className="mt-8">
+          <CardContent className="p-8 text-center space-y-4">
+            <FileText className="h-16 w-16 text-primary mx-auto" />
+            <h2 className="text-2xl font-bold">Etiket Hesapla</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Etiket bir reçeteye veya ürüne bağlıdır. Lütfen önce bir reçete seçin —
+              etiket oluşturma reçete detay sayfasının "Etiket" sekmesinden yapılır.
+            </p>
+            <div className="flex gap-3 justify-center pt-2 flex-wrap">
+              <Button onClick={() => setLocation('/fabrika-receteler')} data-testid="button-go-recipes">
+                <ChefHat className="h-4 w-4 mr-2" />
+                Fabrika Reçetelerine Git
+              </Button>
+              <Button variant="outline" onClick={() => setLocation('/receteler')} data-testid="button-go-branch-recipes">
+                Şube Reçetelerine Git
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground pt-4 border-t mt-4">
+              💡 İpucu: Reçete listesinden bir reçete açın → "Etiket" sekmesine tıklayın.
+              TGK 2017/2284 uyumlu etiket otomatik oluşturulur.
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

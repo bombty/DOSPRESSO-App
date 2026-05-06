@@ -63,7 +63,9 @@ export default function Turkomp() {
       if (!searchTerm || searchTerm.trim().length < 2) return [];
       const res = await fetch(`/api/turkomp/search?q=${encodeURIComponent(searchTerm)}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Arama başarısız');
-      return res.json();
+      // API returns { source: 'cache'|'api', results: [...] } — unwrap and guard
+      const data = await res.json();
+      return Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
     },
     enabled: false, // Manuel trigger
   });

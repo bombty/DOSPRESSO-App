@@ -527,4 +527,54 @@ D-20'nin politikası şu an aktif değil; yeni feature talepleri reddedilmeyecek
 
 ---
 
-**Son güncelleme:** 6 May 2026, 19:30 (D-43 Sprint 10 closing — 6 güvenlik iyileştirmesi + HQ PIN risk + Sprint 11 ilerleme)
+### D-44: Bağlam-İçi Tab Prensibi (6 May 2026, 22:55)
+
+**Karar:** Tüm DOSPRESSO platformu için yeni mimari prensip kabul edildi.
+
+**Tetikleyici:** Aslan'ın Sema (gida_muhendisi) rolüyle yaptığı canlı test — "Etiket Hesapla" sayfası `productId` parametresi olmadan crash. Sadece bug değil, mimari hata.
+
+**Prensip:**
+> Bir özellik **bağlam içinde anlamlıysa** (bir reçete, hammadde, personel, müşteri vb. ile ilişkiliyse), sidebar'a değil, **ilgili varlığın detay sayfasının sekmesi** olarak yerleştirilir.
+>
+> Sidebar **rol-bağımsız ana iş alanlarını** içerir. Bağlam-içi özellikler detay sayfalarında sekme olarak yer alır.
+
+**Kural Seti:**
+1. **Sidebar = Liste/Hub sayfaları** (bağlam-bağımsız ana iş alanları)
+2. **Detay sayfaları = Bağlam-içi sekmeler** (varlık-bazlı)
+3. **İçerik rol-bağımsız**, **aksiyonlar rol-spesifik**:
+   - Sema, İlker, Aslan, CGO aynı sekmeleri görür
+   - Sadece "Onayla", "Düzenle", "Sil" gibi butonlar role göre değişir
+
+**Uygulama (Sprint 14-17):**
+- "Etiket Hesapla" sidebar → Reçete detay "Etiket" sekmesi
+- "Tedarikçi Kalite QC" sidebar → Hammadde detay "Tedarikçi Kalite" sekmesi
+- "Lot İzleme" sidebar → Reçete + Hammadde detay "Lot" sekmesi
+- "Maliyet" sidebar → Zaten reçetede var, sidebar'dan kaldırılacak
+- "Gıda Güvenliği" sayfa → Dashboard widget'ı
+
+**Tüm Platforma Uygulanabilir:**
+- PDKS → Personel detay sekmeleri (Devamsızlık, Bordro, Performans)
+- Audit → Şube detay sekmeleri (Denetim Geçmişi, Skor Trendi)
+- CRM → Müşteri detay sekmeleri (Şikayet, Memnuniyet)
+
+**Sprint 13'te yapılan hızlı fix'ler (pilot için):**
+- F1: TÜRKOMP `searchResults` unwrap (`{results}` çek)
+- F2: Tedarikçi `defectRate ?? 0` null safety
+- F3: Etiket Hesapla anlamlı empty state (reçeteye yönlendir)
+- F4: Sidebar "Etiket Hesapla" link kaldırıldı
+
+**Sprint 14-17 detaylı plan:** `docs/SPRINT-14-MIMARI-REFACTOR-PLAN.md`
+
+**Operasyonel Etki:**
+- Yeni özellik tasarımında: "Bu sidebar'a mı, detay sekmesine mi?" sorusu otomatik sorulacak
+- Mevcut sayfaların post-pilot refactor öncelik listesinde
+- Tüm rol bazlı navigation tasarımı bu prensiple uyumlu olmalı
+
+**Aslan'ın orijinal gözlemi:**
+> "Sadece Sema değil, bu modülü kullanan diğer kullanıcılarda örneğin diğer gıda mühendisi, CGO veya admin de bu sistemi aynı şekilde görmeli. Ayrıca etiket çalışmada çalışmıyor. Bunlar doğrudan ürün kartı içinde olsa daha iyi olmaz mı?"
+
+Bu gözlem D-44 prensibinin temelini oluşturdu.
+
+---
+
+**Son güncelleme:** 6 May 2026, 22:55 (D-44 Bağlam-İçi Tab prensibi + Sprint 13 fix'leri)
