@@ -25,7 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Package, Search, Plus, Filter, AlertTriangle, ShieldCheck, 
   FileText, Tag, Building2, Edit, Trash2, Download, Upload, 
-  CheckCircle2, XCircle, Beaker, Eye, Pencil, Globe, Sparkles
+  CheckCircle2, XCircle, Beaker, Eye, Pencil, Globe, Sparkles, ChevronRight
 } from "lucide-react";
 import { downloadTGKLabel } from "@/lib/tgk-label-pdf";
 
@@ -918,8 +918,23 @@ export default function GirdiYonetimiPage() {
               <Package className="h-5 w-5" />
               {selectedGirdi?.name}
             </DialogTitle>
-            <DialogDescription>
-              {selectedGirdi?.code} • {selectedGirdi?.brand || 'Marka belirtilmemiş'}
+            <DialogDescription className="flex items-center gap-2 flex-wrap">
+              <span>{selectedGirdi?.code} • {selectedGirdi?.brand || 'Marka belirtilmemiş'}</span>
+              {selectedGirdi?.id && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-2 h-7 text-xs"
+                  onClick={() => {
+                    setIsDetailOpen(false);
+                    window.location.href = `/girdi-yonetimi/${selectedGirdi.id}`;
+                  }}
+                  data-testid="button-open-detail-page"
+                >
+                  <ChevronRight className="h-3.5 w-3.5 mr-1" />
+                  Tam Sayfa Görüntüle (5 sekme)
+                </Button>
+              )}
             </DialogDescription>
           </DialogHeader>
           {selectedGirdi && (
