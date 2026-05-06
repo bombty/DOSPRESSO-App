@@ -46,6 +46,13 @@ interface QcRecord {
   notes?: string;
   inspectorId?: string;
   createdAt: string;
+  // Aslan 7 May 2026: DB'de zaten var olan ama frontend kullanmadığı alanlar
+  invoiceNumber?: string;
+  deliveredQuantity?: string;
+  unit?: string;
+  nonConformity?: string;
+  correctiveAction?: string;
+  rejectionReason?: string;
 }
 
 interface SupplierPerformance {
@@ -316,14 +323,62 @@ export default function TedarikciKalite() {
               <Select 
                 value={newRecord.rawMaterialId ? String(newRecord.rawMaterialId) : ''} 
                 onValueChange={(v) => setNewRecord({...newRecord, rawMaterialId: Number(v)})}
+                disabled={!newRecord.supplierId}
               >
-                <SelectTrigger><SelectValue placeholder="(opsiyonel)" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder={newRecord.supplierId ? "Hammadde seçin..." : "Önce tedarikçi seçin"} />
+                </SelectTrigger>
                 <SelectContent>
-                  {rawMaterials.slice(0, 50).map((m: any) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
-                  ))}
+                  {(rawMaterials as any[])
+                    .filter((m: any) => !newRecord.supplierId || m.supplierId === newRecord.supplierId)
+                    .map((m: any) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.code ? `${m.code} — ` : ''}{m.name}
+                      </SelectItem>
+                    ))}
+                  {newRecord.supplierId && (rawMaterials as any[]).filter((m: any) => m.supplierId === newRecord.supplierId).length === 0 && (
+                    <div className="text-xs text-muted-foreground p-2 text-center">
+                      Bu tedarikçinin atanmış hammaddesi yok.<br/>
+                      Hammadde Yönetimi'nden tedarikçi atayın.
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
+              {newRecord.supplierId && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  📌 Sadece bu tedarikçiye atanmış hammaddeler görünür
+                </p>
+              )}
+            </div>
+
+            {/* Aslan 7 May 2026: İrsaliye No + Teslim Miktarı (DB alanları zaten var) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">İrsaliye/Fatura No</Label>
+                <Input
+                  value={newRecord.invoiceNumber || ''}
+                  onChange={(e) => setNewRecord({...newRecord, invoiceNumber: e.target.value})}
+                  placeholder="Örn: IRS-2026-001"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Teslim Miktarı</Label>
+                <div className="flex gap-1">
+                  <Input
+                    type="number"
+                    step="0.001"
+                    value={newRecord.deliveredQuantity || ''}
+                    onChange={(e) => setNewRecord({...newRecord, deliveredQuantity: e.target.value})}
+                    placeholder="Miktar"
+                  />
+                  <Input
+                    value={newRecord.unit || ''}
+                    onChange={(e) => setNewRecord({...newRecord, unit: e.target.value})}
+                    placeholder="kg"
+                    className="w-16"
+                  />
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -350,14 +405,45 @@ export default function TedarikciKalite() {
               </div>
             </div>
             {newRecord.status !== 'yesil' && (
-              <div>
-                <Label className="text-xs">Hata Tipi</Label>
-                <Input 
-                  value={newRecord.defectType || ''}
-                  onChange={(e) => setNewRecord({...newRecord, defectType: e.target.value})}
-                  placeholder="Örn: Ambalaj hasarı, son kullanma tarihi geçmiş..."
-                />
-              </div>
+              <>
+                <div>
+                  <Label className="text-xs">Hata Tipi</Label>
+                  <Input 
+                    value={newRecord.defectType || ''}
+                    onChange={(e) => setNewRecord({...newRecord, defectType: e.target.value})}
+                    placeholder="Örn: Ambalaj hasarı, son kullanma tarihi geçmiş..."
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Uygunsuzluk Detayı (TGK)</Label>
+                  <Textarea 
+                    value={newRecord.nonConformity || ''}
+                    onChange={(e) => setNewRecord({...newRecord, nonConformity: e.target.value})}
+                    rows={2}
+                    placeholder="Spesifikasyondan sapma, mikrobiyolojik bulgu, hijyen ihlali..."
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Düzeltici Faaliyet</Label>
+                  <Textarea 
+                    value={newRecord.correctiveAction || ''}
+                    onChange={(e) => setNewRecord({...newRecord, correctiveAction: e.target.value})}
+                    rows={2}
+                    placeholder="Tedarikçiye iade, lot bloke, partial kabul + sayım..."
+                  />
+                </div>
+                {newRecord.status === 'kirmizi' && (
+                  <div>
+                    <Label className="text-xs">Red Sebebi *</Label>
+                    <Textarea 
+                      value={newRecord.rejectionReason || ''}
+                      onChange={(e) => setNewRecord({...newRecord, rejectionReason: e.target.value})}
+                      rows={2}
+                      placeholder="Resmi red gerekçesi (TGK 5996 m.21 uyumlu)..."
+                    />
+                  </div>
+                )}
+              </>
             )}
             <div>
               <Label className="text-xs">Notlar</Label>

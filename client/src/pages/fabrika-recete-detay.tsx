@@ -219,6 +219,24 @@ export default function FabrikaReceteDetay() {
       toast({ title: "Hata", description: "Malzeme güncellenemedi", variant: "destructive" });
     },
   });
+
+  // Aslan 7 May 2026: Besin değerleri otomatik hesaplama mutation
+  const calculateNutritionMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", `/api/factory/recipes/${recipeId}/calculate-nutrition`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/factory/recipes", recipeId] });
+      toast({ title: "✅ Besin değerleri hesaplandı", description: "TÜRKOMP + hammadde verilerinden otomatik hesaplandı." });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Hata",
+        description: err?.message || "Besin değerleri hesaplanamadı. Eksik hammadde besin değeri olabilir.",
+        variant: "destructive",
+      });
+    },
+  });
   const presets = recipe?.batchPresets || BATCH_PRESETS_DEFAULT;
   const totalTime = (recipe?.prepTimeMinutes || 0) + (recipe?.productionTimeMinutes || 0) + (recipe?.cleaningTimeMinutes || 0);
   const scaledOutput = Math.round((recipe?.baseBatchOutput || 1) * multiplier);
@@ -595,9 +613,24 @@ export default function FabrikaReceteDetay() {
                           {!isKeyblend && ing.linked && <Link2 className="h-3 w-3 text-emerald-500 shrink-0" />}
                           {!isKeyblend && !ing.linked && <Unlink className="h-3 w-3 text-amber-500 shrink-0" />}
                           <div className="min-w-0">
-                            <span className="text-sm truncate block">
-                              {isKeyblend ? `Keyblend ${ing.name}` : ing.name}
-                            </span>
+                            {ing.rawMaterialId && !isKeyblend ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/girdi-yonetimi/${ing.rawMaterialId}`);
+                                }}
+                                className="text-sm truncate block text-left hover:text-primary hover:underline cursor-pointer w-full"
+                                data-testid={`ingredient-link-${ing.refId}`}
+                                title="Hammadde detayını görüntüle (besin/alerjen/tedarikçi)"
+                              >
+                                {ing.name}
+                              </button>
+                            ) : (
+                              <span className="text-sm truncate block">
+                                {isKeyblend ? `Keyblend ${ing.name}` : ing.name}
+                              </span>
+                            )}
                             {ing.inventoryCode && (
                               <span className="text-[10px] text-emerald-500/70">{ing.inventoryCode}</span>
                             )}
@@ -749,10 +782,29 @@ export default function FabrikaReceteDetay() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="text-center py-8">
-                <Scale className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-                <p className="text-sm text-muted-foreground">Besin değerleri henüz hesaplanmamış</p>
-                <p className="text-xs text-muted-foreground mt-1">Malzeme listesi tamamlandığında AI otomatik hesaplayacak</p>
+              <div className="text-center py-8 space-y-4">
+                <Scale className="h-8 w-8 text-muted-foreground mx-auto opacity-50" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Besin değerleri henüz hesaplanmamış</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {recipe.ingredients && recipe.ingredients.length > 0
+                      ? "Aşağıdaki butona tıklayarak hammadde besin verilerinden otomatik hesaplama yapabilirsiniz."
+                      : "Önce malzeme listesini doldurun, sonra besin değeri hesaplayın."}
+                  </p>
+                </div>
+                {['admin', 'ceo', 'cgo', 'gida_muhendisi', 'kalite_kontrol', 'kalite_yoneticisi', 'recete_gm'].includes(user?.role || '') && (
+                  <Button
+                    onClick={() => calculateNutritionMutation.mutate()}
+                    disabled={calculateNutritionMutation.isPending || !recipe.ingredients || recipe.ingredients.length === 0}
+                    data-testid="button-calculate-nutrition"
+                  >
+                    <Scale className="h-4 w-4 mr-2" />
+                    {calculateNutritionMutation.isPending ? "Hesaplanıyor..." : "Şimdi Hesapla"}
+                  </Button>
+                )}
+                <p className="text-[10px] text-muted-foreground max-w-md mx-auto">
+                  Hesaplama: Hammadde besin değerleri × reçetedeki gramaj. Eksik veri varsa o hammadde TÜRKOMP'tan alınır.
+                </p>
               </div>
             )}
           </TabsContent>
