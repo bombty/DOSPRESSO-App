@@ -28,13 +28,20 @@ export type DataSource = "kiosk" | "excel" | "manual";
 //
 // Env değişkenleri:
 //   PAYROLL_LOCKED_DATASOURCE  → 'kiosk' | 'excel' | 'manual' | '' (boş = kilitsiz)
-//   PAYROLL_DRY_RUN            → 'true' | 'false' (default: false)
+//   PAYROLL_DRY_RUN            → 'true' | 'false' (default: TRUE — Sprint 10 P-10, 6 May 2026)
+//
+// Sprint 10 P-10 (6 May 2026) — Audit Security 4.6:
+//   ÖNCEKİ DAVRANIŞ: env yoksa false (SGK bildirimi yapılır)
+//   YENİ DAVRANIŞ: env yoksa TRUE (SGK bildirimi YAPILMAZ — opt-in model)
+//   Production aktivasyonu için Mahmut/admin EXPLICIT olarak set etmeli:
+//     PAYROLL_DRY_RUN=false
 //
 // Pilot süresince:
 //   PAYROLL_LOCKED_DATASOURCE=kiosk → Mahmut excel seçse bile kiosk kullanılır
-//   PAYROLL_DRY_RUN=true           → Bordro kaydedilir AMA SGK bildirimi YAPILMAZ
+//   PAYROLL_DRY_RUN=true (default)  → Bordro kaydedilir AMA SGK bildirimi YAPILMAZ
 //
-// Production'da her ikisi de false/empty olur.
+// Production'da pilot ilk ayda DRY_RUN=true zorunlu, Mahmut imzalı doğrulama sonrası
+// PAYROLL_DRY_RUN=false explicit set edilebilir.
 
 export function getLockedDataSource(): DataSource | null {
   const v = (process.env.PAYROLL_LOCKED_DATASOURCE || "").trim().toLowerCase();
@@ -45,7 +52,25 @@ export function getLockedDataSource(): DataSource | null {
 }
 
 export function isPayrollDryRun(): boolean {
-  return (process.env.PAYROLL_DRY_RUN || "").trim().toLowerCase() === "true";
+  const value = (process.env.PAYROLL_DRY_RUN || "").trim().toLowerCase();
+
+  // Sprint 10 P-10 (Audit Security 4.6): Opt-in model
+  // Sadece EXPLICIT 'false' → SGK bildirimi yapılsın
+  if (value === "false") return false;
+
+  // Diğer her şey ('true', '', undefined, 'yes', 'TRUE', vs.) → DRY RUN (güvenli default)
+  if (value === "" || value === undefined) {
+    // Env set edilmemiş — bir kerelik uyarı (hot-path olduğu için warn rate-limit yok ama log toplanırsa görünür)
+    if (process.env.NODE_ENV === "production" && !globalThis.__payrollDryRunWarned) {
+      globalThis.__payrollDryRunWarned = true;
+      console.warn(
+        `[payroll-bridge] ⚠️  PAYROLL_DRY_RUN env değişkeni set edilmemiş. ` +
+        `Güvenli default uygulanıyor: DRY_RUN=true (SGK bildirimi YAPILMAYACAK). ` +
+        `Production aktivasyonu için PAYROLL_DRY_RUN=false explicit set et.`
+      );
+    }
+  }
+  return true;
 }
 
 /**
