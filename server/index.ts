@@ -1,4 +1,11 @@
 import express, { type Request, Response, NextFunction } from "express";
+
+// Sprint 10 P-8 (6 May 2026) — Audit Security 4.3
+// Logger initialization MUST be before any other import that might log.
+// 3241 mevcut console.* çağrısı otomatik structured log'a çevrilir.
+import { installConsoleOverride, logger } from "./lib/logger";
+installConsoleOverride();
+
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
