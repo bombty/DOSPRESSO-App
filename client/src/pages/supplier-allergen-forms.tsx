@@ -204,6 +204,11 @@ function SAFormEditor({ formId }: { formId?: number }) {
   const { data: template } = useQuery<FormTemplate>({
     queryKey: ['/api/supplier-allergen-forms/template'],
   });
+
+  // BUG FIX: Aslan talebi — tedarikçi dropdown'dan seçilebilmeli
+  const { data: existingSuppliers = [] } = useQuery<any[]>({
+    queryKey: ['/api/suppliers'],
+  });
   
   const { data: existing } = useQuery<SAForm>({
     queryKey: [`/api/supplier-allergen-forms/${formId}`],
@@ -280,7 +285,22 @@ function SAFormEditor({ formId }: { formId?: number }) {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <Label className="text-xs">Tedarikçi Adı *</Label>
-            <Input value={supplierName} onChange={e => setSupplierName(e.target.value)} placeholder="Örn: Puratos" />
+            <Input
+              value={supplierName}
+              onChange={e => setSupplierName(e.target.value)}
+              placeholder={existingSuppliers.length > 0 ? `${existingSuppliers.length} tedarikçi içinden seçin veya yeni yazın` : "Örn: Puratos"}
+              list="supplier-list"
+            />
+            <datalist id="supplier-list">
+              {existingSuppliers.map((s: any) => (
+                <option key={s.id} value={s.name} />
+              ))}
+            </datalist>
+            {existingSuppliers.length > 0 && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                💡 {existingSuppliers.length} kayıtlı tedarikçi bulunuyor — yazmaya başlayınca öneri gelir
+              </p>
+            )}
           </div>
           <div>
             <Label className="text-xs">Ürün Adı *</Label>

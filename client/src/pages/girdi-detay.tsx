@@ -14,21 +14,27 @@
  *   5. 📦 Stok Hareketleri — inventory_movements + fiyat geçmişi
  */
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { LoadingState } from "@/components/loading-state";
 import { ErrorState } from "@/components/error-state";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import {
   ArrowLeft, Package, Beaker, AlertTriangle, Shield, Boxes,
   TrendingUp, TrendingDown, Tag, Truck, BadgeCheck, FileText,
-  DollarSign, Calendar,
+  DollarSign, Calendar, Pencil, Save, X,
 } from "lucide-react";
 
 interface Hammadde {
@@ -62,12 +68,77 @@ export default function GirdiDetay() {
   const [, navigate] = useLocation();
   const [, params] = useRoute("/girdi-yonetimi/:id");
   const { user } = useAuth();
+  const { toast } = useToast();
   const id = params?.id ? parseInt(params.id, 10) : null;
   const [activeTab, setActiveTab] = useState("genel");
+  // BUG: Hammadde düzenleme — Aslan'ın talebi
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
+
+  const canEdit = ['admin', 'ceo', 'cgo', 'satinalma', 'gida_muhendisi', 'kalite_kontrol', 'kalite_yoneticisi'].includes(user?.role || '');
 
   const { data: hammadde, isLoading, error } = useQuery<Hammadde>({
     queryKey: [`/api/girdi/${id}`],
     enabled: !!id,
+  });
+
+  // Hammadde verisi yüklenince edit form'unu doldur
+  useEffect(() => {
+    if (hammadde) {
+      setEditForm({
+        name: hammadde.name || '',
+        code: hammadde.code || '',
+        brand: hammadde.brand || '',
+        unit: hammadde.unit || 'kg',
+        materialGroup: hammadde.materialGroup || '',
+        contentInfo: (hammadde as any).contentInfo || '',
+        allergenPresent: (hammadde as any).allergenPresent || false,
+        allergenDetail: (hammadde as any).allergenDetail || '',
+        crossContamination: (hammadde as any).crossContamination || '',
+        energyKcal: (hammadde as any).energyKcal ?? '',
+        fat: (hammadde as any).fat ?? '',
+        saturatedFat: (hammadde as any).saturatedFat ?? '',
+        carbohydrate: (hammadde as any).carbohydrate ?? '',
+        sugar: (hammadde as any).sugar ?? '',
+        protein: (hammadde as any).protein ?? '',
+        salt: (hammadde as any).salt ?? '',
+        fiber: (hammadde as any).fiber ?? '',
+        storageConditions: (hammadde as any).storageConditions || '',
+        countryOfOrigin: (hammadde as any).countryOfOrigin || 'Türkiye',
+        tgkCompliant: (hammadde as any).tgkCompliant || false,
+        currentUnitPrice: (hammadde as any).currentUnitPrice ?? '',
+        notes: hammadde.notes || '',
+      });
+    }
+  }, [hammadde]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      // Numeric alanları number'a çevir, boş string'leri null yap
+      const cleaned = { ...data };
+      ['energyKcal', 'fat', 'saturatedFat', 'carbohydrate', 'sugar', 'protein', 'salt', 'fiber', 'currentUnitPrice'].forEach(key => {
+        if (cleaned[key] === '' || cleaned[key] === null || cleaned[key] === undefined) {
+          cleaned[key] = null;
+        } else {
+          cleaned[key] = Number(cleaned[key]);
+        }
+      });
+      return apiRequest("PUT", `/api/girdi/${id}`, cleaned);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/girdi/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/girdi'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/mr-dobody/hammadde-eksiklik-raporu'] });
+      setIsEditMode(false);
+      toast({ title: "✅ Hammadde güncellendi" });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Hata",
+        description: err?.message || 'Hammadde güncellenemedi',
+        variant: "destructive",
+      });
+    },
   });
 
   // Fiyat geçmişi (price history)
@@ -120,6 +191,27 @@ export default function GirdiDetay() {
           <ArrowLeft className="h-4 w-4 mr-1" />
           Hammaddeler
         </Button>
+        {/* BUG FIX: Aslan'ın talebi — düzenleme fonksiyonu */}
+        <div className="ml-auto flex gap-2">
+          {!isEditMode && canEdit && (
+            <Button size="sm" variant="default" onClick={() => setIsEditMode(true)} data-testid="button-edit-hammadde">
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Düzenle
+            </Button>
+          )}
+          {isEditMode && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setIsEditMode(false)} disabled={updateMutation.isPending}>
+                <X className="h-3.5 w-3.5 mr-1.5" />
+                İptal
+              </Button>
+              <Button size="sm" onClick={() => updateMutation.mutate(editForm)} disabled={updateMutation.isPending}>
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                {updateMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex items-start gap-3 mb-6">
@@ -221,61 +313,132 @@ export default function GirdiDetay() {
               <CardTitle className="text-base">Hammadde Bilgileri</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <div className="text-xs text-muted-foreground">Kod</div>
-                  <div className="font-medium">{hammadde.code}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Kategori</div>
-                  <div className="font-medium">{hammadde.category || "—"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Birim</div>
-                  <div className="font-medium">{hammadde.unit}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Marka</div>
-                  <div className="font-medium">{hammadde.brand || "—"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Malzeme Grubu</div>
-                  <div className="font-medium">{hammadde.materialGroup || "—"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Tedarikçi</div>
-                  <div className="font-medium">{hammadde.supplier?.name || "—"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Net Miktar</div>
-                  <div className="font-medium">
-                    {hammadde.netContentValue ? `${hammadde.netContentValue} ${hammadde.netContentUnit || hammadde.unit}` : "—"}
+              {isEditMode ? (
+                /* BUG FIX: Düzenleme formu */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Ürün Adı *</Label>
+                      <Input value={editForm.name} onChange={e => setEditForm((f: any) => ({ ...f, name: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Marka</Label>
+                      <Input value={editForm.brand} onChange={e => setEditForm((f: any) => ({ ...f, brand: e.target.value }))} placeholder="Örn: Puratos" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Birim *</Label>
+                      <Input value={editForm.unit} onChange={e => setEditForm((f: any) => ({ ...f, unit: e.target.value }))} placeholder="kg, adet, lt" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Malzeme Grubu</Label>
+                      <Input value={editForm.materialGroup} onChange={e => setEditForm((f: any) => ({ ...f, materialGroup: e.target.value }))} placeholder="örn: kuru gıda" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Güncel Birim Fiyat (₺)</Label>
+                      <Input type="number" step="0.01" value={editForm.currentUnitPrice} onChange={e => setEditForm((f: any) => ({ ...f, currentUnitPrice: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Menşei</Label>
+                      <Input value={editForm.countryOfOrigin} onChange={e => setEditForm((f: any) => ({ ...f, countryOfOrigin: e.target.value }))} placeholder="Türkiye" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">İçerik Bilgisi (TGK Madde 9)</Label>
+                    <Textarea
+                      rows={3}
+                      value={editForm.contentInfo}
+                      onChange={e => setEditForm((f: any) => ({ ...f, contentInfo: e.target.value }))}
+                      placeholder="E-numaraları, %ler dahil tam içerik listesi"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Saklama Koşulları</Label>
+                    <Textarea
+                      rows={2}
+                      value={editForm.storageConditions}
+                      onChange={e => setEditForm((f: any) => ({ ...f, storageConditions: e.target.value }))}
+                      placeholder="örn: 18-25°C arası kuru ortamda saklayın"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Notlar</Label>
+                    <Textarea
+                      rows={2}
+                      value={editForm.notes}
+                      onChange={e => setEditForm((f: any) => ({ ...f, notes: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <Checkbox
+                      id="tgkCompliant"
+                      checked={editForm.tgkCompliant}
+                      onCheckedChange={(checked: boolean) => setEditForm((f: any) => ({ ...f, tgkCompliant: checked }))}
+                    />
+                    <Label htmlFor="tgkCompliant" className="text-sm cursor-pointer">
+                      TGK 2017/2284 uyum onayı
+                    </Label>
                   </div>
                 </div>
-                <div>
-                  <div className="text-xs text-muted-foreground">Durum</div>
-                  <div className="font-medium">
-                    {hammadde.isActive ? (
-                      <span className="text-green-600">Aktif ✓</span>
-                    ) : (
-                      <span className="text-muted-foreground">Pasif</span>
-                    )}
+              ) : (
+                /* Sadece görüntüleme */
+                <>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Kod</div>
+                      <div className="font-medium">{hammadde.code}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Kategori</div>
+                      <div className="font-medium">{hammadde.category || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Birim</div>
+                      <div className="font-medium">{hammadde.unit}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Marka</div>
+                      <div className="font-medium">{hammadde.brand || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Malzeme Grubu</div>
+                      <div className="font-medium">{hammadde.materialGroup || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Tedarikçi</div>
+                      <div className="font-medium">{hammadde.supplier?.name || "—"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Net Miktar</div>
+                      <div className="font-medium">
+                        {hammadde.netContentValue ? `${hammadde.netContentValue} ${hammadde.netContentUnit || hammadde.unit}` : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Durum</div>
+                      <div className="font-medium">
+                        {hammadde.isActive ? (
+                          <span className="text-green-600">Aktif ✓</span>
+                        ) : (
+                          <span className="text-muted-foreground">Pasif</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {hammadde.contentInfo && (
-                <div className="pt-3 border-t">
-                  <div className="text-xs text-muted-foreground mb-1">İçerik Bilgisi (TGK m.9)</div>
-                  <div className="text-sm">{hammadde.contentInfo}</div>
-                </div>
-              )}
+                  {hammadde.contentInfo && (
+                    <div className="pt-3 border-t">
+                      <div className="text-xs text-muted-foreground mb-1">İçerik Bilgisi (TGK m.9)</div>
+                      <div className="text-sm">{hammadde.contentInfo}</div>
+                    </div>
+                  )}
 
-              {hammadde.notes && (
-                <div className="pt-3 border-t">
-                  <div className="text-xs text-muted-foreground mb-1">Notlar</div>
-                  <div className="text-sm whitespace-pre-line">{hammadde.notes}</div>
-                </div>
+                  {hammadde.notes && (
+                    <div className="pt-3 border-t">
+                      <div className="text-xs text-muted-foreground mb-1">Notlar</div>
+                      <div className="text-sm whitespace-pre-line">{hammadde.notes}</div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -294,7 +457,52 @@ export default function GirdiDetay() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {nutritionData ? (
+              {/* BUG FIX: Edit modunda manuel besin değer girişi */}
+              {isEditMode ? (
+                <div className="space-y-4">
+                  <Alert>
+                    <Beaker className="h-4 w-4" />
+                    <AlertTitle className="text-sm">Manuel Besin Değer Girişi (100g başına)</AlertTitle>
+                    <AlertDescription className="text-xs">
+                      TÜRKOMP'ta bulamadığınız veya kendi tedarikçi spec'iniz olan değerleri buradan girin.
+                    </AlertDescription>
+                  </Alert>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <Label className="text-xs">Enerji (kcal)</Label>
+                      <Input type="number" step="0.1" value={editForm.energyKcal} onChange={e => setEditForm((f: any) => ({ ...f, energyKcal: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Yağ (g)</Label>
+                      <Input type="number" step="0.01" value={editForm.fat} onChange={e => setEditForm((f: any) => ({ ...f, fat: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Doy. Yağ (g)</Label>
+                      <Input type="number" step="0.01" value={editForm.saturatedFat} onChange={e => setEditForm((f: any) => ({ ...f, saturatedFat: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Karbonhidrat (g)</Label>
+                      <Input type="number" step="0.01" value={editForm.carbohydrate} onChange={e => setEditForm((f: any) => ({ ...f, carbohydrate: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Şeker (g)</Label>
+                      <Input type="number" step="0.01" value={editForm.sugar} onChange={e => setEditForm((f: any) => ({ ...f, sugar: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Protein (g)</Label>
+                      <Input type="number" step="0.01" value={editForm.protein} onChange={e => setEditForm((f: any) => ({ ...f, protein: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Tuz (g)</Label>
+                      <Input type="number" step="0.001" value={editForm.salt} onChange={e => setEditForm((f: any) => ({ ...f, salt: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Lif (g)</Label>
+                      <Input type="number" step="0.01" value={editForm.fiber} onChange={e => setEditForm((f: any) => ({ ...f, fiber: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+              ) : nutritionData ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="p-3 bg-muted/30 rounded">
                     <div className="text-xs text-muted-foreground">Enerji</div>
@@ -349,7 +557,39 @@ export default function GirdiDetay() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {hasAllergens ? (
+              {/* BUG FIX: Edit modunda alerjen bilgisi düzenlenebilir */}
+              {isEditMode ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="allergenPresent"
+                      checked={editForm.allergenPresent}
+                      onCheckedChange={(checked: boolean) => setEditForm((f: any) => ({ ...f, allergenPresent: checked }))}
+                    />
+                    <Label htmlFor="allergenPresent" className="text-sm cursor-pointer">
+                      ⚠️ Bu hammadde alerjen içerir
+                    </Label>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Alerjen Detayı</Label>
+                    <Textarea
+                      rows={3}
+                      value={editForm.allergenDetail}
+                      onChange={e => setEditForm((f: any) => ({ ...f, allergenDetail: e.target.value }))}
+                      placeholder="Hangi 14 TGK alerjeni içerdiğini belirt: gluten (buğday), süt, yumurta, soya, vs."
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Çapraz Bulaşma Riski</Label>
+                    <Textarea
+                      rows={2}
+                      value={editForm.crossContamination}
+                      onChange={e => setEditForm((f: any) => ({ ...f, crossContamination: e.target.value }))}
+                      placeholder="Aynı tesiste işlenebilen diğer alerjenler: eser miktarda gluten, yumurta, soya..."
+                    />
+                  </div>
+                </div>
+              ) : hasAllergens ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     {allergens.map((a, idx) => (

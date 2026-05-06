@@ -1068,13 +1068,26 @@ export default function GirdiYonetimiPage() {
                 </Select>
               </div>
               <div>
-                <Label>Tedarikçi</Label>
+                <Label>Tedarikçi {suppliers.length === 0 && <span className="text-amber-500 text-xs">(Liste boş!)</span>}</Label>
                 <Select value={String(editForm.supplierId || "")} onValueChange={(v) => setEditForm({...editForm, supplierId: parseInt(v)})}>
-                  <SelectTrigger data-testid="select-supplier"><SelectValue placeholder="Seçin" /></SelectTrigger>
+                  <SelectTrigger data-testid="select-supplier"><SelectValue placeholder={suppliers.length === 0 ? "Önce tedarikçi ekleyin" : `Seçin (${suppliers.length} tedarikçi)`} /></SelectTrigger>
                   <SelectContent>
-                    {suppliers.map((s: any) => (
-                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                    ))}
+                    {suppliers.length === 0 ? (
+                      <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                        Hiç tedarikçi yok.<br />
+                        <button
+                          type="button"
+                          onClick={() => navigate('/satinalma/tedarikci-yonetimi')}
+                          className="text-primary hover:underline mt-1"
+                        >
+                          Tedarikçi eklemek için tıkla →
+                        </button>
+                      </div>
+                    ) : (
+                      suppliers.map((s: any) => (
+                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
