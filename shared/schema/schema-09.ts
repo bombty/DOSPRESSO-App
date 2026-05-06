@@ -1446,11 +1446,28 @@ export const tgkLabels = pgTable("tgk_labels", {
   isActive: boolean("is_active").default(true),
   
   notes: text("notes"),
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // Sprint 14 Phase 12 (7 May 2026) — TGK 2017/2284 Madde 9/k uyumu
+  // Lot/Parti numarası TGK gereği zorunludur. Etiket basılırken zorunlu kontrol.
+  // P-19 audit'inde tespit edilen kritik eksiklik.
+  // ═══════════════════════════════════════════════════════════════════
+  lotNumber: varchar("lot_number", { length: 50 }),         // Örnek: "L-2026-W19-001"
+  batchNumber: varchar("batch_number", { length: 50 }),     // Üretim batch # (factoryProductionRuns ile bağ)
+  productionDate: date("production_date"),                  // Üretim tarihi (YYYY-MM-DD)
+  expiryDate: date("expiry_date"),                          // Son tüketim tarihi (best_before_date alternatifi)
+  productionRunId: integer("production_run_id"),            // factoryProductionRuns.id (forensic chain)
+
+  // Çapraz referans: Bu etiket hangi reçeteden üretildi?
+  factoryRecipeId: integer("factory_recipe_id"),            // factoryRecipes.id
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("tgk_labels_product_idx").on(table.productId, table.productType),
   index("tgk_labels_status_idx").on(table.status),
+  index("tgk_labels_lot_idx").on(table.lotNumber),
+  index("tgk_labels_production_date_idx").on(table.productionDate),
 ]);
 
 export const insertTgkLabelSchema = createInsertSchema(tgkLabels).omit({

@@ -40,6 +40,7 @@ import {
   branchProducts,
 } from '@shared/schema';
 import { and, eq, ilike, or, desc, sql, isNull, gte, lte } from 'drizzle-orm';
+import { generateLotNumber, validateTgkCompliance } from '../lib/tgk-compliance';
 
 const router = Router();
 
@@ -648,11 +649,96 @@ router.put('/api/tgk-label/:id/reject', isAuthenticated, async (req: any, res: R
 // 11c) PUT /api/tgk-label/:id/submit — Taslak → Onay Bekliyor (Sprint 8)
 // ═══════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 14 Phase 12 (7 May 2026) — TGK 2017/2284 Compliance Helpers
+// 1) GET /api/tgk-label/:id/compliance-check  — Tam compliance audit
+// 2) POST /api/tgk-label/generate-lot  — Otomatik lot üret (haftalık)
+// ═══════════════════════════════════════════════════════════════════
+
+router.get('/api/tgk-label/:id/compliance-check', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [label] = await db.select().from(tgkLabels).where(eq(tgkLabels.id, id));
+    if (!label) return res.status(404).json({ message: 'Etiket bulunamadı' });
+
+    const result = validateTgkCompliance(label);
+    return res.json({
+      label: { id: label.id, productName: label.productName, status: label.status },
+      compliance: result,
+      reference: 'TGK 2017/2284 — Türkiye Gıda Kodeksi Etiketleme Yönetmeliği',
+    });
+  } catch (error) {
+    console.error('compliance-check error:', error);
+    res.status(500).json({ message: 'Compliance kontrolü başarısız' });
+  }
+});
+
+router.post('/api/tgk-label/generate-lot', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canWrite(user.role)) {
+      return res.status(403).json({ message: 'Yetki yok' });
+    }
+
+    const productionDate = req.body?.productionDate ? new Date(req.body.productionDate) : new Date();
+    const lotNumber = await generateLotNumber(productionDate);
+
+    return res.json({
+      lotNumber,
+      productionDate: productionDate.toISOString().split('T')[0],
+      generatedAt: new Date().toISOString(),
+      format: 'L-{YYYY}-W{WW}-{NNN}',
+      example: 'L-2026-W19-001 (2026 yılı, 19. hafta, 1 nolu lot)',
+    });
+  } catch (error) {
+    console.error('generate-lot error:', error);
+    res.status(500).json({ message: 'Lot üretilemedi' });
+  }
+});
+
 router.put('/api/tgk-label/:id/submit', isAuthenticated, async (req: any, res: Response) => {
   try {
     const user = req.user;
     const id = parseInt(req.params.id);
-    
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Sprint 14 Phase 12 — TGK 2017/2284 Madde 9/k Lot/Parti Zorunlu Kontrol
+    // P-19 audit'inde tespit edilen kritik eksiklik: Lot olmadan etiket basılamaz.
+    // ═══════════════════════════════════════════════════════════════════
+    const [existing] = await db.select().from(tgkLabels).where(eq(tgkLabels.id, id));
+    if (!existing) return res.status(404).json({ message: 'Etiket bulunamadı' });
+
+    const missingMandatoryFields: string[] = [];
+
+    // TGK m.9 zorunlu alanlar (en kritikleri)
+    if (!existing.lotNumber || existing.lotNumber.trim() === '') {
+      missingMandatoryFields.push('Lot/Parti numarası (TGK m.9/k)');
+    }
+    if (!existing.productionDate) {
+      missingMandatoryFields.push('Üretim tarihi (TGK m.9/h)');
+    }
+    if (!existing.expiryDate && !existing.bestBeforeDate) {
+      missingMandatoryFields.push('Son tüketim tarihi (TGK m.9/i)');
+    }
+    if (!existing.netQuantityG) {
+      missingMandatoryFields.push('Net miktar (TGK m.9/e)');
+    }
+    if (!existing.ingredientsText || existing.ingredientsText.trim() === '') {
+      missingMandatoryFields.push('İçindekiler listesi (TGK m.9/b)');
+    }
+
+    if (missingMandatoryFields.length > 0) {
+      return res.status(400).json({
+        message: 'TGK 2017/2284 zorunlu alanlar eksik',
+        missingFields: missingMandatoryFields,
+        compliance: {
+          regulation: 'TGK 2017/2284',
+          articleRef: 'Madde 9 (Zorunlu bilgiler)',
+          severity: 'blocker',
+        },
+      });
+    }
+
     const [updated] = await db.update(tgkLabels)
       .set({
         status: 'onay_bekliyor',
@@ -661,7 +747,6 @@ router.put('/api/tgk-label/:id/submit', isAuthenticated, async (req: any, res: R
       .where(eq(tgkLabels.id, id))
       .returning();
 
-    if (!updated) return res.status(404).json({ message: 'Etiket bulunamadı' });
     res.json(updated);
   } catch (error: unknown) {
     console.error('/api/tgk-label/:id/submit error:', error);

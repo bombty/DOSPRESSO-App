@@ -222,6 +222,7 @@ const YoneticiDegerlendirme = lazyWithRetry(() => import("@/pages/admin/yonetici
 const BannerEditor = lazyWithRetry(() => import("@/pages/banner-editor"));
 const DuyuruStudioV2 = lazyWithRetry(() => import("@/components/DuyuruStudioV2/DuyuruStudio"));
 const GidaGuvenligiDashboard = lazyWithRetry(() => import("@/pages/gida-guvenligi-dashboard"));
+const SupplierAllergenForms = lazyWithRetry(() => import("@/pages/supplier-allergen-forms"));  // Aslan 7 May 2026: Tedarikçi Alerjen Kontrol Formu (0011.A.FR.GG.36)
 const Setup = lazyWithRetry(() => import("@/pages/setup"));
 const MisafirGeriBildirimPublic = lazyWithRetry(() => import("@/pages/misafir-geri-bildirim"));
 
@@ -696,6 +697,9 @@ function Router() {
           <Route path="/hq-dashboard/:department?">{({ params }: any) => { const [,nav] = useLocation(); useEffect(() => { const dept = params?.department; if (dept === "marketing") nav("/marketing-centrum"); else if (dept === "destek") nav("/destek-centrum"); else nav("/ceo-command-center"); }, []); return null; }}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/fabrika-centrum"); }, []); return null; }}</Route>
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
+          <Route path="/supplier-allergen-forms">{() => <HQOnly><SupplierAllergenForms /></HQOnly>}</Route>
+          <Route path="/supplier-allergen-forms/new">{() => <HQOnly><SupplierAllergenForms /></HQOnly>}</Route>
+          <Route path="/supplier-allergen-forms/:id">{() => <HQOnly><SupplierAllergenForms /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><SatinalmaMega /></ProtectedRoute>}</Route>
           <Route path="/urun-sikayet">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/raporlar/sube-saglik">{() => <ExecutiveOnly><SubeSaglikSkoru /></ExecutiveOnly>}</Route>
