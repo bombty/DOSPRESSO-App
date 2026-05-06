@@ -74,6 +74,9 @@ const FABRIKA_MENU: ModuleMenuConfig = {
     { id: "gida", label: "Gıda Güvenliği", path: "/fabrika/gida-guvenligi", icon: Shield },
     // Sprint 7-9 (5 May 2026): Girdi Yönetimi + TGK Etiket + Tedarikçi QC + TÜRKOMP
     { id: "girdi", label: "Girdi Yönetimi (TGK)", path: "/girdi-yonetimi", icon: Package, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
+    { id: "fiyat-listesi", label: "💰 Hammadde Fiyat Listesi", path: "/fiyat-listesi", icon: CreditCard, allowedRoles: ["admin","ceo","cgo","cfo","satinalma","muhasebe","gida_muhendisi","fabrika_mudur"] },
+    { id: "personel-performans", label: "🏭 Fabrika Personel Performansı", path: "/fabrika/personel-performans", icon: Users, allowedRoles: ["admin","ceo","cgo","fabrika_mudur","fabrika_sorumlu","gida_muhendisi","kalite_kontrol"] },
+    { id: "gm-dashboard", label: "🥗 GM Anasayfa", path: "/gida-muhendisi-dashboard", icon: FileText, allowedRoles: ["admin","ceo","cgo","gida_muhendisi","kalite_kontrol","kalite_yoneticisi","recete_gm"] },
     // Sprint 13 (6 May 2026): "Etiket Hesapla" sidebar link'i kaldırıldı.
     // Sebep: productId parametresi olmadan crash veriyordu (Eksik parametre hatası).
     // Sprint 14 planı: Etiket çalışması reçete detay sayfasının "Etiket" sekmesi olarak taşınacak.

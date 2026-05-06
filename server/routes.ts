@@ -420,6 +420,9 @@ import turkompIntegrationRouter from "./routes/turkomp-integration";  // Sprint 
 import recipeLabelEngineRouter from "./routes/recipe-label-engine";  // Sprint 7 v3 (5 May 2026): Reçete → TGK Etiket otomatik hesaplama
 import adminHqPinManagementRouter from "./routes/admin-hq-pin-management";  // Sprint 10 P-7 (6 May 2026): HQ Kiosk PIN Yönetimi (admin only)
 import specPdfRouter from "./routes/spec-pdf";  // Aslan 7 May 2026: Ürün Spesifikasyon PDF üretici (SD-XX format, 5 sayfa, TGK uyumlu)
+import gidaMuhendisiDashboardRouter from "./routes/gida-muhendisi-dashboard";  // Aslan 7 May 2026: GM akıllı dashboard (D-44)
+import fabrikaPersonelPerformansRouter from "./routes/fabrika-personel-performans";  // Aslan 7 May 2026: Fabrika personel performans
+import fiyatListesiRouter from "./routes/fiyat-listesi";  // Aslan 7 May 2026: Fiyat listesi + /api/girdi/:id/price-history
 import scoreParametersRouter from "./routes/score-parameters";  // Sprint 8 (5 May 2026): Skor kriterleri admin panel
 import managerRatingRouter from "./routes/manager-rating";  // Sprint 12 (5 May 2026): Yönetici değerlendirme
 import factoryRecipesRouter from "./routes/factory-recipes";
@@ -907,6 +910,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(recipeLabelEngineRouter);  // Sprint 7 v3 (5 May 2026): /api/recipe-label/* (otomatik etiket hesaplama)
   app.use(adminHqPinManagementRouter);  // Sprint 10 P-7 (6 May 2026): /api/admin/hq-users/* (HQ Kiosk PIN Yönetimi, admin only)
   app.use(specPdfRouter);  // Aslan 7 May 2026: /api/factory/recipes/:id/specification.pdf (Ürün spesifikasyon PDF üretici)
+  app.use(gidaMuhendisiDashboardRouter);  // Aslan 7 May 2026: /api/gida-muhendisi/dashboard
+  app.use(fabrikaPersonelPerformansRouter);  // Aslan 7 May 2026: /api/fabrika/personel-performans
+  app.use(fiyatListesiRouter);  // Aslan 7 May 2026: /api/fiyat-listesi + /api/girdi/:id/price-history
   app.use(scoreParametersRouter);  // Sprint 8 (5 May 2026): /api/score-parameters/* (admin skor kriterleri)
   app.use(managerRatingRouter);  // Sprint 12 (5 May 2026): /api/manager-rating/* (yönetici değerlendirme)
   app.use(factoryRecipesRouter);

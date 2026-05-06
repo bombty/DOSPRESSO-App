@@ -284,6 +284,9 @@ const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PersonelPuantajim = lazyWithRetry(() => import("@/pages/personel-puantajim"));  // Sprint 4 (5 May 2026)
 const GirdiYonetimi = lazyWithRetry(() => import("@/pages/girdi-yonetimi"));  // Sprint 7 (5 May 2026): TGK 2017/2284
 const GirdiDetay = lazyWithRetry(() => import("@/pages/girdi-detay"));  // Aslan 7 May 2026: Hammadde detay 5 sekme (modal yerine, D-44 prensibi)
+const FabrikaPersonelPerformans = lazyWithRetry(() => import("@/pages/fabrika-personel-performans"));  // Aslan 7 May 2026: Fabrika personel performans
+const FiyatListesi = lazyWithRetry(() => import("@/pages/fiyat-listesi"));  // Aslan 7 May 2026: Hammadde fiyat listesi + price history
+const GidaMuhendisiDashboard = lazyWithRetry(() => import("@/pages/gida-muhendisi-dashboard"));  // Aslan 7 May 2026: GM Anasayfa (Mr. Dobody akıllı dashboard)
 const EtiketHesapla = lazyWithRetry(() => import("@/pages/etiket-hesapla"));  // Sprint 7 v3 (5 May 2026): Reçete → Etiket
 const PerformansYonetim = lazyWithRetry(() => import("@/pages/performans-yonetim"));  // Sprint 8 (5 May 2026): Yönetici performans
 const SkorParametreleri = lazyWithRetry(() => import("@/pages/admin/skor-parametreleri"));  // Sprint 8 (5 May 2026): Skor admin paneli
@@ -722,6 +725,15 @@ function Router() {
           </Route>
           <Route path="/girdi-yonetimi/:id">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><GirdiDetay /></ProtectedRoute>}
+          </Route>
+          <Route path="/fabrika/personel-performans">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","fabrika_mudur","fabrika_sorumlu","gida_muhendisi","kalite_kontrol"]}><FabrikaPersonelPerformans /></ProtectedRoute>}
+          </Route>
+          <Route path="/fiyat-listesi">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","cfo","satinalma","muhasebe","gida_muhendisi","fabrika_mudur"]}><FiyatListesi /></ProtectedRoute>}
+          </Route>
+          <Route path="/gida-muhendisi-dashboard">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","gida_muhendisi","kalite_kontrol","kalite_yoneticisi","recete_gm"]}><GidaMuhendisiDashboard /></ProtectedRoute>}
           </Route>
           <Route path="/etiket-hesapla">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite","sef","recete_gm","coach","trainer"]}><EtiketHesapla /></ProtectedRoute>}
