@@ -1,203 +1,123 @@
 # ⏳ PENDING — Bekleyen İşler
 
-> **Sahibi belli, deadline'lı, alıştırma listesi.** Yeni oturum: bu dosyayı okuyup öncelik sırasına git.
+> **5 büyük sprint planı, pilot 18 May.** Yeni oturum: bu dosyayı okuyup sprint sırasına git.
 
-**Son güncelleme:** 6 May 2026, 01:00
-
----
-
-## 🔥 ŞU AN AKTIF (İK Redesign Sprint Sonu)
-
-### P-1: Replit Build Re-run 🔄 REPLIT
-**Süre:** ~3 dk
-**Sahibi:** Replit (Build mode)
-**Deadline:** ŞIMDI (Aslan'ın "build başlat" mesajı sonrası)
-**Bağımlılık:** -
-
-**Durum:** `f6eba09be` (orphan `});` fix) push edildi. Replit `npm run build && npx tsc --noEmit` çalıştırıyor.
-
-**Beklenen:** vite ✅ + esbuild ✅ + tsc 0 hata + marker temiz + workflow restart OK.
+**Son güncelleme:** 6 May 2026, 14:50 (Audit sonrası 5-sprint pilot planı)
+**Pilot tarihi:** **18 May 2026 Pazartesi 10:00** (11 May'dan ertelendi — Claude Code audit önerisi kabul, D-42)
 
 ---
 
-### P-2: PR Aç 🔴 ASLAN
-**Süre:** 3 dk
+## 🔥 ŞU AN AKTİF: SPRINT 9 — Bordro & Personel Verisi (6-8 May)
+
+**Hedef:** Sistem gerçek 35 personel + doğru net/brüt hesabıyla çalışsın.
+
+### P-1: Mahmut Bey Bordro Doğrulama 🔴 ASLAN
+**Süre:** 30 dk telefon
 **Sahibi:** Aslan
-**Deadline:** P-1 OK gelirse hemen
-**Bağımlılık:** P-1 build OK
+**Deadline:** Bugün/yarın
 
-**Adımlar:**
-1. https://github.com/bombty/DOSPRESSO-App/compare/main...claude/ik-redesign-2026-05-06
-2. Title: `feat(ik): İK Redesign — 4 fazlı sprint (9 commit, 14 dosya)`
-3. Description: `docs/PR-DESCRIPTION-IK-REDESIGN.md` kopyala-yapıştır
-4. "Create pull request" → reviewer kendin
+Excel'deki 5 pozisyon için BRÜT rakamlarını al, tax-calculator ile karşılaştır.
 
----
+| Pozisyon | NET | Excel BRÜT? | Claude Hesap | Sapma |
+|---|---|---|---|---|
+| Stajyer | 33.000 | ? | 41.064,64 | ? |
+| Bar Buddy | 36.000 | ? | 45.959,30 | ? |
+| Barista | 41.000 | ? | 54.117,11 | ? |
+| Sup Buddy | 45.000 | ? | 60.643,34 | ? |
+| Supervisor | 49.000 | ? | 67.169,60 | ? |
 
-### P-3: Tarayıcı Smoke Test 🔴 ASLAN
-**Süre:** ~10 dk
-**Sahibi:** Aslan
-**Deadline:** P-2 sonrası
-**Bağımlılık:** P-2 PR açıldı
+### P-2: tax-calculator → payroll-engine entegre 🔴 CLAUDE
+**Süre:** 1 saat | **Bağımlılık:** P-1
 
-**4 sayfa kontrol:**
-1. `/ik-merkezi` — kişisel + yönetici + HQ rol farkları
-2. `/ik/izin-talep` — form submission + balance check
-3. `/ik/onay-kuyrugu` — izin + mesai liste, approve/reject
-4. `/ik/takim-takvimi` — branch scope (HQ tümü, mudur kendi şubesi)
+1. Mahmut'un brüt rakamlarına göre `TR_2026` parametrelerini kalibre
+2. `payroll-engine.ts` satır 285-303 refactor (asgari ücret kontrolü NET cinsinden)
+3. Bordro UI'da brüt + tüm kesintiler tablosu
 
-**OK ise:** Squash and merge.
+### P-3: payroll_parameters.minimum_wage_net migration 🔴 CLAUDE + REPLIT
+**Süre:** 30 dk | **Bağımlılık:** P-2
 
----
+`ALTER TABLE payroll_parameters ADD COLUMN minimum_wage_net INTEGER;`
 
-### P-4: İK Redesign Migration EXECUTE 🔴 REPLIT
-**Süre:** ~5 dk
-**Sahibi:** Replit isolated agent (Plan mode + pg_dump backup)
-**Deadline:** P-3 mergelendikten sonra
-**Bağımlılık:** P-3 mergelendi
+### P-4: 35 Personel UPSERT (Sprint 8e) 🔴 CLAUDE + REPLIT
+**Süre:** 45 dk | **Deadline:** 7 May | **Bağımlılık:** P-3
 
-**Komut:**
-```sql
-psql $DATABASE_URL -f migrations/2026-05-06-position-salaries-lara-seed.sql
-```
-
-**Idempotent** (ON CONFLICT DO NOTHING), Replit DB raporuna göre 19 pozisyon zaten var, ama Lara'nın 5 pozisyonu kontrol edilir.
-
-**Doğrulama:**
-```sql
-SELECT position_code, position_name, total_salary/100.0 as TL 
-FROM position_salaries 
-WHERE effective_from='2026-01-01' AND position_code IN ('intern','bar_buddy','barista','supervisor_buddy','supervisor');
-```
-Beklenen: 5 satır.
+Migration zaten hazır: `migrations/2026-05-05-sprint-8-data-cleanup-personnel-sync.sql`. 35 personel UPSERT + 18 fake şube + 119 fake personel pasifleştir.
 
 ---
 
-## 🔴 SONRAKI ÖNCELİK (Sprint 8 EXECUTE Tamamlama)
+## ⏭️ SIRADA: SPRINT 10 — Güvenlik & Manifest (8-9 May)
 
-### P-5: Sprint 8 EXECUTE — score_parameters DDL Eksikliği 🔴 REPLIT
-**Süre:** ~30 dk
-**Sahibi:** Replit (önce DDL hazırla, sonra Plan mode EXECUTE)
-**Deadline:** P-4 sonrası
-**Bağımlılık:** İK redesign mergelendikten sonra
-
-**Sorun:** Replit DB raporu (5 May 21:30) tespit etti:
-- `score_parameters` tablosu DB'de YOK (CREATE TABLE eksik)
-- Sprint 8 migration sadece `INSERT INTO score_parameters` yapıyor → fail eder
-- Drizzle-kit push çalıştırılmamış (replit.md "drizzle-kit push timeout, manuel migration kullan" diyor)
-
-**Çözüm:**
-1. `shared/schema/schema-25-score-parameters.ts`'den DDL üret
-2. Yeni migration: `migrations/2026-05-06-sprint-8a-score-parameters-ddl.sql`
-3. CREATE TABLE çalıştır
-4. Sonra Sprint 8 INSERT'leri çalışır
-
-**İçerik (Replit yazacak):**
-```sql
-CREATE TABLE IF NOT EXISTS score_parameters (
-  id serial PRIMARY KEY,
-  category varchar(50) NOT NULL,
-  display_name varchar(200) NOT NULL,
-  max_points integer NOT NULL,
-  weight integer NOT NULL DEFAULT 100,
-  formula text,
-  formula_code varchar(50),
-  sort_order integer DEFAULT 0,
-  is_active boolean NOT NULL DEFAULT true,
-  version integer NOT NULL DEFAULT 1,
-  created_at timestamp DEFAULT NOW()
-);
-```
+| # | İş | Süre | Risk |
+|---|---|---|---|
+| P-5 | Manifest-auth fail-open fix | 1-2 saat | 🔴 Kritik |
+| P-6 | Pre-commit hook (marker + token + secret) | 30 dk | 🟠 Yüksek |
+| P-7 | HQ kiosk PIN bcrypt | 2 saat | 🟠 Yüksek |
+| P-8 | 1804 console.error → structured logger | 4 saat | 🟡 Orta |
+| P-9 | 9 paralel role/module access konsolidasyonu | 4 saat | 🟡 Orta |
+| P-10 | PAYROLL_DRY_RUN=true default | 30 dk | 🟢 Düşük |
 
 ---
 
-### P-6: Sprint 8 Personnel UPSERT 🔴 REPLIT
-**Süre:** ~45 dk
-**Sahibi:** Replit isolated agent
-**Deadline:** P-5 sonrası
-**Bağımlılık:** P-5 score_parameters DDL OK
+## ⏭️ SIRADA: SPRINT 11 — Pilot Hazırlık & Demo (9-11 May)
 
-**Migration:** `migrations/2026-05-05-sprint-8-data-cleanup-personnel-sync.sql`
-- 18 fake şube pasifleştir (16 → 4 aktif)
-- 35 gerçek personel UPSERT (PERSONEL özlük + Lara Excel'den)
-- ~130 fake user pasifleştir
-
----
-
-## 🟡 PİLOT TARİHİ BELİRLEME (Aslan kararı)
-
-Aslan: "pilot tarihi ben belirleyeceğim" (D-20 pause). Belirlendiğinde:
-- TODAY.md'de duyur
-- PENDING.md'de Day-1 checklist aktive et (`docs/PILOT-DAY1-CHECKLIST.md`)
-- 33 pilot user listesi tamamla (`docs/PILOT-USER-LIST-2026-05.md` taslak halinde)
-- Mahmut + Yavuz + Eren imza
+| # | İş | Süre | Risk |
+|---|---|---|---|
+| P-11 | Pilot Day-1 Dry-Run (4 lokasyon × 30 dk) | 4 saat | 🔴 Kritik |
+| P-12 | Andre + Eren + Sema demo | 1.5 saat | 🔴 Kritik |
+| P-13 | Mahmut bordro Excel→sistem geçişi | 1 saat | 🔴 Kritik |
+| P-14 | Yavuz coach 19 şube → pilot 4 lok UI | 1 saat | 🟡 Orta |
+| P-15 | 4 kritik bordro senaryosu test | 30 dk | 🔴 Kritik |
+| P-16 | Day-1 checklist (her lokasyon için) | 2 saat | 🟡 Orta |
 
 ---
 
-## 🟢 SONRA İNCELE / TEMİZLE
+## ⏭️ SIRADA: SPRINT 12 — Compliance & KVKK (11-13 May)
 
-### P-7: Stash@{0} İncele 🟢 ASLAN+CLAUDE
-**Süre:** 5 dk
-**Deadline:** İK redesign mergedikten sonra
-
-Aslan'ın main'de yaptığı conflict fix WIP stash'te. Replit:
-```
-git stash show stash@{0} --stat
-git stash show stash@{0} -p | head -50
-```
-Karar: `apply` mı `drop` mu (büyük ihtimalle PR #21 ile zaten halledildi, drop güvenli).
+| # | İş | Süre | Risk |
+|---|---|---|---|
+| P-17 | KVKK politika + customer_feedback retention | 2 saat | 🟠 Yüksek |
+| P-18 | Damga vergisi 2026 muafiyeti payroll-engine kontrol | 1 saat | 🟡 Orta |
+| P-19 | TGK 2017/2284 etiket Sprint 7 v3 doğrula | 2 saat | 🟡 Orta |
+| P-20 | e-Fatura/e-Arşiv plan (post-pilot doküman) | 2 saat | 🟢 Düşük |
+| P-21 | payroll_parameters 2026 TAHMİN→KESİN (Mahmut imzalı) | 1 saat | 🔴 Kritik |
 
 ---
 
-### P-8: Hotfix Branch Cleanup 🟢 ASLAN
-**Süre:** 2 dk
-**Deadline:** İsteğe bağlı
+## 🛠️ SPRINT 13 — Buffer + Pilot Day-1 (14-25 May)
 
-`hotfix/resolve-merge-conflicts-2026-05-05` branch'i artık kullanılmıyor (PR #21 mergelendi). Sil:
-```
-git branch -D hotfix/resolve-merge-conflicts-2026-05-05
-git push origin :hotfix/resolve-merge-conflicts-2026-05-05
-```
+| # | İş | Tarih | Risk |
+|---|---|---|---|
+| P-22 | 4 gün buffer (sürpriz fix'ler) | 14-17 May | 🟡 Orta |
+| P-23 | 🎉 PILOT DAY-1 | 18 May 10:00 | 🔴 Kritik |
+| P-24 | Canlı izleme + günlük check-in | 18-25 May | 🔴 Kritik |
 
 ---
 
-### P-9: GitHub Branch Protection (Pilot Öncesi) 🟢 ASLAN
-**Süre:** ~5 dk
-**Deadline:** Pilot tarihi belirlendiğinde
+## 📊 SPRINT İLERLEME
 
-D-06 + D-38: Tüm değişiklikler hotfix branch + PR mecburi. Şu an protocol var, GitHub UI'da teknik enforcement yok. Settings → Branches → main:
-- Require pull request before merging
-- Require status checks to pass
-- Require linear history
+| Sprint | Tarih | Durum | İş Sayısı | Kritik |
+|---|---|---|---|---|
+| 9: Bordro & Personel | 6-8 May | 🔄 Aktif | 4 | 1 |
+| 10: Güvenlik & Manifest | 8-9 May | ⏳ Bekliyor | 6 | 1 |
+| 11: Pilot Hazırlık | 9-11 May | ⏳ Bekliyor | 6 | 4 |
+| 12: Compliance | 11-13 May | ⏳ Bekliyor | 5 | 1 |
+| 13: Buffer + Pilot | 14-25 May | ⏳ Bekliyor | 3 | 2 |
 
----
-
-## 📊 KPIs (Pilot Tarihinde Hedef)
-
-| KPI | Şu An | Hedef |
-|---|---|---|
-| Pilot 4 lokasyon hazır | ✅ Kararlı | ✅ |
-| 35 gerçek personel UPSERT | ❌ (Sprint 8 bekliyor) | ✅ |
-| score_parameters seed | ❌ (DDL eksik) | ✅ 5 default |
-| İK redesign mergelendi | ❌ (PR bekliyor) | ✅ |
-| Mahmut bordro doğrulama | ❌ (Mayıs ay sonu) | ✅ %95+ uyum |
-| Pilot user listesi tam | ❌ (TASLAK) | ✅ telefon/email dolu |
-| Day-1 checklist aktive | ❌ | ✅ |
+**Toplam:** 24 ana iş, 9 kritik. Süre: 12 gün (6-18 May).
 
 ---
 
-## 📋 Tamamlandı (Bugün — Kayıt İçin)
+## ⚠️ AUDIT'TE KAPATILAN 3 YANLIŞ ALARM (D-42)
 
-- ✅ PR #25 (payroll 2026 resmi kaynaklar) mergelendi
-- ✅ İK redesign master plan
-- ✅ position_salaries Lara seed migration
-- ✅ hr.ts:2187 orphan fix
-- ✅ DECIDED.md D-39, D-40, D-41 + D-20 pause notu
-- ✅ TODAY.md + PENDING.md güncel
-- ✅ PR description hazır
-- 🔄 4 skill dosyası güncel (paralel iş)
+Audit raporu gece geç saatte yazıldı, dünkü çözümleri bilmiyordu:
+
+1. ✅ `score_parameters tablo DB'de yok` → Sprint 8a Task #351 ile eklendi (PR #27)
+2. ✅ `Stajyer 33.000 < asgari 33.030` → D-40 v2 ile NET/BRÜT karışıklık çözüldü
+3. ✅ `position_salaries unique constraint yok` → Sprint 8c Task #354 ile eklendi (PR #28)
+
+**Gerçek hazırlık seviyesi:** Audit'in dediği %65 değil, **~%72-75**.
 
 ---
 
-**Son güncelleme:** 6 May 2026, 01:00
-**Bir sonraki güncelleme:** Replit build sonucu sonrası (PR aç ya da fix)
+**Hazırlayan:** Claude (claude.ai web/iPad, 6 May 2026 14:50)
+**Versiyon:** v2.0 (5 büyük sprint planı, pilot 18 May)
