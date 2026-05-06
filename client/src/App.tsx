@@ -283,6 +283,10 @@ const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PersonelPuantajim = lazyWithRetry(() => import("@/pages/personel-puantajim"));  // Sprint 4 (5 May 2026)
 const GirdiYonetimi = lazyWithRetry(() => import("@/pages/girdi-yonetimi"));  // Sprint 7 (5 May 2026): TGK 2017/2284
+const SupplierAllergenForms = lazyWithRetry(() => import("@/pages/supplier-allergen-forms"));  // Aslan 7 May 2026: Tedarikçi Alerjen Kontrol Formu
+const FabrikaPersonelPerformans = lazyWithRetry(() => import("@/pages/fabrika-personel-performans"));  // Sprint 14 Phase 7
+const FiyatListesi = lazyWithRetry(() => import("@/pages/fiyat-listesi"));  // Sprint 14 Phase 8
+const GidaMuhendisiDashboard = lazyWithRetry(() => import("@/pages/gida-muhendisi-dashboard"));  // Sprint 14: Mr. Dobody akıllı dashboard
 const GirdiDetay = lazyWithRetry(() => import("@/pages/girdi-detay"));  // Aslan 7 May 2026: Hammadde detay 5 sekme (modal yerine, D-44 prensibi)
 const EtiketHesapla = lazyWithRetry(() => import("@/pages/etiket-hesapla"));  // Sprint 7 v3 (5 May 2026): Reçete → Etiket
 const PerformansYonetim = lazyWithRetry(() => import("@/pages/performans-yonetim"));  // Sprint 8 (5 May 2026): Yönetici performans
@@ -719,6 +723,24 @@ function Router() {
           <Route path="/personel-puantajim" component={PersonelPuantajim} />
           <Route path="/girdi-yonetimi">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><GirdiYonetimi /></ProtectedRoute>}
+          </Route>
+          <Route path="/supplier-allergen-forms">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"]}><SupplierAllergenForms /></ProtectedRoute>}
+          </Route>
+          <Route path="/supplier-allergen-forms/new">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"]}><SupplierAllergenForms /></ProtectedRoute>}
+          </Route>
+          <Route path="/supplier-allergen-forms/:id">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"]}><SupplierAllergenForms /></ProtectedRoute>}
+          </Route>
+          <Route path="/fabrika/personel-performans">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","fabrika_mudur","fabrika_sorumlu","ik","muhasebe"]}><FabrikaPersonelPerformans /></ProtectedRoute>}
+          </Route>
+          <Route path="/fiyat-listesi">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","muhasebe","fabrika_mudur","gida_muhendisi"]}><FiyatListesi /></ProtectedRoute>}
+          </Route>
+          <Route path="/gida-muhendisi-dashboard">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"]}><GidaMuhendisiDashboard /></ProtectedRoute>}
           </Route>
           <Route path="/girdi-yonetimi/:id">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><GirdiDetay /></ProtectedRoute>}
