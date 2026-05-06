@@ -21,7 +21,7 @@ import {
   Layers, Play, Edit, Eye, Timer, Flame, Snowflake,
   Link2, Unlink, DollarSign, Pencil, Search, BadgeCheck, ShieldAlert,
   ArrowRight, Plus, Minus, History, ChevronRight, ClipboardCheck, User,
-  Tag, Download,
+  Tag, Download, FileText, Boxes, Activity,
 } from "lucide-react";
 import { downloadTGKLabel } from "@/lib/tgk-label-pdf";
 
@@ -309,7 +309,7 @@ export default function FabrikaReceteDetay() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            {/* Aslan 7 May 2026: Ürün Spesifikasyon PDF butonu */}
+            {/* Aslan 7 May 2026: Ürün Spesifikasyon PDF butonu (PR #47'den geri eklendi) */}
             {['admin', 'ceo', 'cgo', 'gida_muhendisi', 'kalite_kontrol', 'kalite_yoneticisi', 'recete_gm'].includes(user?.role || '') && (
               <Button
                 size="sm"
@@ -351,25 +351,6 @@ export default function FabrikaReceteDetay() {
             {canEdit && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/fabrika/receteler/${recipeId}/duzenle`)}>
                 <Edit className="h-3.5 w-3.5 mr-1" /> Düzenle
-              </Button>
-            )}
-            {/* SPESİFİKASYON PDF — Aslan 7 May 2026 talebi: yetkili roller (admin/ceo/cgo/gida_muhendisi/kalite) tıklayarak çıktı */}
-            {['admin', 'ceo', 'cgo', 'gida_muhendisi', 'kalite_kontrol', 'kalite_yoneticisi', 'recete_gm'].includes(user?.role || '') && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    const { downloadProductSpecPDF } = await import('@/lib/product-spec-pdf');
-                    downloadProductSpecPDF(recipe);
-                    toast({ title: "✅ Spesifikasyon PDF indirildi", description: `SD-${String(recipe.id).padStart(2, '0')} - ${recipe.name}` });
-                  } catch (err: any) {
-                    toast({ title: "PDF üretilemedi", description: err.message, variant: "destructive" });
-                  }
-                }}
-                data-testid="button-spec-pdf"
-              >
-                <Download className="h-3.5 w-3.5 mr-1" /> Spesifikasyon PDF
               </Button>
             )}
             <Button size="sm" onClick={() => navigate(`/fabrika/receteler/${recipeId}/uretim`)}>
@@ -546,7 +527,7 @@ export default function FabrikaReceteDetay() {
       {/* Tab'lar */}
       <div className="px-6 pt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4 bg-transparent p-0 border-b border-border rounded-none w-full justify-start">
+          <TabsList className="mb-4 bg-transparent p-0 border-b border-border rounded-none w-full justify-start overflow-x-auto">
             <TabsTrigger value="malzemeler" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm">
               Malzemeler
             </TabsTrigger>
@@ -555,6 +536,18 @@ export default function FabrikaReceteDetay() {
             </TabsTrigger>
             <TabsTrigger value="besin" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm">
               Besin Değerleri
+            </TabsTrigger>
+            <TabsTrigger value="alerjen" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm" data-testid="tab-alerjen">
+              <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+              Alerjenler
+            </TabsTrigger>
+            <TabsTrigger value="etiket" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm" data-testid="tab-etiket">
+              <Tag className="h-3.5 w-3.5 mr-1" />
+              Etiket (TGK)
+            </TabsTrigger>
+            <TabsTrigger value="lot" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm" data-testid="tab-lot">
+              <Boxes className="h-3.5 w-3.5 mr-1" />
+              Lot İzleme
             </TabsTrigger>
             <TabsTrigger value="notlar" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm">
               Teknik Notlar
@@ -568,6 +561,10 @@ export default function FabrikaReceteDetay() {
                 <DollarSign className="h-3.5 w-3.5 mr-1" /> Maliyet
               </TabsTrigger>
             )}
+            <TabsTrigger value="gecmis" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm" data-testid="tab-gecmis">
+              <Activity className="h-3.5 w-3.5 mr-1" />
+              Üretim Geçmişi
+            </TabsTrigger>
           </TabsList>
 
           {/* MALZEMELER TAB */}
@@ -948,6 +945,218 @@ export default function FabrikaReceteDetay() {
               })()}
             </TabsContent>
           )}
+
+          {/* SPRINT 14 (D-44 Bağlam-İçi Tab) — 4 yeni sekme */}
+
+          {/* ALERJENLER */}
+          <TabsContent value="alerjen" className="space-y-4 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Alerjen Analizi (14 Allerjen — TGK Ek-2)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recipe.allergens && Array.isArray(recipe.allergens) && recipe.allergens.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {recipe.allergens.map((a: any, idx: number) => (
+                        <Badge key={idx} variant="destructive" className="text-xs">
+                          ⚠️ {typeof a === 'string' ? a : a.name || a.label || JSON.stringify(a)}
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="text-xs text-muted-foreground p-3 bg-amber-50 dark:bg-amber-950/20 rounded border border-amber-200 dark:border-amber-800">
+                      💡 Bu alerjenler reçete malzemelerinden otomatik tespit edildi (Mr. Dobody allergen-detection servisi).
+                      Etiket sekmesinde TGK 2017/2284 m.10 uyarınca koyu/altı çizili olarak gösterilecektir.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 space-y-3">
+                    <AlertTriangle className="h-12 w-12 text-muted-foreground/40 mx-auto" />
+                    <div>
+                      <p className="text-sm font-medium">Alerjen tespiti henüz yapılmadı</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Malzeme listesi tamamlandığında AI 14 allerjen için otomatik kontrol yapar.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">14 TGK Allerjeni — Referans</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  {[
+                    "Gluten içeren tahıllar", "Kabuklu deniz canlıları", "Yumurta", "Balık",
+                    "Yer fıstığı", "Soya", "Süt (laktoz)", "Sert kabuklu yemişler",
+                    "Kereviz", "Hardal", "Susam tohumu", "Sülfür dioksit",
+                    "Acı bakla", "Yumuşakçalar"
+                  ].map((a, idx) => (
+                    <Badge key={idx} variant="outline" className="text-[10px] justify-start">
+                      {idx + 1}. {a}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ETİKET (TGK 2017/2284) */}
+          <TabsContent value="etiket" className="space-y-4 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-blue-500" />
+                  TGK 2017/2284 Uyumlu Etiket
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recipe.gramajApproved ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-800">
+                      <BadgeCheck className="h-5 w-5 text-green-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Reçete onaylı, etiket basıma hazır</p>
+                        <p className="text-xs text-muted-foreground">
+                          Aşağıdaki butona tıklayarak TGK uyumlu etiket önizlemesini açabilirsiniz.
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => navigate(`/etiket-hesapla?productId=${recipe.id}&productType=factory_recipe`)}
+                        data-testid="button-open-label-editor"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Etiket Editörünü Aç
+                      </Button>
+                    </div>
+
+                    {/* Etiket Bilgi Kartı (özet) */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 border rounded">
+                        <div className="text-xs text-muted-foreground">Ürün Adı</div>
+                        <div className="text-sm font-medium">{recipe.name}</div>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <div className="text-xs text-muted-foreground">Ürün Kodu</div>
+                        <div className="text-sm font-medium">{recipe.code}</div>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <div className="text-xs text-muted-foreground">Net Miktar</div>
+                        <div className="text-sm font-medium">
+                          {recipe.expectedUnitWeight ? `${recipe.expectedUnitWeight} g` : "—"}
+                        </div>
+                      </div>
+                      <div className="p-3 border rounded">
+                        <div className="text-xs text-muted-foreground">Onay Durumu</div>
+                        <div className="text-sm font-medium text-green-600">✓ Onaylı</div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground p-3 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                      🏷️ <strong>TGK 2017/2284 zorunlu alanlar:</strong> Ürün adı, net miktar, son tüketim tarihi,
+                      üretici bilgileri, alerjen uyarısı, içindekiler listesi (alerjenler kalın), besin değerleri tablosu (100g + porsiyon), lot numarası.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 space-y-3">
+                    <Tag className="h-12 w-12 text-muted-foreground/40 mx-auto" />
+                    <div>
+                      <p className="text-sm font-medium">Reçete henüz onaylanmadı</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                        Etiket oluşturmak için önce "Onaylar" sekmesinden reçeteyi onaylayın.
+                        TGK 2017/2284'e göre etiket sadece onaylı reçetelerden üretilir.
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      const tab = document.querySelector('[data-testid="tab-onaylar"]') as HTMLElement;
+                      tab?.click();
+                    }}>
+                      <ClipboardCheck className="h-4 w-4 mr-2" />
+                      Onaylar Sekmesine Git
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* LOT İZLEME */}
+          <TabsContent value="lot" className="space-y-4 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Boxes className="h-4 w-4 text-purple-500" />
+                  Lot İzleme & Forensic Traceability
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 space-y-3">
+                  <Boxes className="h-12 w-12 text-muted-foreground/40 mx-auto" />
+                  <div>
+                    <p className="text-sm font-medium">Bu reçete için henüz üretim lotu yok</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-lg mx-auto">
+                      Reçete onaylandıktan sonra fabrikada her üretim batch'i bir lot numarasıyla
+                      kayıt altına alınır. Bu sekmede şu bilgiler görünür:
+                    </p>
+                  </div>
+                  <div className="text-left max-w-md mx-auto space-y-1 text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                    <div>📦 Üretim tarihi & saati</div>
+                    <div>👤 Üretici personel (Sef + ekip)</div>
+                    <div>🥕 Kullanılan hammadde lotları</div>
+                    <div>📊 Üretim miktarı & fire oranı</div>
+                    <div>🚚 Sevk edildiği şubeler</div>
+                    <div>⚠️ Geri çağırma simülasyonu (forensic chain)</div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Sprint 16'da aktif edilecek (Mr. Dobody lot zinciri otomatik üretimi)
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ÜRETİM GEÇMİŞİ */}
+          <TabsContent value="gecmis" className="space-y-4 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-green-500" />
+                  Üretim Geçmişi
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 space-y-3">
+                  <Activity className="h-12 w-12 text-muted-foreground/40 mx-auto" />
+                  <div>
+                    <p className="text-sm font-medium">Bu reçete henüz üretilmedi</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-lg mx-auto">
+                      İlk üretim sonrası bu sekmede şu metrikler görünür:
+                    </p>
+                  </div>
+                  <div className="text-left max-w-md mx-auto space-y-1 text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                    <div>📈 Toplam üretim adedi (haftalık/aylık trend)</div>
+                    <div>⏱️ Ortalama batch süresi (planlanan vs gerçekleşen)</div>
+                    <div>🥄 Hammadde tüketim varyansı</div>
+                    <div>🔥 Pişirme/donma süresi performansı</div>
+                    <div>♻️ Fire oranı trendi</div>
+                    <div>🏆 En iyi performans gösteren personel</div>
+                    <div>📊 Reçete versiyon karşılaştırma (v1 vs v2)</div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic">
+                    Sprint 16'da aktif edilecek (factory_production_logs verileriyle)
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
       </div>
 

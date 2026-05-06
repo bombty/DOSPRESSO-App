@@ -49,6 +49,10 @@ export default function EtiketHesaplaPage() {
     storageConditions: '',
     shelfLifeDays: 1,
     countryOfOrigin: 'Türkiye',
+    // Sprint 14 Phase 9 (7 May 2026): TGK Madde 9/k Lot/Parti kritik eksiklik düzeltmesi
+    // P-19 TGK 2017/2284 audit'inde tespit edilen eksiklik (compliance skoru 73.5 → ~85+)
+    lotNumber: '', // Lot/Parti numarası — kullanıcı her etiket basımında girer
+    productionDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
   });
 
   const canApprove = user?.role && APPROVE_ROLES.includes(user.role);
@@ -144,6 +148,9 @@ export default function EtiketHesaplaPage() {
       storageConditions: labelData.storageConditions,
       shelfLifeDays: labelData.shelfLifeDays,
       countryOfOrigin: labelData.countryOfOrigin,
+      // Sprint 14 Phase 9 (7 May 2026): TGK m.9/k Lot/Parti zorunlu alan
+      lotNumber: labelData.lotNumber || `L${Date.now().toString(36).toUpperCase()}`,
+      productionDate: labelData.productionDate,
       energyKcal: hasNutrition ? calcResult.nutrition.energyKcal : undefined,
       energyKj: hasNutrition ? calcResult.nutrition.energyKj : undefined,
       fat: hasNutrition ? calcResult.nutrition.fat : undefined,
@@ -465,6 +472,32 @@ export default function EtiketHesaplaPage() {
                       onChange={(e) => setLabelData({...labelData, storageConditions: e.target.value})}
                       placeholder="örn: Soğuk zincirde 4°C altında saklayınız"
                       data-testid="input-storage"
+                    />
+                  </div>
+                  {/* Sprint 14 Phase 9 (7 May 2026): TGK Madde 9/k Lot/Parti zorunlu */}
+                  <div>
+                    <Label className="text-xs flex items-center gap-1">
+                      Lot/Parti No <span className="text-red-500">*</span>
+                      <Badge variant="outline" className="text-[9px] ml-1">TGK m.9/k</Badge>
+                    </Label>
+                    <Input
+                      value={labelData.lotNumber}
+                      onChange={(e) => setLabelData({...labelData, lotNumber: e.target.value})}
+                      placeholder="örn: L20260507A"
+                      data-testid="input-lot-number"
+                      className={!labelData.lotNumber ? "border-red-300" : ""}
+                    />
+                    {!labelData.lotNumber && (
+                      <p className="text-[10px] text-red-600 mt-0.5">Zorunlu alan (mevzuat)</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className="text-xs">Üretim Tarihi</Label>
+                    <Input
+                      type="date"
+                      value={labelData.productionDate}
+                      onChange={(e) => setLabelData({...labelData, productionDate: e.target.value})}
+                      data-testid="input-production-date"
                     />
                   </div>
                 </div>
