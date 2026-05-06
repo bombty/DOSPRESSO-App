@@ -55,6 +55,15 @@ router.get('/api/factory/recipes/:id/specification.pdf', isAuthenticated, async 
     const [recipe] = await db.select().from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
     if (!recipe) return res.status(404).json({ message: 'Reçete bulunamadı' });
     
+    // ETag cache: reçete değişmediyse 304 dön (Aslan review feedback - hata 6)
+    const updatedAt = recipe.updatedAt ? new Date(recipe.updatedAt).getTime() : Date.now();
+    const etag = `"spec-${recipe.id}-${updatedAt}-${recipe.gramajApproved ? 'a' : 'd'}"`;
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'private, max-age=300'); // 5 dk cache
+    
     // Reçete onaylanmamışsa uyar (ama yine de üret — taslak modunda)
     const isDraft = !recipe.gramajApproved;
     
