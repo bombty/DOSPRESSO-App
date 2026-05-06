@@ -424,6 +424,7 @@ import supplierAllergenFormsRouter from "./routes/supplier-allergen-forms";  // 
 import fabrikaPersonelPerformansRouter from "./routes/fabrika-personel-performans";  // Sprint 14 Phase 7: Fabrika personel performans
 import fiyatListesiRouter from "./routes/fiyat-listesi";  // Sprint 14 Phase 8: Hammadde fiyat listesi + price history
 import gidaMuhendisiDashboardRouter from "./routes/gida-muhendisi-dashboard";  // Sprint 14: Mr. Dobody akıllı gıda mühendisi dashboard
+import mrDobodyHammaddeEksiklikRouter from "./routes/mr-dobody-hammadde-eksiklik";  // Aslan 7 May 2026: AI eksikleri uyarmıyor talebi
 import scoreParametersRouter from "./routes/score-parameters";  // Sprint 8 (5 May 2026): Skor kriterleri admin panel
 import managerRatingRouter from "./routes/manager-rating";  // Sprint 12 (5 May 2026): Yönetici değerlendirme
 import factoryRecipesRouter from "./routes/factory-recipes";
@@ -915,6 +916,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(fabrikaPersonelPerformansRouter);  // Sprint 14 Phase 7: /api/fabrika/personel-performans (üretim personel KPI)
   app.use(fiyatListesiRouter);  // Sprint 14 Phase 8: /api/fiyat-listesi + /api/girdi/:id/price-history
   app.use(gidaMuhendisiDashboardRouter);  // Sprint 14: /api/gida-muhendisi/dashboard (Mr. Dobody akıllı dashboard)
+  app.use(mrDobodyHammaddeEksiklikRouter);  // Aslan 7 May 2026: /api/mr-dobody/hammadde-eksiklik-raporu
   app.use(scoreParametersRouter);  // Sprint 8 (5 May 2026): /api/score-parameters/* (admin skor kriterleri)
   app.use(managerRatingRouter);  // Sprint 12 (5 May 2026): /api/manager-rating/* (yönetici değerlendirme)
   app.use(factoryRecipesRouter);

@@ -20,7 +20,7 @@ import {
   supplierAllergenForms,
   TGK_ALLERGENS_14,
   PREVENTIVE_ACTIONS_15,
-} from '@shared/schema/schema-26-supplier-allergen-forms';
+} from '@shared/schema';
 import { sql, and, eq, desc } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { logger } from '../lib/logger';

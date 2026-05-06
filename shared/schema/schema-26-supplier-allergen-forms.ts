@@ -13,9 +13,9 @@
 
 import { pgTable, serial, varchar, text, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { suppliers } from "./schema-08";
+import { suppliers } from "./schema-09";
 import { rawMaterials } from "./schema-10";
-import { users } from "./schema-01";
+import { users } from "./schema-02";
 
 export const supplierAllergenForms = pgTable("supplier_allergen_forms", {
   id: serial("id").primaryKey(),

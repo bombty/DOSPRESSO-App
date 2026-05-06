@@ -6,7 +6,7 @@ import {
   BookOpen, Video, Target, Award,
   Building2, Settings, Bell, Search,
   BarChart2, FileBarChart, Sun, User, Briefcase,
-  Home, Wallet, Headphones, Megaphone, GraduationCap, Lock,
+  Home, Wallet, Headphones, Megaphone, GraduationCap, Lock, Sparkles,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -78,6 +78,7 @@ const FABRIKA_MENU: ModuleMenuConfig = {
     { id: "fiyat-listesi", label: "💰 Fiyat Listesi", path: "/fiyat-listesi", icon: DollarSign, allowedRoles: ["admin","ceo","cgo","satinalma","muhasebe","fabrika_mudur","gida_muhendisi"] },
     { id: "fabrika-personel", label: "🏭 Personel Performans", path: "/fabrika/personel-performans", icon: UserCog, allowedRoles: ["admin","ceo","cgo","fabrika_mudur","fabrika_sorumlu","ik","muhasebe"] },
     { id: "gm-dashboard", label: "🥗 GM Anasayfa", path: "/gida-muhendisi-dashboard", icon: Beaker, allowedRoles: ["admin","ceo","cgo","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"] },
+    { id: "mr-dobody-eksiklik", label: "🤖 Mr. Dobody Eksiklik Raporu", path: "/mr-dobody/hammadde-eksiklik", icon: Sparkles, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","kalite_yoneticisi","fabrika_mudur","fabrika_sorumlu"] },
     // Sprint 13 (6 May 2026): "Etiket Hesapla" sidebar link'i kaldırıldı.
     // Sebep: productId parametresi olmadan crash veriyordu (Eksik parametre hatası).
     // Sprint 14 planı: Etiket çalışması reçete detay sayfasının "Etiket" sekmesi olarak taşınacak.

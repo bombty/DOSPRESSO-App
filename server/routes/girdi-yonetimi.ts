@@ -297,6 +297,79 @@ router.get('/api/girdi-stats/overview', isAuthenticated, async (req: any, res: R
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// 6b) GET /api/tedarikci-kalite/list — QC kayıtlarını listele
+// Aslan 7 May 2026 fix: Frontend bunu çağırıyordu ama endpoint yoktu
+// ═══════════════════════════════════════════════════════════════════
+
+router.get('/api/tedarikci-kalite/list', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canRead(user.role)) {
+      return res.status(403).json({ message: 'QC kaydı görüntüleme yetkiniz yok' });
+    }
+
+    const { supplierId, status, limit } = req.query;
+    
+    const conditions: any[] = [];
+    if (supplierId) conditions.push(eq(supplierQualityRecords.supplierId, Number(supplierId)));
+    
+    // status mapping: yesil/sari/kirmizi → kabul/şartlı_kabul/red
+    if (status) {
+      const statusMap: Record<string, string> = {
+        yesil: 'kabul',
+        sari: 'şartlı_kabul',
+        kirmizi: 'red',
+      };
+      const dbStatus = statusMap[String(status)] || String(status);
+      conditions.push(eq(supplierQualityRecords.inspectionStatus, dbStatus));
+    }
+
+    const records = await db
+      .select({
+        id: supplierQualityRecords.id,
+        supplierId: supplierQualityRecords.supplierId,
+        supplierName: suppliers.name,
+        rawMaterialId: supplierQualityRecords.rawMaterialId,
+        rawMaterialName: rawMaterials.name,
+        inspectionDate: supplierQualityRecords.deliveryDate,
+        inspectionStatus: supplierQualityRecords.inspectionStatus,
+        invoiceNumber: supplierQualityRecords.invoiceNumber,
+        deliveredQuantity: supplierQualityRecords.deliveredQuantity,
+        unit: supplierQualityRecords.unit,
+        nonConformity: supplierQualityRecords.nonConformity,
+        rejectionReason: supplierQualityRecords.rejectionReason,
+        correctiveAction: supplierQualityRecords.correctiveAction,
+        notes: supplierQualityRecords.notes,
+        createdAt: supplierQualityRecords.createdAt,
+      })
+      .from(supplierQualityRecords)
+      .leftJoin(suppliers, eq(supplierQualityRecords.supplierId, suppliers.id))
+      .leftJoin(rawMaterials, eq(supplierQualityRecords.rawMaterialId, rawMaterials.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(supplierQualityRecords.deliveryDate))
+      .limit(limit ? Number(limit) : 100);
+
+    // Frontend'e map: status field
+    const reverseStatusMap: Record<string, string> = {
+      'kabul': 'yesil',
+      'şartlı_kabul': 'sari',
+      'red': 'kirmizi',
+    };
+
+    const mapped = records.map(r => ({
+      ...r,
+      status: reverseStatusMap[r.inspectionStatus] || r.inspectionStatus,
+      defectType: r.nonConformity, // legacy field naming
+    }));
+
+    return res.json(mapped);
+  } catch (error: unknown) {
+    console.error('/api/tedarikci-kalite/list error:', error);
+    res.status(500).json({ message: 'QC kayıtları alınamadı', error: String(error) });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // 7) POST /api/tedarikci-kalite — Yeni QC kaydı
 // ═══════════════════════════════════════════════════════════════════
 
