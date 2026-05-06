@@ -51,6 +51,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
+import { KvkkAydinlatma, KvkkFooterLink } from "../../components/kvkk-aydinlatma";
 
 type KioskStep = 'password' | 'select-user' | 'enter-pin' | 'announcements' | 'working' | 'end-shift-summary' | 'qr-scan' | 'qr-action';
 
@@ -2433,6 +2434,14 @@ export default function BranchKiosk() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sprint 12 P-22: KVKK Aydınlatma Metni — ilk açılışta otomatik modal */}
+      <KvkkAydinlatma context="sube" />
+
+      {/* Footer'da her zaman erişilebilir KVKK linki */}
+      <div className="fixed bottom-2 right-2 z-10 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm">
+        <KvkkFooterLink context="sube" />
+      </div>
     </>
   );
 }

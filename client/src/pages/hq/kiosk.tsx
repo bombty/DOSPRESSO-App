@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { KvkkAydinlatma, KvkkFooterLink } from "@/components/kvkk-aydinlatma";
 
 import {
   AlertDialog,
@@ -753,9 +754,19 @@ export default function HqKiosk() {
     </Button>
   );
 
-  if (!step || step === "select-user") return <>{renderSelectUser()}{exitButton}</>;
-  if (step === "enter-pin") return <>{renderEnterPin()}{exitButton}</>;
-  if (step === "exit-dialog") return <>{renderExitDialog()}{exitButton}</>;
-  if (step === "end-summary") return <>{renderEndSummary()}{exitButton}</>;
-  return <>{renderWorking()}{exitButton}</>;
+  // Sprint 12 P-22: KVKK Aydınlatma — her step'te ekstra render
+  const kvkkOverlay = (
+    <>
+      <KvkkAydinlatma context="hq" />
+      <div className="fixed bottom-2 right-2 z-10 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm">
+        <KvkkFooterLink context="hq" />
+      </div>
+    </>
+  );
+
+  if (!step || step === "select-user") return <>{renderSelectUser()}{exitButton}{kvkkOverlay}</>;
+  if (step === "enter-pin") return <>{renderEnterPin()}{exitButton}{kvkkOverlay}</>;
+  if (step === "exit-dialog") return <>{renderExitDialog()}{exitButton}{kvkkOverlay}</>;
+  if (step === "end-summary") return <>{renderEndSummary()}{exitButton}{kvkkOverlay}</>;
+  return <>{renderWorking()}{exitButton}{kvkkOverlay}</>;
 }
