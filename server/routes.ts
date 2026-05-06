@@ -420,6 +420,7 @@ import turkompIntegrationRouter from "./routes/turkomp-integration";  // Sprint 
 import recipeLabelEngineRouter from "./routes/recipe-label-engine";  // Sprint 7 v3 (5 May 2026): Reçete → TGK Etiket otomatik hesaplama
 import adminHqPinManagementRouter from "./routes/admin-hq-pin-management";  // Sprint 10 P-7 (6 May 2026): HQ Kiosk PIN Yönetimi (admin only)
 import specPdfRouter from "./routes/spec-pdf";  // Aslan 7 May 2026: Ürün Spesifikasyon PDF üretici (SD-XX format, 5 sayfa, TGK uyumlu)
+import supplierAllergenFormsRouter from "./routes/supplier-allergen-forms";  // Aslan 7 May 2026: Tedarikçi Alerjen Kontrol Formu (0011.A.FR.GG.36/Rev.1)
 import scoreParametersRouter from "./routes/score-parameters";  // Sprint 8 (5 May 2026): Skor kriterleri admin panel
 import managerRatingRouter from "./routes/manager-rating";  // Sprint 12 (5 May 2026): Yönetici değerlendirme
 import factoryRecipesRouter from "./routes/factory-recipes";
@@ -907,6 +908,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(recipeLabelEngineRouter);  // Sprint 7 v3 (5 May 2026): /api/recipe-label/* (otomatik etiket hesaplama)
   app.use(adminHqPinManagementRouter);  // Sprint 10 P-7 (6 May 2026): /api/admin/hq-users/* (HQ Kiosk PIN Yönetimi, admin only)
   app.use(specPdfRouter);  // Aslan 7 May 2026: /api/factory/recipes/:id/specification.pdf (Ürün spesifikasyon PDF üretici)
+  app.use(supplierAllergenFormsRouter);  // Aslan 7 May 2026: /api/supplier-allergen-forms/* (Tedarikçi Alerjen Kontrol Formu 0011.A.FR.GG.36)
   app.use(scoreParametersRouter);  // Sprint 8 (5 May 2026): /api/score-parameters/* (admin skor kriterleri)
   app.use(managerRatingRouter);  // Sprint 12 (5 May 2026): /api/manager-rating/* (yönetici değerlendirme)
   app.use(factoryRecipesRouter);
