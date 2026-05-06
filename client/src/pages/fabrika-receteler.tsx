@@ -37,14 +37,17 @@ export default function FabrikaReceteler() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const [filterCategory, setFilterCategory] = useState<string>("all");
-  const [filterApproval, setFilterApproval] = useState<"all" | "approved" | "unapproved">("all");
+  const [filterApproval, setFilterApproval] = useState<"all" | "approved" | "unapproved" | "in_production" | "archived">("all");
 
   const { data: recipes = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/factory/recipes", filterCategory, filterApproval],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filterCategory !== "all") params.set("category", filterCategory);
-      if (filterApproval !== "all") params.set("approvalStatus", filterApproval);
+      // Backend onaylı/onaysız filter'ı destekliyor; üretimde ve arşiv frontend'de türetiliyor
+      if (filterApproval === "approved" || filterApproval === "unapproved") {
+        params.set("approvalStatus", filterApproval);
+      }
       const qs = params.toString();
       const res = await fetch(`/api/factory/recipes${qs ? `?${qs}` : ""}`, { credentials: "include" });
       if (!res.ok) throw new Error("Yüklenemedi");
@@ -52,7 +55,20 @@ export default function FabrikaReceteler() {
     },
   });
 
-  const unapprovedCount = recipes.filter((r: any) => !r.gramajApproved).length;
+  // 4 statü sayaçları (Sprint 14 — D-44 Bağlam-İçi Tab prensibi)
+  const unapprovedCount = recipes.filter((r: any) => !r.gramajApproved && r.isVisible !== false).length;
+  const approvedActiveCount = recipes.filter((r: any) => r.gramajApproved && !r.editLocked && r.isVisible !== false).length;
+  const inProductionCount = recipes.filter((r: any) => r.gramajApproved && r.editLocked && r.isVisible !== false).length;
+  const archivedCount = recipes.filter((r: any) => r.isVisible === false).length;
+
+  // Frontend filter (Üretimde + Arşiv için)
+  const filteredRecipes = recipes.filter((r: any) => {
+    if (filterApproval === "in_production") return r.gramajApproved && r.editLocked && r.isVisible !== false;
+    if (filterApproval === "archived") return r.isVisible === false;
+    if (filterApproval === "approved") return r.gramajApproved && r.isVisible !== false;
+    if (filterApproval === "unapproved") return !r.gramajApproved && r.isVisible !== false;
+    return true; // "all"
+  });
 
   // P7.2 (29 Nis 2026): ceo (Aslan) reçete oluşturabilir, sef (Ümit) oluşturamaz.
   const canCreate = ["admin", "recete_gm", "ceo"].includes(user?.role || "");
@@ -70,7 +86,7 @@ export default function FabrikaReceteler() {
             Fabrika Reçeteleri
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {recipes.length} reçete
+            {filteredRecipes.length} reçete{filterApproval !== "all" ? ` (${filterApproval === "unapproved" ? "Onaysız" : filterApproval === "approved" ? "Onaylı" : filterApproval === "in_production" ? "Üretimde" : "Arşiv"})` : ""}
           </p>
         </div>
         {canCreate && (
@@ -83,7 +99,7 @@ export default function FabrikaReceteler() {
 
       {/* Onay Filtresi (Task #164) */}
       <div className="px-6 py-2 flex items-center gap-1.5 flex-wrap border-b border-border/50">
-        <span className="text-xs text-muted-foreground mr-1">Onay:</span>
+        <span className="text-xs text-muted-foreground mr-1">Durum:</span>
         <Button
           size="sm"
           variant={filterApproval === "all" ? "default" : "ghost"}
@@ -92,6 +108,9 @@ export default function FabrikaReceteler() {
           data-testid="filter-approval-all"
         >
           Tümü
+          <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1">
+            {recipes.length}
+          </Badge>
         </Button>
         <Button
           size="sm"
@@ -102,8 +121,8 @@ export default function FabrikaReceteler() {
         >
           <AlertCircle className="h-3 w-3 mr-1" />
           Onaysız
-          {filterApproval === "all" && unapprovedCount > 0 && (
-            <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1">
+          {unapprovedCount > 0 && (
+            <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1 bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100">
               {unapprovedCount}
             </Badge>
           )}
@@ -117,6 +136,35 @@ export default function FabrikaReceteler() {
         >
           <CheckCircle2 className="h-3 w-3 mr-1" />
           Onaylı
+          <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1 bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100">
+            {approvedActiveCount}
+          </Badge>
+        </Button>
+        <Button
+          size="sm"
+          variant={filterApproval === "in_production" ? "default" : "ghost"}
+          onClick={() => setFilterApproval("in_production")}
+          className="text-xs h-7"
+          data-testid="filter-approval-in-production"
+        >
+          <Lock className="h-3 w-3 mr-1" />
+          Üretimde
+          <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1 bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100">
+            {inProductionCount}
+          </Badge>
+        </Button>
+        <Button
+          size="sm"
+          variant={filterApproval === "archived" ? "default" : "ghost"}
+          onClick={() => setFilterApproval("archived")}
+          className="text-xs h-7"
+          data-testid="filter-approval-archived"
+        >
+          <EyeOff className="h-3 w-3 mr-1" />
+          Arşiv
+          <Badge variant="secondary" className="ml-1.5 h-4 text-[10px] px-1">
+            {archivedCount}
+          </Badge>
         </Button>
       </div>
 
@@ -151,14 +199,25 @@ export default function FabrikaReceteler() {
               <Skeleton key={i} className="h-64 rounded-xl" />
             ))}
           </div>
-        ) : recipes.length === 0 ? (
+        ) : filteredRecipes.length === 0 ? (
           <div className="text-center py-16">
             <ChefHat className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-            <p className="text-muted-foreground">Henüz reçete eklenmemiş</p>
+            <p className="text-muted-foreground">
+              {filterApproval === "unapproved" ? "Onay bekleyen reçete yok 🎉"
+                : filterApproval === "approved" ? "Onaylı reçete yok"
+                : filterApproval === "in_production" ? "Üretimde reçete yok"
+                : filterApproval === "archived" ? "Arşivde reçete yok"
+                : "Henüz reçete eklenmemiş"}
+            </p>
+            {filterApproval !== "all" && (
+              <Button variant="ghost" size="sm" onClick={() => setFilterApproval("all")} className="mt-3 text-xs">
+                Tümünü Göster
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recipes.map((recipe: any) => {
+            {filteredRecipes.map((recipe: any) => {
               const outputConfig = OUTPUT_TYPE_CONFIG[recipe.outputType as keyof typeof OUTPUT_TYPE_CONFIG] || OUTPUT_TYPE_CONFIG.mamul;
               const OutputIcon = outputConfig.icon;
               const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.productionTimeMinutes || 0) + (recipe.cleaningTimeMinutes || 0);

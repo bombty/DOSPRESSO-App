@@ -222,6 +222,7 @@ const YoneticiDegerlendirme = lazyWithRetry(() => import("@/pages/admin/yonetici
 const BannerEditor = lazyWithRetry(() => import("@/pages/banner-editor"));
 const DuyuruStudioV2 = lazyWithRetry(() => import("@/components/DuyuruStudioV2/DuyuruStudio"));
 const GidaGuvenligiDashboard = lazyWithRetry(() => import("@/pages/gida-guvenligi-dashboard"));
+const GidaMuhendisiDashboard = lazyWithRetry(() => import("@/pages/gida-muhendisi-dashboard"));  // Sprint 14 (6 May 2026): Mr. Dobody akıllı anasayfa
 const Setup = lazyWithRetry(() => import("@/pages/setup"));
 const MisafirGeriBildirimPublic = lazyWithRetry(() => import("@/pages/misafir-geri-bildirim"));
 
@@ -696,6 +697,7 @@ function Router() {
           <Route path="/hq-dashboard/:department?">{({ params }: any) => { const [,nav] = useLocation(); useEffect(() => { const dept = params?.department; if (dept === "marketing") nav("/marketing-centrum"); else if (dept === "destek") nav("/destek-centrum"); else nav("/ceo-command-center"); }, []); return null; }}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/fabrika-centrum"); }, []); return null; }}</Route>
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
+          <Route path="/gida-muhendisi-dashboard">{() => <HQOnly><GidaMuhendisiDashboard /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><SatinalmaMega /></ProtectedRoute>}</Route>
           <Route path="/urun-sikayet">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/raporlar/sube-saglik">{() => <ExecutiveOnly><SubeSaglikSkoru /></ExecutiveOnly>}</Route>
