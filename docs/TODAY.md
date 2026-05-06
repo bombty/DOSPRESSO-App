@@ -6,8 +6,8 @@
 
 ## 🎯 BUGÜN NE YAPILDI (6 Mayıs)
 
-**Çalışma:** Sprint 8 DB migration serisi (8a + 8b + 8c)  
-**Tamamlanan:** 3 migration ✅  
+**Çalışma:** Sprint 8 DB migration serisi (8a + 8b + 8c) + Sprint 10 P-7 HQ PIN UI  
+**Tamamlanan:** 3 migration + HQ PIN yönetim sayfası + 3 API endpoint ✅  
 **Ertelenen:** Sprint 8d (payroll/net-brüt) ve Sprint 8e (35 personel UPSERT) → yarına
 
 ---
@@ -19,6 +19,7 @@
 | Sprint 8a (#351) | `score_parameters` + `score_parameter_history` DDL — 19/8 kolon, 7 index, 3 FK | ✅ MERGED (PR #27) |
 | Sprint 8b (#352) | `position_salaries` — intern/Stajyer satırı eklendi (33.000 TL net = 3.300.000 kuruş) | ✅ MERGED |
 | Sprint 8c (#354) | `position_salaries` UNIQUE(position_code, effective_from) constraint | ✅ DB'de aktif |
+| Sprint 10 P-7 UI | `/admin/hq-pin-yonetimi` sayfası + 3 endpoint (status/reset/unlock) | ✅ Canlıda |
 
 ### Sprint 8c Detay (Bu Oturum)
 - PRE_CHECK_DUPLICATES: 0 satır ✅

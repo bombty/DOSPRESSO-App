@@ -205,6 +205,7 @@ const AdminFabrikaFireSebepleri = lazyWithRetry(() => import("@/pages/admin/fabr
 const AdminFabrikaIstasyonlar = lazyWithRetry(() => import("@/pages/admin/fabrika-istasyonlar"));
 const AdminFabrikaKaliteKriterleri = lazyWithRetry(() => import("@/pages/admin/fabrika-kalite-kriterleri"));
 const AdminFabrikaPinYonetimi = lazyWithRetry(() => import("@/pages/admin/fabrika-pin-yonetimi"));
+const AdminHqPinYonetimi = lazyWithRetry(() => import("@/pages/admin/hq-pin-yonetimi"));  // Sprint 10 P-7 (6 May 2026): HQ PIN yönetimi
 const AdminServisMailAyarlari = lazyWithRetry(() => import("@/pages/admin/servis-mail-ayarlari"));
 const AdminTopluVeriYonetimi = lazyWithRetry(() => import("@/pages/admin/toplu-veri-yonetimi"));
 const AdminYapayZekaAyarlari = lazyWithRetry(() => import("@/pages/admin/yapay-zeka-ayarlari"));
@@ -596,6 +597,7 @@ function Router() {
           <Route path="/admin/fabrika-istasyonlar">{() => <AdminOnly><AdminFabrikaIstasyonlar /></AdminOnly>}</Route>
           <Route path="/admin/fabrika-kalite-kriterleri">{() => <AdminOnly><AdminFabrikaKaliteKriterleri /></AdminOnly>}</Route>
           <Route path="/admin/fabrika-pin-yonetimi">{() => <AdminOnly><AdminFabrikaPinYonetimi /></AdminOnly>}</Route>
+          <Route path="/admin/hq-pin-yonetimi">{() => <AdminOnly><AdminHqPinYonetimi /></AdminOnly>}</Route>
           <Route path="/admin/servis-mail-ayarlari">{() => <AdminOnly><AdminServisMailAyarlari /></AdminOnly>}</Route>
           <Route path="/admin/toplu-veri-yonetimi">{() => <AdminOnly><AdminTopluVeriYonetimi /></AdminOnly>}</Route>
           <Route path="/admin/yapay-zeka-ayarlari">{() => <AdminOnly><AdminYapayZekaAyarlari /></AdminOnly>}</Route>

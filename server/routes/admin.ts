@@ -40,6 +40,7 @@ import {
   publicHolidays,
   notifications,
   auditLogs,
+  branchStaffPins,
   titles,
   insertTitleSchema,
   roleTemplates,
@@ -4315,6 +4316,93 @@ router.post("/api/admin/role-permissions", isAuthenticated, isAdminOrCeo, async 
     res.json({ ok: true });
   } catch (e: any) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+// ─── HQ Kiosk PIN Yönetimi ───────────────────────────────────────────────────
+
+const HQ_ROLES = [
+  "admin","ceo","cgo","coach","trainer","muhasebe","muhasebe_ik",
+  "satinalma","teknik","marketing","destek","kalite_kontrol","kalite",
+] as const;
+
+router.get("/api/admin/hq-users-pin-status", isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const hqUsers = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+        branchId: users.branchId,
+        hasPin: sql<boolean>`CASE WHEN ${branchStaffPins.id} IS NOT NULL THEN true ELSE false END`,
+        pinIsActive: branchStaffPins.isActive,
+        pinFailedAttempts: branchStaffPins.pinFailedAttempts,
+        pinLockedUntil: branchStaffPins.pinLockedUntil,
+        pinCreatedAt: branchStaffPins.createdAt,
+      })
+      .from(users)
+      .leftJoin(branchStaffPins, eq(branchStaffPins.userId, users.id))
+      .where(
+        and(
+          sql`${users.role} = ANY(${sql`ARRAY[${sql.join(HQ_ROLES.map(r => sql`${r}`), sql`, `)}]`})`,
+          eq(users.isActive, true),
+          isNull(users.deletedAt),
+        )
+      )
+      .orderBy(users.role, users.username);
+
+    res.json(hqUsers.map(u => ({
+      ...u,
+      pinFailedAttempts: u.pinFailedAttempts ?? 0,
+    })));
+  } catch (e: any) {
+    console.error("hq-users-pin-status error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/api/admin/hq-pin-reset/:userId", isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { pin } = req.body;
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      return res.status(400).json({ error: "PIN 4 haneli rakam olmalı" });
+    }
+    const hashedPin = await bcrypt.hash(pin, 10);
+    const HQ_BRANCH_ID = 23; // Merkez Ofis
+    await db.insert(branchStaffPins).values({
+      userId,
+      branchId: HQ_BRANCH_ID,
+      hashedPin,
+      isActive: true,
+      pinFailedAttempts: 0,
+    }).onConflictDoUpdate({
+      target: [branchStaffPins.userId, branchStaffPins.branchId],
+      set: {
+        hashedPin,
+        isActive: true,
+        pinFailedAttempts: 0,
+        pinLockedUntil: null,
+        updatedAt: new Date(),
+      },
+    });
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post("/api/admin/hq-pin-unlock/:userId", isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    await db.update(branchStaffPins)
+      .set({ pinFailedAttempts: 0, pinLockedUntil: null, updatedAt: new Date() })
+      .where(eq(branchStaffPins.userId, userId));
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 
