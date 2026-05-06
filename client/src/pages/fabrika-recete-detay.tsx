@@ -533,6 +533,9 @@ export default function FabrikaReceteDetay() {
                 <DollarSign className="h-3.5 w-3.5 mr-1" /> Maliyet
               </TabsTrigger>
             )}
+            <TabsTrigger value="etiket" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary px-4 py-2 text-sm" data-testid="tab-etiket">
+              <Tag className="h-3.5 w-3.5 mr-1" /> Etiket (TGK)
+            </TabsTrigger>
           </TabsList>
 
           {/* MALZEMELER TAB */}
@@ -685,6 +688,46 @@ export default function FabrikaReceteDetay() {
 
           {/* BESİN DEĞERLERİ TAB */}
           <TabsContent value="besin" className="pb-8">
+            {/* Üst aksiyon barı — Hesapla / Yeniden Hesapla */}
+            <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Scale className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-medium">Besin Değer Tablosu (100g)</span>
+                {recipe.nutritionConfidence && (
+                  <Badge variant="outline" className="text-[10px]">
+                    AI Güven: %{recipe.nutritionConfidence}
+                  </Badge>
+                )}
+              </div>
+              <Button
+                size="sm"
+                variant={recipe.nutritionFacts ? "outline" : "default"}
+                onClick={async () => {
+                  try {
+                    toast({ title: "Besin değeri hesaplanıyor...", description: "Hammadde besin değerlerinden toplam çıkarılıyor" });
+                    const res = await apiRequest("POST", `/api/factory/recipes/${recipe.id}/calculate-nutrition`);
+                    const data = await res.json();
+                    queryClient.invalidateQueries({ queryKey: [`/api/factory/recipes/${recipe.id}`] });
+                    if (data.unverified && data.unverified.length > 0) {
+                      toast({
+                        title: "⚠️ Eksik veri uyarısı",
+                        description: `${data.unverified.length} hammadde için besin verisi eksik: ${data.unverified.slice(0, 3).join(", ")}${data.unverified.length > 3 ? "..." : ""}`,
+                        variant: "destructive",
+                      });
+                    } else {
+                      toast({ title: "✅ Besin değeri hesaplandı", description: `Güven skoru: %${data.confidence || 0}` });
+                    }
+                  } catch (error: any) {
+                    toast({ title: "Hesaplama başarısız", description: error.message || "Bilinmeyen hata", variant: "destructive" });
+                  }
+                }}
+                data-testid="button-calc-nutrition-tab"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                {recipe.nutritionFacts ? "Yeniden Hesapla" : "Şimdi Hesapla"}
+              </Button>
+            </div>
+
             {recipe.nutritionFacts ? (
               <Card>
                 <CardHeader className="pb-2">
@@ -714,14 +757,43 @@ export default function FabrikaReceteDetay() {
                       <span className="font-mono tabular-nums">{row.value != null ? `${row.value} ${row.unit}` : "—"}</span>
                     </div>
                   ))}
+
+                  {/* Porsiyon başına (etiket için) */}
+                  {recipe.expectedUnitWeight && recipe.nutritionFacts.energy_kcal != null && (
+                    <div className="mt-4 pt-3 border-t">
+                      <div className="text-xs font-medium mb-2 flex items-center gap-1">
+                        <Tag className="h-3.5 w-3.5" />
+                        Porsiyon Başına ({recipe.expectedUnitWeight}g)
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>Enerji: <strong>{((recipe.nutritionFacts.energy_kcal * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)} kcal</strong></div>
+                        <div>Yağ: <strong>{((recipe.nutritionFacts.fat_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)} g</strong></div>
+                        <div>Karbonhidrat: <strong>{((recipe.nutritionFacts.carbohydrate_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)} g</strong></div>
+                        <div>Protein: <strong>{((recipe.nutritionFacts.protein_g * Number(recipe.expectedUnitWeight)) / 100).toFixed(1)} g</strong></div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-2">
+                        💡 Bu değerler etiket bilgisi için otomatik kullanılır (TGK 2017/2284)
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ) : (
-              <div className="text-center py-8">
-                <Scale className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-                <p className="text-sm text-muted-foreground">Besin değerleri henüz hesaplanmamış</p>
-                <p className="text-xs text-muted-foreground mt-1">Malzeme listesi tamamlandığında AI otomatik hesaplayacak</p>
-              </div>
+              <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800">
+                <CardContent className="text-center py-8">
+                  <Scale className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+                  <p className="text-sm font-medium">Besin değerleri henüz hesaplanmadı</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                    Yukarıdaki <strong>"Şimdi Hesapla"</strong> butonuna tıklayın. Sistem hammadde besin
+                    değerlerinden reçete toplam besin değerini ve porsiyon başına etiket değerlerini otomatik oluşturur.
+                  </p>
+                  {(!recipe.ingredients || recipe.ingredients.length === 0) && (
+                    <p className="text-xs text-red-600 mt-3 font-medium">
+                      ⚠️ Önce malzeme listesi tamamlanmalı
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
 
@@ -913,6 +985,120 @@ export default function FabrikaReceteDetay() {
               })()}
             </TabsContent>
           )}
+
+          {/* ETİKET (TGK 2017/2284) — Aslan'ın "etiket çalışmıyor" geri bildirimi sonrası */}
+          <TabsContent value="etiket" className="space-y-4 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-blue-500" />
+                  TGK 2017/2284 Uyumlu Etiket
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Onay durumu kontrolü */}
+                {!recipe.gramajApproved && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded border border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                    <p className="text-xs">
+                      Reçete henüz onaylanmadı — etiket basımı için "Onaylar" sekmesinden onay alınmalı.
+                    </p>
+                  </div>
+                )}
+
+                {/* Besin değeri durumu */}
+                {!recipe.nutritionFacts && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded border border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                    <p className="text-xs">
+                      Besin değerleri henüz hesaplanmadı — "Besin Değerleri" sekmesinden "Şimdi Hesapla" butonuna tıklayın.
+                    </p>
+                  </div>
+                )}
+
+                {/* Etiket özet kartı */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 border rounded">
+                    <div className="text-xs text-muted-foreground">Ürün Adı</div>
+                    <div className="text-sm font-medium">{recipe.name}</div>
+                  </div>
+                  <div className="p-3 border rounded">
+                    <div className="text-xs text-muted-foreground">Ürün Kodu</div>
+                    <div className="text-sm font-medium">{recipe.code}</div>
+                  </div>
+                  <div className="p-3 border rounded">
+                    <div className="text-xs text-muted-foreground">Net Miktar (porsiyon)</div>
+                    <div className="text-sm font-medium">
+                      {recipe.expectedUnitWeight ? `${recipe.expectedUnitWeight} g` : "—"}
+                    </div>
+                  </div>
+                  <div className="p-3 border rounded">
+                    <div className="text-xs text-muted-foreground">Batch Çıktı</div>
+                    <div className="text-sm font-medium">
+                      {recipe.baseBatchOutput ? `${recipe.baseBatchOutput} ${recipe.outputUnit || "adet"}` : "—"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Allerjen önizleme */}
+                {recipe.allergens && Array.isArray(recipe.allergens) && recipe.allergens.length > 0 && (
+                  <div className="p-3 border rounded bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
+                    <div className="text-xs font-medium mb-2">Etikette koyu/altı çizili gösterilecek alerjenler:</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {recipe.allergens.map((a: any, idx: number) => (
+                        <Badge key={idx} variant="destructive" className="text-[10px]">
+                          ⚠️ {typeof a === 'string' ? a : (a.name || a.label || JSON.stringify(a))}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Etiket aksiyonları */}
+                <div className="flex gap-2 flex-wrap pt-2">
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/etiket-hesapla?productId=${recipe.id}&productType=factory_recipe`)}
+                    disabled={!recipe.gramajApproved || !recipe.nutritionFacts}
+                    data-testid="button-open-label-editor"
+                  >
+                    <Tag className="h-4 w-4 mr-2" />
+                    Etiket Editörünü Aç
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        toast({ title: "Etiket PDF üretiliyor...", description: "Porsiyon ağırlığına göre TGK formatı" });
+                        const res = await fetch(`/api/factory/recipes/${recipe.id}/label-pdf`, { credentials: "include" });
+                        if (!res.ok) throw new Error("PDF üretilemedi");
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `etiket-${recipe.code}.pdf`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast({ title: "✅ Etiket indirildi" });
+                      } catch (err: any) {
+                        toast({ title: "Etiket üretilemedi", description: err.message, variant: "destructive" });
+                      }
+                    }}
+                    disabled={!recipe.gramajApproved || !recipe.nutritionFacts}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    PDF İndir
+                  </Button>
+                </div>
+
+                <div className="text-xs text-muted-foreground p-3 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                  🏷️ <strong>TGK 2017/2284 zorunlu alanlar:</strong> Ürün adı, net miktar, son tüketim tarihi,
+                  üretici bilgileri, alerjen uyarısı, içindekiler listesi (alerjenler kalın), besin değerleri tablosu (100g + porsiyon), <strong>lot/parti numarası (Madde 9/k)</strong>.
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
 

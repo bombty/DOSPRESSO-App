@@ -195,6 +195,258 @@ router.post('/api/girdi', isAuthenticated, async (req: any, res: Response) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// 3.5) POST /api/girdi/bulk-import — Sprint 14 Phase 10 (7 May 2026)
+// CSV/Excel → JSON array → toplu hammadde yükleme
+// 2 mod:
+//   - preview=true: sadece validation, INSERT yapmaz
+//   - preview=false: INSERT yapar (sadece valid kayıtları)
+// ═══════════════════════════════════════════════════════════════════
+
+interface BulkImportRow {
+  code?: string;          // boş ise auto HAM###
+  name: string;           // ZORUNLU
+  category?: string;
+  unit?: string;          // default: kg
+  brand?: string;
+  materialGroup?: string;
+  supplierCode?: string;
+  contentInfo?: string;
+  allergens?: string;     // virgül-ayrılı: "süt, yumurta, gluten"
+  isAllergen?: boolean | string;
+  notes?: string;
+  currentUnitPrice?: string | number;
+  energyKcal?: string | number;
+  protein?: string | number;
+  carbohydrate?: string | number;
+  fat?: string | number;
+  saturatedFat?: string | number;
+  sugar?: string | number;
+  salt?: string | number;
+  fiber?: string | number;
+  netContentValue?: string | number;
+  netContentUnit?: string;
+}
+
+interface ImportResult {
+  rowIndex: number;
+  status: 'ok' | 'duplicate' | 'invalid' | 'created';
+  code?: string;
+  name?: string;
+  message?: string;
+  data?: any;
+}
+
+router.post('/api/girdi/bulk-import', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!canWrite(user.role)) {
+      return res.status(403).json({ message: 'Toplu yükleme yetkiniz yok' });
+    }
+
+    const { rows, preview = false, skipDuplicates = true } = req.body as {
+      rows: BulkImportRow[];
+      preview?: boolean;
+      skipDuplicates?: boolean;
+    };
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ message: 'Geçerli satır gönderilmedi' });
+    }
+
+    if (rows.length > 500) {
+      return res.status(400).json({
+        message: 'Tek seferde maksimum 500 satır yükleyebilirsiniz. Daha büyük CSV\'leri böleyin.',
+      });
+    }
+
+    // Mevcut tüm kodları cache'le (duplicate kontrolü için)
+    const existingMaterials = await db
+      .select({ code: rawMaterials.code, name: rawMaterials.name })
+      .from(rawMaterials);
+    const existingCodes = new Set(existingMaterials.map(m => m.code));
+    const existingNames = new Map(existingMaterials.map(m => [m.name.toLowerCase().trim(), m.code]));
+
+    // Auto-code generator için son HAM### kodu bul
+    const lastHamCode = existingMaterials
+      .map(m => m.code)
+      .filter(c => c && /^HAM\d+$/.test(c))
+      .map(c => parseInt(c.replace('HAM', '')))
+      .reduce((max, n) => Math.max(max, n), 0);
+
+    let nextHamSeq = lastHamCode + 1;
+
+    const results: ImportResult[] = [];
+    const validInserts: any[] = [];
+    const generatedCodesInBatch = new Set<string>(); // Aynı batch içinde aynı kod 2 kez auto-generate edilmesin
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      // Validation 1: name zorunlu
+      if (!row.name || typeof row.name !== 'string' || row.name.trim().length < 2) {
+        results.push({
+          rowIndex: i + 1,
+          status: 'invalid',
+          message: 'name (hammadde adı) zorunlu, en az 2 karakter olmalı',
+        });
+        continue;
+      }
+
+      const cleanName = row.name.trim();
+      let code = (row.code || '').trim().toUpperCase();
+
+      // Code generate
+      if (!code) {
+        // İsim eşleşmesi var mı? (akıllı duplicate önleme)
+        const existingCodeForName = existingNames.get(cleanName.toLowerCase());
+        if (existingCodeForName) {
+          if (skipDuplicates) {
+            results.push({
+              rowIndex: i + 1,
+              status: 'duplicate',
+              code: existingCodeForName,
+              name: cleanName,
+              message: `Bu isimde hammadde zaten var: ${existingCodeForName}`,
+            });
+            continue;
+          }
+          // skipDuplicates=false: yine de yeni kod ile ekle
+        }
+
+        // Yeni kod üret
+        do {
+          code = `HAM${String(nextHamSeq).padStart(3, '0')}`;
+          nextHamSeq++;
+        } while (existingCodes.has(code) || generatedCodesInBatch.has(code));
+      } else {
+        // Manuel kod verilmiş
+        if (existingCodes.has(code) || generatedCodesInBatch.has(code)) {
+          if (skipDuplicates) {
+            results.push({
+              rowIndex: i + 1,
+              status: 'duplicate',
+              code,
+              name: cleanName,
+              message: `Kod zaten kullanımda: ${code}`,
+            });
+            continue;
+          }
+        }
+      }
+      generatedCodesInBatch.add(code);
+
+      // Allerjen array'e dönüştür
+      let allergensArray: string[] = [];
+      if (row.allergens) {
+        if (Array.isArray(row.allergens)) {
+          allergensArray = (row.allergens as string[]).map(a => String(a).trim()).filter(Boolean);
+        } else if (typeof row.allergens === 'string') {
+          allergensArray = row.allergens.split(',').map(a => a.trim()).filter(Boolean);
+        }
+      }
+
+      // Numeric parse helper
+      const num = (v: any): string | null => {
+        if (v == null || v === '') return null;
+        const n = parseFloat(String(v).replace(',', '.'));
+        return isNaN(n) ? null : n.toString();
+      };
+
+      // Energy KJ otomatik hesapla (kcal × 4.184)
+      const energyKcalNum = num(row.energyKcal);
+      const energyKjNum = energyKcalNum != null ? (parseFloat(energyKcalNum) * 4.184).toFixed(2) : null;
+
+      const insertData: any = {
+        code,
+        name: cleanName,
+        category: row.category?.trim() || null,
+        unit: (row.unit?.trim() || 'kg').toLowerCase(),
+        brand: row.brand?.trim() || null,
+        materialGroup: row.materialGroup?.trim() || null,
+        supplierCode: row.supplierCode?.trim() || null,
+        contentInfo: row.contentInfo?.trim() || null,
+        allergens: allergensArray.length > 0 ? allergensArray : null,
+        isAllergen: row.isAllergen === true || row.isAllergen === 'true' || row.isAllergen === 'evet' || allergensArray.length > 0,
+        notes: row.notes?.trim() || null,
+        currentUnitPrice: num(row.currentUnitPrice),
+        energyKcal: energyKcalNum,
+        energyKj: energyKjNum,
+        protein: num(row.protein),
+        carbohydrate: num(row.carbohydrate),
+        fat: num(row.fat),
+        saturatedFat: num(row.saturatedFat),
+        sugar: num(row.sugar),
+        salt: num(row.salt),
+        fiber: num(row.fiber),
+        netContentValue: num(row.netContentValue),
+        netContentUnit: row.netContentUnit?.trim() || null,
+        isActive: true,
+      };
+
+      results.push({
+        rowIndex: i + 1,
+        status: 'ok',
+        code,
+        name: cleanName,
+        data: preview ? insertData : undefined,
+      });
+
+      if (!preview) {
+        validInserts.push(insertData);
+      }
+    }
+
+    // Stats
+    const stats = {
+      total: rows.length,
+      ok: results.filter(r => r.status === 'ok').length,
+      duplicate: results.filter(r => r.status === 'duplicate').length,
+      invalid: results.filter(r => r.status === 'invalid').length,
+      created: 0,
+    };
+
+    if (preview) {
+      return res.json({
+        mode: 'preview',
+        stats,
+        results: results.slice(0, 100), // Frontend'i bunaltmasın
+        truncated: results.length > 100,
+      });
+    }
+
+    // Gerçek INSERT (transactional değil — partial success kabul)
+    let createdCount = 0;
+    if (validInserts.length > 0) {
+      try {
+        const inserted = await db.insert(rawMaterials).values(validInserts).returning({ id: rawMaterials.id, code: rawMaterials.code });
+        createdCount = inserted.length;
+        // Audit log (basit)
+        console.log(`[bulk-import] User ${user.id} (${user.username}) inserted ${createdCount} raw materials`);
+      } catch (err) {
+        console.error('[bulk-import] Insert error:', err);
+        return res.status(500).json({
+          message: 'Toplu ekleme sırasında hata oluştu',
+          error: String(err),
+          partialResults: results,
+        });
+      }
+    }
+
+    stats.created = createdCount;
+
+    return res.json({
+      mode: 'commit',
+      stats,
+      results: results.slice(0, 100),
+      truncated: results.length > 100,
+    });
+  } catch (error: unknown) {
+    console.error('/api/girdi/bulk-import error:', error);
+    return res.status(500).json({ message: 'Toplu yükleme başarısız', error: String(error) });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // 4) PUT /api/girdi/:id — Girdi güncelle
 // ═══════════════════════════════════════════════════════════════════
 
