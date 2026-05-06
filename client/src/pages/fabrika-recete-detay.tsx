@@ -337,6 +337,25 @@ export default function FabrikaReceteDetay() {
                 <Edit className="h-3.5 w-3.5 mr-1" /> Düzenle
               </Button>
             )}
+            {/* SPESİFİKASYON PDF — Aslan 7 May 2026 talebi: yetkili roller (admin/ceo/cgo/gida_muhendisi/kalite) tıklayarak çıktı */}
+            {['admin', 'ceo', 'cgo', 'gida_muhendisi', 'kalite_kontrol', 'kalite_yoneticisi', 'recete_gm'].includes(user?.role || '') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const { downloadProductSpecPDF } = await import('@/lib/product-spec-pdf');
+                    downloadProductSpecPDF(recipe);
+                    toast({ title: "✅ Spesifikasyon PDF indirildi", description: `SD-${String(recipe.id).padStart(2, '0')} - ${recipe.name}` });
+                  } catch (err: any) {
+                    toast({ title: "PDF üretilemedi", description: err.message, variant: "destructive" });
+                  }
+                }}
+                data-testid="button-spec-pdf"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" /> Spesifikasyon PDF
+              </Button>
+            )}
             <Button size="sm" onClick={() => navigate(`/fabrika/receteler/${recipeId}/uretim`)}>
               <Play className="h-3.5 w-3.5 mr-1" /> Üretime Başla
             </Button>
