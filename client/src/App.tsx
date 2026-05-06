@@ -287,6 +287,7 @@ const SupplierAllergenForms = lazyWithRetry(() => import("@/pages/supplier-aller
 const FabrikaPersonelPerformans = lazyWithRetry(() => import("@/pages/fabrika-personel-performans"));  // Sprint 14 Phase 7
 const FiyatListesi = lazyWithRetry(() => import("@/pages/fiyat-listesi"));  // Sprint 14 Phase 8
 const GidaMuhendisiDashboard = lazyWithRetry(() => import("@/pages/gida-muhendisi-dashboard"));  // Sprint 14: Mr. Dobody akıllı dashboard
+const MrDobodyHammaddeEksiklik = lazyWithRetry(() => import("@/pages/mr-dobody-hammadde-eksiklik"));  // Aslan 7 May 2026: AI eksikleri uyarmıyor talebi
 const GirdiDetay = lazyWithRetry(() => import("@/pages/girdi-detay"));  // Aslan 7 May 2026: Hammadde detay 5 sekme (modal yerine, D-44 prensibi)
 const EtiketHesapla = lazyWithRetry(() => import("@/pages/etiket-hesapla"));  // Sprint 7 v3 (5 May 2026): Reçete → Etiket
 const PerformansYonetim = lazyWithRetry(() => import("@/pages/performans-yonetim"));  // Sprint 8 (5 May 2026): Yönetici performans
@@ -741,6 +742,9 @@ function Router() {
           </Route>
           <Route path="/gida-muhendisi-dashboard">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"]}><GidaMuhendisiDashboard /></ProtectedRoute>}
+          </Route>
+          <Route path="/mr-dobody/hammadde-eksiklik">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","kalite_yoneticisi","fabrika_mudur","fabrika_sorumlu"]}><MrDobodyHammaddeEksiklik /></ProtectedRoute>}
           </Route>
           <Route path="/girdi-yonetimi/:id">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><GirdiDetay /></ProtectedRoute>}
