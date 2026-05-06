@@ -46,6 +46,9 @@ interface LabelData {
   version?: number;
   approvedBy?: string;
   approvedAt?: string;
+  // Sprint 14 Phase 9 (7 May 2026): TGK m.9/k Lot/Parti + üretim tarihi
+  lotNumber?: string;
+  productionDate?: string;
 }
 
 // TGK Madde 9 - 14 büyük alerjen
@@ -212,6 +215,22 @@ export function generateTGKLabelPDF(data: LabelData): jsPDF {
   doc.text(data.manufacturerAddress || 'Antalya, Türkiye', margin, 141);
   if (data.countryOfOrigin) {
     doc.text(`Menşei: ${data.countryOfOrigin}`, margin, 143.5);
+  }
+
+  // Sprint 14 Phase 9 (7 May 2026): Lot/Parti + Üretim tarihi (TGK m.9/k zorunlu)
+  if (data.lotNumber || data.productionDate) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    let lotY = 146;
+    if (data.lotNumber) {
+      doc.text(`Lot/Parti: ${data.lotNumber}`, margin, lotY);
+      lotY += 2.5;
+    }
+    if (data.productionDate) {
+      const prodDate = new Date(data.productionDate);
+      doc.text(`Üretim: ${prodDate.toLocaleDateString('tr-TR')}`, margin, lotY);
+    }
+    doc.setFont('helvetica', 'normal');
   }
 
   // Versiyon ve onay
