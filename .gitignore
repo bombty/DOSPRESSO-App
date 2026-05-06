@@ -85,3 +85,9 @@ docs/audit/*.dump
 # Playwright test outputs
 test-results/
 playwright-report/
+
+# backups/ — pg_dump dosyaları (PII + şema içerir, git'e GİRMEMELİ)
+# Yerel güvenli depolama veya object storage kullanılmalı.
+backups/*.sql
+backups/*.dump
+backups/*.sql.gz
