@@ -1,5 +1,5 @@
 import {
-  Users, Clock, CreditCard, Calendar, FileText, Shield, UserPlus,
+  Users, Clock, CreditCard, Calendar, FileText, Shield, ShieldCheck, UserPlus, UserCog, DollarSign,
   CheckSquare, ClipboardList, FolderKanban, ClipboardCheck,
   Factory, Beaker, Package, TrendingUp, Wrench, BarChart3,
   MessageSquare, Star, UserCheck,
@@ -74,6 +74,10 @@ const FABRIKA_MENU: ModuleMenuConfig = {
     { id: "gida", label: "Gıda Güvenliği", path: "/fabrika/gida-guvenligi", icon: Shield },
     // Sprint 7-9 (5 May 2026): Girdi Yönetimi + TGK Etiket + Tedarikçi QC + TÜRKOMP
     { id: "girdi", label: "Girdi Yönetimi (TGK)", path: "/girdi-yonetimi", icon: Package, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
+    { id: "saf", label: "🛡️ Tedarikçi Alerjen Formu", path: "/supplier-allergen-forms", icon: ShieldCheck, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"] },
+    { id: "fiyat-listesi", label: "💰 Fiyat Listesi", path: "/fiyat-listesi", icon: DollarSign, allowedRoles: ["admin","ceo","cgo","satinalma","muhasebe","fabrika_mudur","gida_muhendisi"] },
+    { id: "fabrika-personel", label: "🏭 Personel Performans", path: "/fabrika/personel-performans", icon: UserCog, allowedRoles: ["admin","ceo","cgo","fabrika_mudur","fabrika_sorumlu","ik","muhasebe"] },
+    { id: "gm-dashboard", label: "🥗 GM Anasayfa", path: "/gida-muhendisi-dashboard", icon: Beaker, allowedRoles: ["admin","ceo","cgo","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"] },
     // Sprint 13 (6 May 2026): "Etiket Hesapla" sidebar link'i kaldırıldı.
     // Sebep: productId parametresi olmadan crash veriyordu (Eksik parametre hatası).
     // Sprint 14 planı: Etiket çalışması reçete detay sayfasının "Etiket" sekmesi olarak taşınacak.

@@ -23,3 +23,4 @@ export * from './schema/schema-22-factory-recipes';
 export * from './schema/schema-23-mrp-light';
 export * from './schema/schema-24-branch-recipes';
 export * from './schema/schema-25-score-parameters';
+export * from './schema/schema-26-supplier-allergen-forms';  // Aslan 7 May 2026: Tedarikçi Alerjen Kontrol Formu (0011.A.FR.GG.36)
