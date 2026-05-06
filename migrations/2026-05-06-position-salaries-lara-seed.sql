@@ -79,35 +79,32 @@ FROM position_salaries;
 -- ───────────────────────────────────────────────────────────────────
 -- ADIM 1: LARA POZİSYON MATRİSİ SEED (2026)
 -- ───────────────────────────────────────────────────────────────────
--- Idempotent: Eğer aynı position_code + effective_from zaten varsa skip
+-- Idempotent: WHERE NOT EXISTS ile duplicate önleme.
+-- NOT: position_salaries tablosunda (position_code, effective_from) üzerinde
+-- unique constraint YOK (sadece id PK). ON CONFLICT DO NOTHING bu tabloda
+-- çalışmaz — gerçek idempotency için WHERE NOT EXISTS kullanılmalı.
+-- Bkz. Task #354: unique constraint ekleme planlanıyor.
 
-INSERT INTO position_salaries (
-  position_code,
-  position_name,
-  total_salary,
-  base_salary,
-  bonus,
-  effective_from,
-  effective_to,
-  created_at
-) VALUES
-  -- Stajyer (⚠️ asgari ücret altında, payroll-engine fallback ile düzeltilecek)
-  ('intern', 'Stajyer', 3300000, 3100000, 200000, '2026-01-01', NULL, NOW()),
-  
-  -- Bar Buddy (junior barista yardımcısı)
-  ('bar_buddy', 'Bar Buddy', 3600000, 3100000, 300000, '2026-01-01', NULL, NOW()),
-  
-  -- Barista (saha operasyon)
-  ('barista', 'Barista', 4100000, 3100000, 800000, '2026-01-01', NULL, NOW()),
-  
-  -- Supervisor Buddy (supervisor yardımcısı)
-  ('supervisor_buddy', 'Supervisor Buddy', 4500000, 3100000, 1200000, '2026-01-01', NULL, NOW()),
-  
-  -- Supervisor (saha yönetici)
-  ('supervisor', 'Supervisor', 4900000, 3100000, 1600000, '2026-01-01', NULL, NOW())
-ON CONFLICT DO NOTHING;
--- ON CONFLICT: position_salaries tablosunda unique constraint yoksa hata vermez,
--- varsa duplicate skip eder. Idempotent re-run güvenli.
+INSERT INTO position_salaries (position_code, position_name, total_salary, base_salary, bonus, effective_from, effective_to, created_at)
+SELECT 'intern', 'Stajyer', 3300000, 3100000, 200000, '2026-01-01', NULL, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM position_salaries WHERE position_code='intern' AND effective_from='2026-01-01');
+-- Stajyer (⚠️ asgari ücret altında, payroll-engine fallback ile düzeltilecek)
+
+INSERT INTO position_salaries (position_code, position_name, total_salary, base_salary, bonus, effective_from, effective_to, created_at)
+SELECT 'bar_buddy', 'Bar Buddy', 3600000, 3100000, 300000, '2026-01-01', NULL, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM position_salaries WHERE position_code='bar_buddy' AND effective_from='2026-01-01');
+
+INSERT INTO position_salaries (position_code, position_name, total_salary, base_salary, bonus, effective_from, effective_to, created_at)
+SELECT 'barista', 'Barista', 4100000, 3100000, 800000, '2026-01-01', NULL, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM position_salaries WHERE position_code='barista' AND effective_from='2026-01-01');
+
+INSERT INTO position_salaries (position_code, position_name, total_salary, base_salary, bonus, effective_from, effective_to, created_at)
+SELECT 'supervisor_buddy', 'Supervisor Buddy', 4500000, 3100000, 1200000, '2026-01-01', NULL, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM position_salaries WHERE position_code='supervisor_buddy' AND effective_from='2026-01-01');
+
+INSERT INTO position_salaries (position_code, position_name, total_salary, base_salary, bonus, effective_from, effective_to, created_at)
+SELECT 'supervisor', 'Supervisor', 4900000, 3100000, 1600000, '2026-01-01', NULL, NOW()
+WHERE NOT EXISTS (SELECT 1 FROM position_salaries WHERE position_code='supervisor' AND effective_from='2026-01-01');
 
 -- ───────────────────────────────────────────────────────────────────
 -- ADIM 2: DOĞRULAMA
