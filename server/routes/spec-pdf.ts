@@ -46,7 +46,7 @@ router.get('/api/factory/recipes/:id/specification.json', isAuthenticated, async
 });
 
 // PDF üret
-router.get('/api/factory/recipes/:id/specification.pdf', isAuthenticated, async (req: any, res) => {
+router.get('/api/factory/recipes/:id/specification-download', isAuthenticated, async (req: any, res) => {
   try {
     if (!ROLES_CAN_DOWNLOAD.includes(req.user?.role)) {
       return res.status(403).json({ message: 'Spesifikasyon yetkiniz yok' });

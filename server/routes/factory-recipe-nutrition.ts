@@ -131,7 +131,8 @@ function detectAllergens(ingredientName: string): string[] {
 // BESİN DEĞER HESAPLAMA
 // ═══════════════════════════════════════
 
-// Basit besin değer veritabanı (100gr başına) — AI olmadan çalışır
+// Basit besin değer veritabanı (100gr başına) — fallback değerler
+// Asıl kaynak: factory_ingredient_nutrition tablosu (BUG-05 fix — DB-driven)
 const NUTRITION_DB: Record<string, { kcal: number; fat: number; sfat: number; carb: number; sugar: number; fiber: number; protein: number; salt: number }> = {
   "un": { kcal: 364, fat: 1, sfat: 0.2, carb: 76, sugar: 0.3, fiber: 2.7, protein: 10, salt: 0 },
   "şeker": { kcal: 400, fat: 0, sfat: 0, carb: 100, sugar: 100, fiber: 0, protein: 0, salt: 0 },
@@ -148,6 +149,70 @@ const NUTRITION_DB: Record<string, { kcal: number; fat: number; sfat: number; ca
   "gliserin": { kcal: 400, fat: 0, sfat: 0, carb: 100, sugar: 0, fiber: 0, protein: 0, salt: 0 },
 };
 
+/**
+ * BUG-05 FIX: DB-driven besin eşleştirmesi
+ * Önce factory_ingredient_nutrition tablosunu kontrol et (141 kayıt)
+ * Bulamazsa hardcoded NUTRITION_DB fallback'e bak (14 kayıt)
+ *
+ * @param ingredientName — Ham malzeme adı
+ * @returns Besin değerleri veya null
+ */
+async function matchNutritionFromDB(ingredientName: string): Promise<{ kcal: number; fat: number; sfat: number; carb: number; sugar: number; fiber: number; protein: number; salt: number; source: 'db' | 'hardcoded' } | null> {
+  const normalized = ingredientName.toLowerCase().trim();
+
+  // 1) DB'de tam eşleşme ara (LOWER + TRIM normalize)
+  const exactMatch = await db.select()
+    .from(factoryIngredientNutrition)
+    .where(sql`LOWER(TRIM(${factoryIngredientNutrition.ingredientName})) = ${normalized}`)
+    .limit(1);
+
+  if (exactMatch[0]) {
+    const n = exactMatch[0];
+    return {
+      kcal: Number(n.energyKcal ?? 0),
+      fat: Number(n.fatG ?? 0),
+      sfat: Number(n.saturatedFatG ?? 0),
+      carb: Number(n.carbohydrateG ?? 0),
+      sugar: Number(n.sugarG ?? 0),
+      fiber: Number(n.fiberG ?? 0),
+      protein: Number(n.proteinG ?? 0),
+      salt: Number(n.saltG ?? 0),
+      source: 'db',
+    };
+  }
+
+  // 2) DB'de partial match ara (ILIKE)
+  const partialMatch = await db.select()
+    .from(factoryIngredientNutrition)
+    .where(sql`LOWER(${factoryIngredientNutrition.ingredientName}) LIKE ${`%${normalized}%`} OR ${normalized} LIKE LOWER('%' || ${factoryIngredientNutrition.ingredientName} || '%')`)
+    .limit(1);
+
+  if (partialMatch[0]) {
+    const n = partialMatch[0];
+    return {
+      kcal: Number(n.energyKcal ?? 0),
+      fat: Number(n.fatG ?? 0),
+      sfat: Number(n.saturatedFatG ?? 0),
+      carb: Number(n.carbohydrateG ?? 0),
+      sugar: Number(n.sugarG ?? 0),
+      fiber: Number(n.fiberG ?? 0),
+      protein: Number(n.proteinG ?? 0),
+      salt: Number(n.saltG ?? 0),
+      source: 'db',
+    };
+  }
+
+  // 3) Hardcoded fallback (14 yaygın malzeme)
+  for (const [key, value] of Object.entries(NUTRITION_DB)) {
+    if (normalized.includes(key)) {
+      return { ...value, source: 'hardcoded' as const };
+    }
+  }
+
+  return null;
+}
+
+// Eski sync fonksiyon — geriye dönük uyumluluk için tutuldu
 function matchNutritionDB(ingredientName: string): typeof NUTRITION_DB[string] | null {
   const lower = ingredientName.toLowerCase();
   for (const [key, value] of Object.entries(NUTRITION_DB)) {
@@ -184,8 +249,9 @@ router.post("/api/factory/recipes/:id/calculate-nutrition", isAuthenticated, asy
       const amount = Number(ing.amount || 0);
       const ratio = amount / totalGrams; // Bu malzemenin toplam içindeki oranı
 
-      // Besin değer eşleştirme
-      const nutrition = matchNutritionDB(ing.name);
+      // BUG-05 FIX: Önce DB-driven match (factory_ingredient_nutrition 141 kayıt)
+      // Bulamazsa hardcoded NUTRITION_DB fallback (14 kayıt)
+      const nutrition = await matchNutritionFromDB(ing.name);
       if (nutrition) {
         totalKcal += nutrition.kcal * ratio;
         totalFat += nutrition.fat * ratio;
