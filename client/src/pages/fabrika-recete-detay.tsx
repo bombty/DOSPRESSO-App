@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -237,6 +237,25 @@ export default function FabrikaReceteDetay() {
       });
     },
   });
+
+  // BUG-05 FIX: Reçete yüklenince besin değerleri yoksa OTOMATİK hesapla
+  // (Aslan/Sema'nın butona tıklamak zorunda kalmadan)
+  useEffect(() => {
+    if (
+      recipe &&
+      !recipe.nutritionFacts &&
+      recipe.ingredients &&
+      recipe.ingredients.length > 0 &&
+      !calculateNutritionMutation.isPending &&
+      !calculateNutritionMutation.isSuccess &&
+      ['admin', 'recete_gm', 'gida_muhendisi', 'ceo'].includes(user?.role || '')
+    ) {
+      console.log('[BUG-05 auto-trigger] Reçete besin değerleri boş, otomatik hesaplanıyor...');
+      calculateNutritionMutation.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipe?.id, recipe?.nutritionFacts, recipe?.ingredients?.length]);
+
   const presets = recipe?.batchPresets || BATCH_PRESETS_DEFAULT;
   const totalTime = (recipe?.prepTimeMinutes || 0) + (recipe?.productionTimeMinutes || 0) + (recipe?.cleaningTimeMinutes || 0);
   const scaledOutput = Math.round((recipe?.baseBatchOutput || 1) * multiplier);
@@ -333,7 +352,8 @@ export default function FabrikaReceteDetay() {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  const url = `/api/factory/recipes/${recipe.id}/specification.pdf`;
+                  // BUG-02 FIX: .pdf uzantısı Vite middleware'ine takılıyordu, /specification-download'a değişti
+                  const url = `/api/factory/recipes/${recipe.id}/specification-download`;
                   window.open(url, '_blank');
                 }}
                 data-testid="button-spec-pdf"
