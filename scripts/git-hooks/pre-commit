@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# Sprint 10 P-6 (6 May 2026) — Git pre-commit hook
+# scripts/pre-commit-check.sh çalıştırır:
+#   - Merge conflict marker check
+#   - GitHub token leak check
+#   - API key leak check
+
+exec bash "$(git rev-parse --show-toplevel)/scripts/pre-commit-check.sh"
