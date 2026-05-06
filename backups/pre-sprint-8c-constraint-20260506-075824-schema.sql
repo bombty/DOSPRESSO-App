@@ -1,0 +1,1 @@
+-- SCHEMA BACKUP STUB: full schema not committed. Run pg_dump --schema-only locally if needed.
