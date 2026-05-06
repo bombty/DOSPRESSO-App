@@ -283,6 +283,7 @@ const MaasPage = lazyWithRetry(() => import("@/pages/maas"));
 const BordromPage = lazyWithRetry(() => import("@/pages/bordrom"));
 const PersonelPuantajim = lazyWithRetry(() => import("@/pages/personel-puantajim"));  // Sprint 4 (5 May 2026)
 const GirdiYonetimi = lazyWithRetry(() => import("@/pages/girdi-yonetimi"));  // Sprint 7 (5 May 2026): TGK 2017/2284
+const GirdiDetay = lazyWithRetry(() => import("@/pages/girdi-detay"));  // Aslan 7 May 2026: Hammadde detay 5 sekme (modal yerine, D-44 prensibi)
 const EtiketHesapla = lazyWithRetry(() => import("@/pages/etiket-hesapla"));  // Sprint 7 v3 (5 May 2026): Reçete → Etiket
 const PerformansYonetim = lazyWithRetry(() => import("@/pages/performans-yonetim"));  // Sprint 8 (5 May 2026): Yönetici performans
 const SkorParametreleri = lazyWithRetry(() => import("@/pages/admin/skor-parametreleri"));  // Sprint 8 (5 May 2026): Skor admin paneli
@@ -718,6 +719,9 @@ function Router() {
           <Route path="/personel-puantajim" component={PersonelPuantajim} />
           <Route path="/girdi-yonetimi">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><GirdiYonetimi /></ProtectedRoute>}
+          </Route>
+          <Route path="/girdi-yonetimi/:id">
+            {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"]}><GirdiDetay /></ProtectedRoute>}
           </Route>
           <Route path="/etiket-hesapla">
             {() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite","sef","recete_gm","coach","trainer"]}><EtiketHesapla /></ProtectedRoute>}

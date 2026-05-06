@@ -7,6 +7,7 @@
  */
 
 import { useState } from "react";
+import { useLocation } from "wouter";  // Aslan 7 May 2026: Detay sayfasına yönlendirme için
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -35,6 +36,7 @@ const WRITE_ROLES = ['admin', 'ceo', 'satinalma', 'gida_muhendisi'];
 export default function GirdiYonetimiPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, navigate] = useLocation();  // Aslan 7 May 2026: Edit modal yerine detay sayfasına yönlendirme
   const [activeTab, setActiveTab] = useState("liste");
   const [searchQuery, setSearchQuery] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("");
@@ -183,8 +185,11 @@ export default function GirdiYonetimiPage() {
   const uniqueGroups = Array.from(new Set(girdiList.map((g: any) => g.materialGroup).filter(Boolean))) as string[];
 
   const handleEdit = (girdi: any) => {
-    setEditForm({ ...girdi });
-    setIsEditOpen(true);
+    // Aslan 7 May 2026: Modal yerine 5 sekmeli detay sayfasına yönlendir (D-44 prensibi)
+    // Eski modal kodu (yorum):
+    //   setEditForm({ ...girdi });
+    //   setIsEditOpen(true);
+    navigate(`/girdi-yonetimi/${girdi.id}`);
   };
 
   const handleDetail = (girdi: any) => {
