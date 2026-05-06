@@ -376,7 +376,7 @@ Bekleyen işler banner (izin/mesai talepleri).
 
 ---
 
-### D-40: Lara Stajyer 33.000 TL — Excel Sadakati + Sistem Fallback (6 May 2026)
+### D-40: Lara Stajyer Excel Sadakati + Sistem Fallback (6 May 2026)
 **Karar:** Lara duyurusu rakamları (24.11.2025) sistemde **AYNEN korunur**, asgari ücret kontrolü payroll-engine'de yapılır.
 
 **Detay:**
@@ -386,6 +386,28 @@ Bekleyen işler banner (izin/mesai talepleri).
 - **Çözüm:** position_salaries.totalSalary = 33.000 (Excel sadakati). payroll-engine bordro hesaplarken `MAX(positionSalary, minimum_wage_gross)` uygular. salarySource = 'minimum_wage_fallback' işaretlenir, audit trail tutulur.
 
 **Neden:** Aslan'ın talebi: "stajyer maaşı gönderdiğim Excel ve personel maaşları aynı kalmalı." Lara duyuru güncellenmedikçe veri sadakat korur, hukuki uyum sistemde sağlanır.
+
+---
+
+### D-40 v2: Lara Stajyer NET Maaş + Sistem Net→Brüt Dönüşümü (6 May 2026, 03:00 — REVİZE)
+**Karar:** D-40 v1 yanlış premise'e dayanıyordu. **Aslan'ın netleştirmesi (6 May 03:00):** "Burada sana verdiğim maaşların hepsi NET. Personellerin ELİNE GEÇECEK rakamlar. Brüt SEN hesaplarsın güncel yasal duruma göre."
+
+**Detay:**
+- DB kolonları: `position_salaries.total_salary`, `users.netSalary`, `users.bonusBase` → **HEPSİ NET**
+- Bordro hesabı: payroll-engine NET → BRÜT dönüşümü yapar (yeni `tax-calculator.ts` modülü)
+- Asgari ücret kontrolü: **NET cinsinden** (~28.075,50 TL 2026)
+- Stajyer 33.000 NET → asgari net'in 4.924,50 TL ÜZERİNDE → **fallback gereksiz**
+- Tüm Lara matrisi: zaten asgari net'in üstünde, hiçbir personele fallback uygulanmamalı
+
+**Etki:**
+- `payroll-engine.ts` satır 285-303 BUG'lu (net'i brüt'e karşılaştırıyor) → revize edilmeli
+- `payroll_parameters` tablosuna `minimum_wage_net` kolonu eklenmeli (28.075,50 × 100)
+- Bordro UI'da brüt + tüm kesintiler gösterilmeli (TR mevzuat standardı)
+- Sprint 8b migration yorumlarındaki "compliance uyarısı" yanlış alarmdı, temizlenmeli
+
+**Plan dökümanı:** `docs/PAYROLL-NET-BRUT-REVISION-PLAN-2026-05-06.md` (~3 saatlik iş, yarın yapılacak)
+
+**Eski (D-40 v1) silinmedi (audit trail), bu D-40 v2 yeni karar.**
 
 ---
 
@@ -411,4 +433,4 @@ D-20'nin politikası şu an aktif değil; yeni feature talepleri reddedilmeyecek
 
 **Bu dosya değişmez kararları içerir.** Yeni karar eklenirse yeni satır olarak ekle, eski karar silinmez. Audit trail önemli.
 
-**Son güncelleme:** 6 May 2026, 01:00 (İK Redesign 9 commit hazır + D-39/D-40/D-41 + D-20 pause notu)
+**Son güncelleme:** 6 May 2026, 03:15 (D-40 v2 revize: NET maaş netleştirmesi + payroll-engine bug tespit + revizyon planı)
