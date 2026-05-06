@@ -16,34 +16,37 @@
 --   Tarih: 24.11.2025
 --   Lokasyon: Lara_Sube_Maas_2026 Excel (Aslan'dan, 5 May 2026)
 -- 
--- ⚠️ COMPLIANCE UYARISI (Aslan görmeli!)
---   Lara duyurusu 24.11.2025'te yapıldı. O tarihte 2026 asgari ücret
---   henüz belli değildi (Asgari Ücret Tespit Komisyonu kararı 23.12.2025).
---   2026 brüt asgari ücret = 33.030 TL (RG 26.12.2025/33119).
---   Stajyer pozisyon ücreti = 33.000 TL ⇒ asgari ücretin 30 TL ALTINDA.
+-- ✅ NOT (D-40 v2, 6 May 2026 — REVİZE):
+--   Aslan netleştirdi: Lara duyurusundaki TÜM tutarlar NET (eline geçecek).
+--   Brüt rakamlar payroll-engine + tax-calculator (Sprint 9) tarafından 
+--   TR 2026 vergi sistemine göre hesaplanır.
+-- 
+--   Asgari ücret kontrolü NET cinsinden yapılır:
+--     2026 NET asgari = 28.075,50 TL (TÜRMOB)
+--     Stajyer 33.000 NET > 28.075,50 NET (4.924,50 TL ÜZERİNDE) ✓ YASAL UYUM VAR
 --   
---   YASAL SORUN: 4857 sayılı İş Kanunu uyarınca işçiye asgari ücretten
---   düşük ödeme YASAKTIR (m.39).
---   
---   ÖNERİLER:
---     1. Aslan: Lara duyurusunu 2026 asgari ücrete göre güncelle
---        (Stajyer 33.000 → minimum 33.030, mantıksal olarak 33.500-34.000)
---     2. Bu migration'da seed değerleri AYNEN duyuru rakamları (sadakat).
---        Bordro hesaplamasında payroll-engine fallback uygulayacak:
---        finalSalary = MAX(positionSalary.totalSalary, payrollParameters.minimum_wage_gross)
---     3. Mahmut Mayıs 2026 bordrosunda fiili Stajyer ücretini görsün.
+--   ÖNCEKI YANLIŞ ALARM (silindi):
+--     "Stajyer 33.000 < 33.030 brüt asgari" → NET vs BRÜT karıştırılmıştı.
+--     payroll-engine.ts satır 285-303'te bug fix yapıldı (Sprint 9, D-40 v2).
 -- 
 -- ═══════════════════════════════════════════════════════════════════
--- LARA POZİSYON MATRİSİ (24.11.2025 duyurusu)
+-- LARA POZİSYON MATRİSİ (24.11.2025 duyurusu, NET tutarlar)
 -- ═══════════════════════════════════════════════════════════════════
 -- 
--- Pozisyon          Toplam     Taban      Prim       İş Kanunu Uyumu
--- ────────────────  ─────────  ─────────  ─────────  ──────────────
--- Stajyer           33.000 TL  31.000 TL   2.000 TL  ⚠ < ASGARİ
--- Bar Buddy         36.000 TL  31.000 TL   3.000 TL  ✓
--- Barista           41.000 TL  31.000 TL   8.000 TL  ✓
--- Supervisor Buddy  45.000 TL  31.000 TL  12.000 TL  ✓
--- Supervisor        49.000 TL  31.000 TL  16.000 TL  ✓
+-- Pozisyon          NET Total  NET Taban  NET Prim   Asgari NET (28.075,50) Üstü mü?
+-- ────────────────  ─────────  ─────────  ─────────  ─────────────────────────────
+-- Stajyer           33.000 TL  31.000 TL   2.000 TL  ✓ +4.924,50 TL
+-- Bar Buddy         36.000 TL  31.000 TL   3.000 TL  ✓ +7.924,50 TL
+-- Barista           41.000 TL  31.000 TL   8.000 TL  ✓ +12.924,50 TL
+-- Supervisor Buddy  45.000 TL  31.000 TL  12.000 TL  ✓ +16.924,50 TL
+-- Supervisor        49.000 TL  31.000 TL  16.000 TL  ✓ +20.924,50 TL
+-- 
+-- Brüt karşılıkları (tax-calculator.ts ile hesaplandı, TR 2026):
+--   Stajyer 33K NET → ~41.064 BRÜT
+--   Bar Buddy 36K → ~45.959 BRÜT
+--   Barista 41K → ~54.117 BRÜT
+--   Sup Buddy 45K → ~60.643 BRÜT
+--   Supervisor 49K → ~67.169 BRÜT
 -- 
 -- ⚠️ TÜM TUTARLAR KURUŞ (₺ × 100)!
 -- Örnek: 33.000 TL = 3.300.000 kuruş
@@ -91,7 +94,7 @@ INSERT INTO position_salaries (
   effective_to,
   created_at
 ) VALUES
-  -- Stajyer (⚠️ asgari ücret altında, payroll-engine fallback ile düzeltilecek)
+  -- Stajyer (NET 33.000 TL — asgari net 28.075,50 üstünde, yasal uyum var)
   ('intern', 'Stajyer', 3300000, 3100000, 200000, '2026-01-01', NULL, NOW()),
   
   -- Bar Buddy (junior barista yardımcısı)
@@ -121,7 +124,7 @@ SELECT
   bonus / 100.0 AS prim_TL,
   effective_from,
   CASE 
-    WHEN total_salary < 3303000 THEN '⚠ Asgari ücretin ALTINDA'
+    WHEN total_salary < 2807550 THEN '⚠ Net asgari ücret altında'
     ELSE '✓ Uygun'
   END AS asgari_ucret_kontrol
 FROM position_salaries
@@ -129,7 +132,7 @@ WHERE effective_from = '2026-01-01'
 ORDER BY total_salary ASC;
 
 -- Beklenen çıktı (5 satır):
--- intern           | Stajyer          | 33000 | 31000 |  2000 | 2026-01-01 | ⚠ Asgari ücretin ALTINDA
+-- intern           | Stajyer          | 33000 | 31000 |  2000 | 2026-01-01 | ✓ Net asgari üstünde
 -- bar_buddy        | Bar Buddy        | 36000 | 31000 |  3000 | 2026-01-01 | ✓ Uygun
 -- barista          | Barista          | 41000 | 31000 |  8000 | 2026-01-01 | ✓ Uygun
 -- supervisor_buddy | Supervisor Buddy | 45000 | 31000 | 12000 | 2026-01-01 | ✓ Uygun
@@ -143,7 +146,7 @@ ORDER BY total_salary ASC;
 -- 2. ⏳ payroll-engine.ts dual-model destek (positionCode lookup + minimum_wage fallback)
 -- 3. ⏳ Aslan: Lara duyurusu güncelleme kararı — Stajyer ücretini 33.030+ yap mı?
 -- 4. ⏳ Mahmut Mayıs 2026 Lara bordrosu test:
---      - Stajyer için fallback uygulandı mı? (33.030 minimum)
+--      - (D-40 v2 sonrası fallback gereksiz, NET asgari 28.075,50)
 --      - Diğer pozisyonlar duyuru rakamlarıyla doğru hesaplandı mı?
 -- 5. ⏳ İK redesign Faz 2 (yeni hub) bu seed'i kullanacak: Lara çalışanı
 --      profili açıldığında "Lara Pozisyon: Barista — 41.000 TL" rozet gösterilecek.

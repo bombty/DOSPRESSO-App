@@ -24,6 +24,11 @@ function formatCurrency(kurus: number): string {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(kurus / 100);
 }
 
+/** Sprint 9: Bordro detay için 2 ondalık format (vergi/kesinti rakamları kuruş hassasiyetli) */
+function formatCurrencyDetail(kurus: number): string {
+  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(kurus / 100);
+}
+
 export default function BordromPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -196,6 +201,53 @@ export default function BordromPage() {
               </div>
             </div>
 
+            {/* Sprint 9 (D-40 v2): Brüt + Tüm Yasal Kesintiler — TR Mevzuat Standardı */}
+            {payroll.grossSalary !== undefined && payroll.grossSalary > 0 && (
+              <div className="border-t pt-4 space-y-2" data-testid="section-payroll-detail">
+                <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">
+                  Yasal Bordro Hesaplaması (TR 2026)
+                </div>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted-foreground">Brüt Maaş</span>
+                    <span className="font-mono font-medium" data-testid="text-gross-salary">
+                      {formatCurrencyDetail(payroll.grossSalary)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted-foreground">SGK Primi (%14)</span>
+                    <span className="font-mono text-red-600 dark:text-red-400" data-testid="text-sgk-primi">
+                      −{formatCurrencyDetail(payroll.sgkPrimi || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted-foreground">İşsizlik Sigortası (%1)</span>
+                    <span className="font-mono text-red-600 dark:text-red-400" data-testid="text-unemployment-primi">
+                      −{formatCurrencyDetail(payroll.unemploymentPrimi || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted-foreground">Gelir Vergisi</span>
+                    <span className="font-mono text-red-600 dark:text-red-400" data-testid="text-income-tax">
+                      −{formatCurrencyDetail(payroll.incomeTax || 0)}
+                      {(!payroll.incomeTax || payroll.incomeTax === 0) && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-1">(istisna)</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-muted-foreground">Damga Vergisi (%0,759)</span>
+                    <span className="font-mono text-red-600 dark:text-red-400" data-testid="text-stamp-duty">
+                      −{formatCurrencyDetail(payroll.stampDuty || 0)}
+                      {(!payroll.stampDuty || payroll.stampDuty === 0) && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 ml-1">(istisna)</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="border-t pt-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Banknote className="h-5 w-5 text-muted-foreground" />
@@ -203,6 +255,16 @@ export default function BordromPage() {
               </div>
               <span className="text-2xl font-bold" data-testid="text-my-net">{formatCurrency(payroll.netPay)}</span>
             </div>
+
+            {/* Asgari ücret fallback compliance açıklaması (varsa) */}
+            {payroll.legalNote && (
+              <div 
+                className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-md border border-amber-200 dark:border-amber-800/50"
+                data-testid="text-legal-note"
+              >
+                <span className="font-semibold">⚖️ Yasal Not:</span> {payroll.legalNote}
+              </div>
+            )}
 
             {/* İK Redesign Faz 3: PDF indirme */}
             <div className="flex justify-end pt-1">

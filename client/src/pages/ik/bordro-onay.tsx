@@ -44,10 +44,22 @@ interface PayrollRow {
   approvedAt?: string;
   user?: { firstName: string; lastName: string };
   branch?: { name: string };
+  // Sprint 9 (D-40 v2): Brüt + yasal kesintiler — TR mevzuat standardı
+  grossSalary?: number;
+  totalSgkDeduction?: number;
+  incomeTax?: number;
+  stampDuty?: number;
+  totalLegalDeductions?: number;
+  legalNote?: string;
 }
 
 function formatTL(kurus: number): string {
   return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(kurus / 100);
+}
+
+/** Sprint 9: Compact brüt/kesinti gösterimi (kart altında 1 satır) */
+function formatTLCompact(kurus: number): string {
+  return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(kurus / 100);
 }
 
 function statusLabel(status: string): { text: string; color: string; step: number } {
@@ -217,6 +229,37 @@ export default function BordroOnayPage() {
                       <div className="text-xs text-muted-foreground">net</div>
                     </div>
                   </div>
+
+                  {/* Sprint 9 (D-40 v2): Compact brüt + kesinti satırı (Mahmut için) */}
+                  {row.grossSalary !== undefined && row.grossSalary > 0 && (
+                    <div 
+                      className="mt-2 text-xs text-muted-foreground flex items-center gap-3 flex-wrap font-mono"
+                      data-testid={`detail-${row.id}`}
+                    >
+                      <span title="Brüt Maaş">
+                        Brüt: <span className="text-foreground font-medium">{formatTLCompact(row.grossSalary)} ₺</span>
+                      </span>
+                      <span title="SGK Primi (%14) + İşsizlik (%1)">
+                        SGK: <span className="text-red-600 dark:text-red-400">{formatTLCompact(row.totalSgkDeduction || 0)}</span>
+                      </span>
+                      <span title="Gelir Vergisi (asgari ücret istisnası sonrası)">
+                        GV: <span className="text-red-600 dark:text-red-400">{formatTLCompact(row.incomeTax || 0)}</span>
+                      </span>
+                      <span title="Damga Vergisi (asgari ücret istisnası sonrası)">
+                        DV: <span className="text-red-600 dark:text-red-400">{formatTLCompact(row.stampDuty || 0)}</span>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Asgari ücret fallback uyarısı (Mahmut için kompakt) */}
+                  {row.legalNote && (
+                    <div 
+                      className="mt-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/20 px-2 py-1 rounded border border-amber-200 dark:border-amber-800/40"
+                      data-testid={`legal-note-${row.id}`}
+                    >
+                      ⚖️ {row.legalNote}
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
                     <span className={`text-xs px-2 py-0.5 rounded-full ${status.color}`} data-testid={`status-${row.id}`}>

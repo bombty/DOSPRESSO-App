@@ -2,6 +2,12 @@ import { db } from "../db";
 import { positionSalaries, monthlyPayroll, users, branches, payrollParameters } from "@shared/schema";
 import { eq, and, lte, isNull, or, sql, desc } from "drizzle-orm";
 import { getMonthClassification } from "./pdks-engine";
+import { 
+  netToGross, 
+  grossToNet,
+  getMinimumWageNet as getMinNet2026Hardcoded,
+  type PayrollBreakdown 
+} from "./tax-calculator";
 
 // ═══════════════════════════════════════════════════════════════════
 // İK REDESIGN — DUAL-MODEL PAYROLL ENGINE (6 Mayıs 2026)
@@ -53,6 +59,21 @@ export interface PayrollResult {
   salarySource: 'position_matrix' | 'individual_net_salary' | 'minimum_wage_fallback';
   originalSalary?: number;  // asgari ücret fallback öncesi orjinal değer (audit için)
   legalNote?: string;       // compliance açıklaması (UI'da gösterilebilir)
+  // ─── Sprint 9 Net/Brüt Refactor (6 May 2026, D-40 v2) ───
+  /** Brüt maaş (kuruş) — net→brüt TR 2026 vergi sistemi iteratif hesabı */
+  grossSalary?: number;
+  /** SGK primi işçi payı (kuruş) — brüt × %14 */
+  sgkPrimi?: number;
+  /** İşsizlik sigortası işçi payı (kuruş) — brüt × %1 */
+  unemploymentPrimi?: number;
+  /** Toplam SGK kesintisi (kuruş) — SGK + işsizlik */
+  totalSgkDeduction?: number;
+  /** Gelir vergisi (kuruş) — asgari ücret istisnası sonrası */
+  incomeTax?: number;
+  /** Damga vergisi (kuruş) — asgari ücret istisnası sonrası */
+  stampDuty?: number;
+  /** Toplam yasal kesinti (kuruş) — SGK + gelir vergisi + damga */
+  totalLegalDeductions?: number;
 }
 
 /** Aylık bordro konfigürasyonu — payroll_deduction_config tablosundan okunur */
@@ -178,6 +199,39 @@ export async function getMinimumWageGross(year: number, month: number): Promise<
 }
 
 /**
+ * Aktif yıl/ay için payroll_parameters'dan NET asgari ücret değerini döner.
+ * Sprint 9 yeni helper (D-40 v2): Asgari ücret kontrolü NET cinsinden yapılır.
+ * 
+ * 4857 SK m.39: hiçbir net hakediş net asgari ücretten düşük olamaz.
+ * 2026: Brüt 33.030 TL → Net 28.075,50 TL (RG 26.12.2025/33119, TÜRMOB)
+ */
+export async function getMinimumWageNet(year: number, month: number): Promise<number> {
+  const dateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+  const result = await db.select({
+    minimumWageNet: payrollParameters.minimumWageNet,
+  })
+    .from(payrollParameters)
+    .where(and(
+      eq(payrollParameters.year, year),
+      lte(payrollParameters.effectiveFrom, dateStr),
+      or(
+        isNull(payrollParameters.effectiveTo),
+        sql`${payrollParameters.effectiveTo} >= ${dateStr}`
+      ),
+      eq(payrollParameters.isActive, true)
+    ))
+    .orderBy(desc(payrollParameters.effectiveFrom))
+    .limit(1);
+
+  if (!result[0]?.minimumWageNet) {
+    // Fallback: tax-calculator hardcoded 2026 değeri (28.075,50 TL = 2.807.550 kuruş)
+    console.warn('[payroll-engine] payroll_parameters.minimum_wage_net bulunamadı, hardcoded 2026 kullanılıyor', { year, month });
+    return getMinNet2026Hardcoded(year);
+  }
+  return result[0].minimumWageNet;
+}
+
+/**
  * Custom-individual modeli için users.netSalary tabanlı bir
  * "salary objesi" üretir (positionSalaries result yapısıyla aynı şekilde).
  * 
@@ -282,23 +336,29 @@ export async function calculatePayroll(
     }
   }
 
-  // 3. Asgari ücret koruması (4857 SK m.39)
-  const minWageGross = await getMinimumWageGross(year, month);
+  // 3. Asgari ücret koruması (4857 SK m.39) — NET cinsinden (Sprint 9, D-40 v2)
+  // 
+  // ÖNCEKI BUG: minWageGross (33.030 BRÜT) ile resolvedTotal (NET) karşılaştırılıyordu
+  //              → Stajyer 33.000 NET < 33.030 BRÜT TRUE çıkıyordu (matematik yanlış)
+  // 
+  // DÜZELTME: minWageNet (28.075,50 NET) ile resolvedTotal (NET) karşılaştırılıyor
+  //           → Stajyer 33.000 NET > 28.075,50 NET FALSE → fallback uygulanmaz ✓
+  const minWageNet = await getMinimumWageNet(year, month);
   let originalSalary: number | undefined;
   let legalNote: string | undefined;
-  if (resolvedTotal < minWageGross) {
+  if (resolvedTotal < minWageNet) {
     originalSalary = resolvedTotal;
-    legalNote = `Hakediş ${(resolvedTotal/100).toFixed(2)} TL asgari ücretin altındaydı; ` +
-                `4857 SK m.39 uyarınca asgari ücrete (${(minWageGross/100).toFixed(2)} TL) yükseltildi.`;
-    console.warn('[payroll-engine] Asgari ücret fallback uygulandı', {
+    legalNote = `Net hakediş ${(resolvedTotal/100).toFixed(2)} TL net asgari ücretin (${(minWageNet/100).toFixed(2)} TL) altındaydı; ` +
+                `4857 SK m.39 uyarınca net asgari ücrete yükseltildi.`;
+    console.warn('[payroll-engine] Asgari ücret fallback uygulandı (NET)', {
       userId, year, month, role: u.role, positionCode, fullName, branchId: u.branchId,
-      originalSalary: resolvedTotal,
-      adjustedSalary: minWageGross,
-      legalBasis: '4857 SK m.39',
+      originalNetSalary: resolvedTotal,
+      adjustedNetSalary: minWageNet,
+      legalBasis: '4857 SK m.39 (NET cinsinden, D-40 v2)',
     });
     // Bonus'u koru, base = total - bonus
-    resolvedTotal = minWageGross;
-    resolvedBase = Math.max(minWageGross - resolvedBonus, 0);
+    resolvedTotal = minWageNet;
+    resolvedBase = Math.max(minWageNet - resolvedBonus, 0);
     salarySource = 'minimum_wage_fallback';
   }
 
@@ -358,6 +418,22 @@ export async function calculatePayroll(
   }
   if (netPay < 0) netPay = 0;
 
+  // ─── Sprint 9 (D-40 v2): Net→Brüt dönüşümü ve yasal kesintiler ───
+  // resolvedTotal NET cinsinden, tax-calculator iteratif algoritma ile brüt'ü bulur.
+  // Hata durumunda (örn. negatif net) try/catch ile graceful degradation.
+  let taxBreakdown: PayrollBreakdown | null = null;
+  try {
+    if (resolvedTotal > 0) {
+      taxBreakdown = netToGross(resolvedTotal);
+    }
+  } catch (err) {
+    console.warn('[payroll-engine] Brüt hesabı başarısız (netToGross)', { 
+      error: String(err), 
+      netSalary: resolvedTotal,
+      userId, year, month,
+    });
+  }
+
   return {
     userId,
     userName: fullName,
@@ -388,6 +464,14 @@ export async function calculatePayroll(
     salarySource,
     originalSalary,
     legalNote,
+    // Sprint 9 yeni alanlar — brüt + tüm yasal kesintiler
+    grossSalary: taxBreakdown?.grossSalary,
+    sgkPrimi: taxBreakdown?.sgkPrimi,
+    unemploymentPrimi: taxBreakdown?.unemploymentPrimi,
+    totalSgkDeduction: taxBreakdown?.totalSgk,
+    incomeTax: taxBreakdown?.incomeTax,
+    stampDuty: taxBreakdown?.stampDuty,
+    totalLegalDeductions: taxBreakdown?.totalDeductions,
   };
 }
 
