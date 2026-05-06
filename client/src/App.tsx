@@ -225,6 +225,7 @@ const GidaGuvenligiDashboard = lazyWithRetry(() => import("@/pages/gida-guvenlig
 const GidaMuhendisiDashboard = lazyWithRetry(() => import("@/pages/gida-muhendisi-dashboard"));  // Sprint 14 (6 May 2026): Mr. Dobody akıllı anasayfa
 const GirdiDetay = lazyWithRetry(() => import("@/pages/girdi-detay"));  // Sprint 14 (6 May 2026): Hammadde detay 5 sekme (D-44)
 const FabrikaPersonelPerformans = lazyWithRetry(() => import("@/pages/fabrika-personel-performans"));  // Sprint 14 Phase 7 (7 May 2026): Üretim personel performans takibi
+const FiyatListesi = lazyWithRetry(() => import("@/pages/fiyat-listesi"));  // Sprint 14 Phase 8 (7 May 2026): Hammadde fiyat listesi
 const Setup = lazyWithRetry(() => import("@/pages/setup"));
 const MisafirGeriBildirimPublic = lazyWithRetry(() => import("@/pages/misafir-geri-bildirim"));
 
@@ -702,6 +703,7 @@ function Router() {
           <Route path="/gida-muhendisi-dashboard">{() => <HQOnly><GidaMuhendisiDashboard /></HQOnly>}</Route>
           <Route path="/girdi-yonetimi/:id">{() => <HQOnly><GirdiDetay /></HQOnly>}</Route>
           <Route path="/fabrika-personel-performans">{() => <HQOnly><FabrikaPersonelPerformans /></HQOnly>}</Route>
+          <Route path="/fiyat-listesi">{() => <HQOnly><FiyatListesi /></HQOnly>}</Route>
           <Route path="/satinalma/:tab?">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><SatinalmaMega /></ProtectedRoute>}</Route>
           <Route path="/urun-sikayet">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/raporlar/sube-saglik">{() => <ExecutiveOnly><SubeSaglikSkoru /></ExecutiveOnly>}</Route>

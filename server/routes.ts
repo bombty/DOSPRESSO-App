@@ -421,6 +421,7 @@ import recipeLabelEngineRouter from "./routes/recipe-label-engine";  // Sprint 7
 import adminHqPinManagementRouter from "./routes/admin-hq-pin-management";  // Sprint 10 P-7 (6 May 2026): HQ Kiosk PIN Yönetimi (admin only)
 import gidaMuhendisiDashboardRouter from "./routes/gida-muhendisi-dashboard";  // Sprint 14 (6 May 2026): Mr. Dobody akıllı dashboard (D-44 bağlam-bağımsız)
 import fabrikaPersonelPerformansRouter from "./routes/fabrika-personel-performans";  // Sprint 14 Phase 7 (7 May 2026): Fabrika üretim personel performans takibi
+import fiyatListesiRouter from "./routes/fiyat-listesi";  // Sprint 14 Phase 8 (7 May 2026): Hammadde fiyat listesi + price history endpoint
 import scoreParametersRouter from "./routes/score-parameters";  // Sprint 8 (5 May 2026): Skor kriterleri admin panel
 import managerRatingRouter from "./routes/manager-rating";  // Sprint 12 (5 May 2026): Yönetici değerlendirme
 import factoryRecipesRouter from "./routes/factory-recipes";
@@ -909,6 +910,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(adminHqPinManagementRouter);  // Sprint 10 P-7 (6 May 2026): /api/admin/hq-users/* (HQ Kiosk PIN Yönetimi, admin only)
   app.use(gidaMuhendisiDashboardRouter);  // Sprint 14 (6 May 2026): /api/gida-muhendisi/dashboard (Mr. Dobody akıllı dashboard)
   app.use(fabrikaPersonelPerformansRouter);  // Sprint 14 Phase 7 (7 May 2026): /api/fabrika/personel-performans (üretim personel KPI)
+  app.use(fiyatListesiRouter);  // Sprint 14 Phase 8 (7 May 2026): /api/fiyat-listesi + /api/girdi/:id/price-history
   app.use(scoreParametersRouter);  // Sprint 8 (5 May 2026): /api/score-parameters/* (admin skor kriterleri)
   app.use(managerRatingRouter);  // Sprint 12 (5 May 2026): /api/manager-rating/* (yönetici değerlendirme)
   app.use(factoryRecipesRouter);

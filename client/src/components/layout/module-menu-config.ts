@@ -74,6 +74,7 @@ const FABRIKA_MENU: ModuleMenuConfig = {
     { id: "gida", label: "Gıda Güvenliği", path: "/fabrika/gida-guvenligi", icon: Shield },
     // Sprint 7-9 (5 May 2026): Girdi Yönetimi + TGK Etiket + Tedarikçi QC + TÜRKOMP
     { id: "girdi", label: "Girdi Yönetimi (TGK)", path: "/girdi-yonetimi", icon: Package, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite"] },
+    { id: "fiyat-listesi", label: "Fiyat Listesi", path: "/fiyat-listesi", icon: FileBarChart, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","fabrika_mudur","fabrika_sorumlu","kalite","kalite_yoneticisi","recete_gm"] },
     { id: "personel-performans", label: "Personel Performans", path: "/fabrika-personel-performans", icon: TrendingUp, allowedRoles: ["admin","ceo","cgo","fabrika_mudur","fabrika_sorumlu","kalite_yoneticisi","recete_gm","sef"] },
     { id: "gm-dashboard", label: "🥗 GM Anasayfa", path: "/gida-muhendisi-dashboard", icon: ChefHat, allowedRoles: ["admin","ceo","cgo","gida_muhendisi","kalite_kontrol","kalite_yoneticisi","recete_gm"] },
     // Sprint 13 (6 May 2026): "Etiket Hesapla" sidebar link'i kaldırıldı.
