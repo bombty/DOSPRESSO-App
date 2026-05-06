@@ -1,3 +1,7 @@
+// Aslan 7 May 2026: BUG-01 Vite HMR fix — Supplier type explicit export
+// (Vite barrel zinciri HMR sırasında suppliers binding'i kaybedebiliyordu)
+export type { Supplier, InsertSupplier, SupplierStatus } from "./schema/schema-09";
+
 export * from './schema/schema-01';
 export * from './schema/schema-02';
 export * from './schema/schema-03';

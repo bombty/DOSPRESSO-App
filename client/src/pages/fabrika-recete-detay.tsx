@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HammaddeDetayDrawer } from "@/components/hammadde-detay-drawer";  // BUG-07 FIX: In-page hammadde detay drawer
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -70,6 +71,8 @@ export default function FabrikaReceteDetay() {
   const [inventorySearch, setInventorySearch] = useState("");
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [approvalScope, setApprovalScope] = useState<"gramaj" | "besin" | "alerjen">("gramaj");
+  // BUG-07 FIX: Hammadde detay drawer state
+  const [hammaddeDrawerId, setHammaddeDrawerId] = useState<number | null>(null);
   const [approvalNote, setApprovalNote] = useState("");
   
   // Sprint 7 v3 (5 May 2026): TGK Etiket önizleme dialog
@@ -638,11 +641,12 @@ export default function FabrikaReceteDetay() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/girdi-yonetimi/${ing.rawMaterialId}`);
+                                  // BUG-07 FIX: Sayfa değiştirmek yerine drawer aç (bağlam-içi)
+                                  setHammaddeDrawerId(ing.rawMaterialId);
                                 }}
                                 className="text-sm truncate block text-left hover:text-primary hover:underline cursor-pointer w-full"
                                 data-testid={`ingredient-link-${ing.refId}`}
-                                title="Hammadde detayını görüntüle (besin/alerjen/tedarikçi)"
+                                title="Hammadde detayını yan panelde aç (besin/alerjen/tedarikçi)"
                               >
                                 {ing.name}
                               </button>
@@ -1431,6 +1435,13 @@ export default function FabrikaReceteDetay() {
           </div>
         </div>
       )}
+
+      {/* BUG-07 FIX: Hammadde Detay Drawer (in-page) */}
+      <HammaddeDetayDrawer
+        rawMaterialId={hammaddeDrawerId}
+        open={hammaddeDrawerId !== null}
+        onClose={() => setHammaddeDrawerId(null)}
+      />
     </div>
   );
 }

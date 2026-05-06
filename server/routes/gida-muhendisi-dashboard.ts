@@ -122,11 +122,12 @@ router.get('/api/gida-muhendisi/dashboard', isAuthenticated, async (req: any, re
       });
     }
 
-    // Öneri 3: TÜRKOMP veri eksik (besin değeri olmayan hammadde sayısı)
+    // 3) Akıllı öneriler için reçete malzemelerini al
+    // BUG-04 FIX: factoryRecipeIngredients schema'da kolon 'name', 'ingredientName' DEĞİL
     const recipeIngredients = await db
       .select({
         recipeId: factoryRecipeIngredients.recipeId,
-        ingredientName: factoryRecipeIngredients.ingredientName,
+        ingredientName: factoryRecipeIngredients.name,  // ← schema'da 'name' kolonu
       })
       .from(factoryRecipeIngredients);
 
@@ -199,9 +200,19 @@ router.get('/api/gida-muhendisi/dashboard', isAuthenticated, async (req: any, re
       reminders,
       missingTurkomp: missingNutrition.slice(0, 20),
     });
-  } catch (error) {
-    logger.error('Gıda mühendisi dashboard fetch failed', error);
-    return res.status(500).json({ message: 'Sunucu hatası' });
+  } catch (error: any) {
+    // BUG-04 FIX: Detaylı hata logging
+    logger.error('Gıda mühendisi dashboard fetch failed', {
+      message: error?.message,
+      code: error?.code,
+      detail: error?.detail,
+      hint: error?.hint,
+      stack: error?.stack?.split('\n').slice(0, 5).join('\n'),
+    });
+    return res.status(500).json({
+      message: 'Dashboard yüklenemedi',
+      ...(process.env.NODE_ENV !== 'production' ? { debug: error?.message } : {}),
+    });
   }
 });
 
