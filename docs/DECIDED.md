@@ -431,6 +431,60 @@ D-20'nin politikası şu an aktif değil; yeni feature talepleri reddedilmeyecek
 
 ---
 
+### D-42: Pilot 18 May'a Ertele + Claude Code Audit Kabul + 5 Büyük Sprint (6 May 2026, 14:50)
+**Aslan kararı:** "Erteleme şimdi yap. Mantıklı olan Claude Code kabul et. Büyük sprintler, ufak değil."
+
+**Yeni Pilot Tarihi:** **18 May 2026 Pazartesi 10:00** (11 May'dan ertelendi)
+
+**Kabul Edilen Audit Önerileri (Claude Code, T-5):**
+- 7 acil bulgu → 5 gerçek kritik (3 yanlış alarm temizlendi):
+  - ✅ Yanlış alarm 1: `score_parameters tablo yok` → Sprint 8a Task #351 ile eklendi (PR #27)
+  - ✅ Yanlış alarm 2: `Stajyer 33.000 < asgari 33.030` → D-40 v2 ile NET/BRÜT karışıklığı düzeltildi
+  - ✅ Yanlış alarm 3: `position_salaries unique constraint yok` → Sprint 8c Task #354 ile eklendi (PR #28)
+- 🔴 Gerçek kritik 1: Manifest-auth fail-open (Security 4.2) → Sprint 10
+- 🔴 Gerçek kritik 2: Pilot Day-1 dry-run yapılmadı (QA 5.2) → Sprint 11
+- 🔴 Gerçek kritik 3: Andre + Eren + Sema onboarding zamansız → Sprint 11
+- 🔴 Gerçek kritik 4: server/routes/hr.ts 7620 satır (Engineer 1.3) → post-pilot
+- 🔴 Gerçek kritik 5: monthly_payroll vs monthly_payrolls (DBA 2.2) → Sprint 12
+
+**5 Büyük Sprint (6-25 May, 12 gün) — D-20 Madde 33: Ufak Sprint Yasak:**
+
+| Sprint | Tarih | Başlık | İş Sayısı |
+|---|---|---|---|
+| 9 | 6-8 May | Bordro & Personel Verisi | 4 |
+| 10 | 8-9 May | Güvenlik & Manifest | 6 |
+| 11 | 9-11 May | Pilot Hazırlık & Demo | 6 |
+| 12 | 11-13 May | Compliance & KVKK | 5 |
+| 13 | 14-25 May | Buffer + Pilot Day-1 + İzleme | 3 |
+
+**Pilot Hazırlık Gerçek %:**
+- Audit'in dediği: %65 (3 yanlış alarmla)
+- Gerçek (yanlış alarmlar çıkarınca): ~%72-75
+- Sprint 9-12 sonrası hedef: %95+
+
+**Persona-Spesifik Pilot Riskleri (audit'ten):**
+- Aslan (CEO): iPad mobile-first ama 328 sayfa karma → sidebar hub-first (D-41)
+- Mahmut (HQ): Bordro Excel→sistem geçişi → Sprint 11 P-13
+- Andre (Lara müdür+yatırımcı çift): Sprint 11 P-12
+- Berkan (Lara barista): Telefon-only akış, mola arası 5 dk → mobile-first kontrol
+- Eren (Fabrika): D-43 ile fabrika birincil ama tablet workflow eksik → Sprint 11 P-12
+- Sema (Reçete GM, sema+RGM çift hesap): Sprint 11 P-12
+- Yavuz (Coach): 19 şube ama pilot 4 lokasyon → UI scope (Sprint 11 P-14)
+
+**Neden bu karar:**
+- Pilot Day-1'de bordro hatası → franchise güveni kaybı (Aslan: "ölümcül")
+- Andre/Eren/Sema sistemi henüz görmedi (10 May Pazar demo)
+- Manifest-auth fail-open kritik açık (1-2 saatlik fix)
+- Net/brüt revizyon (Sprint 9) Mahmut doğrulaması bekliyor
+- 35 personel UPSERT henüz yapılmadı (Sprint 9)
+- 1 hafta gecikme << patlamayla franchise güveni kaybı
+
+**Feature Freeze Yeniden Aktif:** Pilot tarihi netleştiği için (18 May), D-20 (Feature Freeze) tekrar aktif. 18 May'a kadar yeni feature talebi reddedilir, sadece bug fix ve pilot prep.
+
+**Detaylı plan:** `docs/PENDING.md` v2.0 (24 ana iş, 9 kritik)
+
+---
+
 **Bu dosya değişmez kararları içerir.** Yeni karar eklenirse yeni satır olarak ekle, eski karar silinmez. Audit trail önemli.
 
-**Son güncelleme:** 6 May 2026, 03:15 (D-40 v2 revize: NET maaş netleştirmesi + payroll-engine bug tespit + revizyon planı)
+**Son güncelleme:** 6 May 2026, 14:50 (D-42 pilot 18 May ertele + Claude Code audit kabul + 5 büyük sprint)
