@@ -1359,6 +1359,7 @@ export const supplierQualityRecords = pgTable("supplier_quality_records", {
   // Giriş kaydı
   deliveryDate: date("delivery_date").notNull(),
   invoiceNumber: varchar("invoice_number", { length: 100 }),
+  lotNumber: varchar("lot_number", { length: 100 }),  // BUG-08 FIX (7 May 2026): TGK 2017/2284 m.9/k izlenebilirlik
   deliveredQuantity: numeric("delivered_quantity", { precision: 12, scale: 3 }),
   unit: varchar("unit", { length: 20 }),
   

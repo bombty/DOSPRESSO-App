@@ -146,9 +146,20 @@ router.get('/api/fiyat-listesi', isAuthenticated, async (req: any, res) => {
         priceDecreased,
       },
     });
-  } catch (error) {
-    logger.error('Fiyat listesi fetch failed', error);
-    return res.status(500).json({ message: 'Sunucu hatası' });
+  } catch (error: any) {
+    // BUG-03 FIX: Detaylı hata logging — Replit raporu için
+    logger.error('Fiyat listesi fetch failed', {
+      message: error?.message,
+      code: error?.code,
+      detail: error?.detail,
+      hint: error?.hint,
+      stack: error?.stack?.split('\n').slice(0, 5).join('\n'),
+    });
+    return res.status(500).json({
+      message: 'Fiyat listesi yüklenemedi',
+      // Production'da error.message kullanıcıya sızdırılmamalı, dev'de yardımcı
+      ...(process.env.NODE_ENV !== 'production' ? { debug: error?.message } : {}),
+    });
   }
 });
 
