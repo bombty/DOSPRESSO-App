@@ -25,8 +25,8 @@
 
 import { Router } from 'express';
 import { db } from '../db';
-import { factoryProductionRuns, factoryStations } from '@shared/schema/schema-08';
-import { users } from '@shared/schema/schema-02';
+import { factoryProductionRuns, factoryStations } from '@shared/schema';
+import { users } from '@shared/schema';
 import { sql, and, eq, gte, lte, desc } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { logger } from '../lib/logger';

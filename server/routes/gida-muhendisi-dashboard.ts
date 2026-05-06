@@ -23,7 +23,7 @@
 
 import { Router } from 'express';
 import { db } from '../db';
-import { factoryRecipes, factoryRecipeIngredients, factoryIngredientNutrition } from '@shared/schema/schema-22-factory-recipes';
+import { factoryRecipes, factoryRecipeIngredients, factoryIngredientNutrition } from '@shared/schema';
 import { sql, and, eq, isNull, isNotNull } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { logger } from '../lib/logger';

@@ -16,8 +16,8 @@
 
 import { Router } from 'express';
 import { db } from '../db';
-import { rawMaterials, rawMaterialPriceHistory } from '@shared/schema/schema-10';
-import { suppliers } from '@shared/schema/schema-09';
+import { rawMaterials, rawMaterialPriceHistory } from '@shared/schema';
+import { suppliers } from '@shared/schema';
 import { sql, and, eq, desc, isNotNull } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { logger } from '../lib/logger';

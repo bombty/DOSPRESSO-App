@@ -12,7 +12,7 @@
 
 import { Router } from 'express';
 import { db } from '../db';
-import { factoryRecipes } from '@shared/schema/schema-22-factory-recipes';
+import { factoryRecipes } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
 import { logger } from '../lib/logger';
