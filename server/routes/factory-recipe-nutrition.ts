@@ -12,6 +12,7 @@ import {
   factoryIngredientNutritionHistory,
   auditLogs,
   users,
+  inventory,  // Aslan 7 May 2026: Hammadde besin değerleri için (inventory.id = rawMaterialId)
 } from "@shared/schema";
 import { eq, sql, lt, asc, desc, and, ilike, or } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
@@ -150,17 +151,61 @@ const NUTRITION_DB: Record<string, { kcal: number; fat: number; sfat: number; ca
 };
 
 /**
- * BUG-05 FIX: DB-driven besin eşleştirmesi
- * Önce factory_ingredient_nutrition tablosunu kontrol et (141 kayıt)
- * Bulamazsa hardcoded NUTRITION_DB fallback'e bak (14 kayıt)
+ * BUG-05 FIX + ASLAN 7 May 2026 FIX: 4 katmanlı besin eşleştirmesi
  *
- * @param ingredientName — Ham malzeme adı
+ * ÖNCELİK SIRASI (yüksekten düşüğe):
+ * 1) inventory.id (rawMaterialId) — satınalma'nın girdiği değerler (en güvenilir)
+ * 2) factory_ingredient_nutrition tablosu (LOWER+TRIM tam eşleşme)
+ * 3) factory_ingredient_nutrition tablosu (ILIKE partial)
+ * 4) Hardcoded NUTRITION_DB (14 yaygın malzeme)
+ *
+ * @param ingredientName — Ham malzeme adı (her durumda kullanılır)
+ * @param rawMaterialId — Eğer bağlıysa inventory.id (öncelikli)
  * @returns Besin değerleri veya null
  */
-async function matchNutritionFromDB(ingredientName: string): Promise<{ kcal: number; fat: number; sfat: number; carb: number; sugar: number; fiber: number; protein: number; salt: number; source: 'db' | 'hardcoded' } | null> {
+async function matchNutritionFromDB(
+  ingredientName: string,
+  rawMaterialId?: number | null
+): Promise<{ kcal: number; fat: number; sfat: number; carb: number; sugar: number; fiber: number; protein: number; salt: number; source: 'inventory' | 'db' | 'hardcoded' } | null> {
+  // ═══════════════════════════════════════════════════════════════════
+  // 1) ASLAN'IN İSTEDİĞİ: Satınalma'nın inventory'de girdiği değerleri kullan
+  // ═══════════════════════════════════════════════════════════════════
+  if (rawMaterialId) {
+    const invRows = await db.select({
+      energyKcal: inventory.energyKcal,
+      fat: inventory.fat,
+      saturatedFat: inventory.saturatedFat,
+      carbohydrate: inventory.carbohydrate,
+      sugar: inventory.sugar,
+      fiber: inventory.fiber,
+      protein: inventory.protein,
+      salt: inventory.salt,
+    })
+      .from(inventory)
+      .where(eq(inventory.id, rawMaterialId))
+      .limit(1);
+
+    if (invRows[0] && (invRows[0].energyKcal !== null || invRows[0].fat !== null || invRows[0].protein !== null)) {
+      const n = invRows[0];
+      return {
+        kcal: Number(n.energyKcal ?? 0),
+        fat: Number(n.fat ?? 0),
+        sfat: Number(n.saturatedFat ?? 0),
+        carb: Number(n.carbohydrate ?? 0),
+        sugar: Number(n.sugar ?? 0),
+        fiber: Number(n.fiber ?? 0),
+        protein: Number(n.protein ?? 0),
+        salt: Number(n.salt ?? 0),
+        source: 'inventory',
+      };
+    }
+  }
+
   const normalized = ingredientName.toLowerCase().trim();
 
-  // 1) DB'de tam eşleşme ara (LOWER + TRIM normalize)
+  // ═══════════════════════════════════════════════════════════════════
+  // 2) DB'de tam eşleşme ara (LOWER + TRIM normalize)
+  // ═══════════════════════════════════════════════════════════════════
   const exactMatch = await db.select()
     .from(factoryIngredientNutrition)
     .where(sql`LOWER(TRIM(${factoryIngredientNutrition.ingredientName})) = ${normalized}`)
@@ -181,7 +226,9 @@ async function matchNutritionFromDB(ingredientName: string): Promise<{ kcal: num
     };
   }
 
-  // 2) DB'de partial match ara (ILIKE)
+  // ═══════════════════════════════════════════════════════════════════
+  // 3) DB'de partial match ara (ILIKE)
+  // ═══════════════════════════════════════════════════════════════════
   const partialMatch = await db.select()
     .from(factoryIngredientNutrition)
     .where(sql`LOWER(${factoryIngredientNutrition.ingredientName}) LIKE ${`%${normalized}%`} OR ${normalized} LIKE LOWER('%' || ${factoryIngredientNutrition.ingredientName} || '%')`)
@@ -202,7 +249,9 @@ async function matchNutritionFromDB(ingredientName: string): Promise<{ kcal: num
     };
   }
 
-  // 3) Hardcoded fallback (14 yaygın malzeme)
+  // ═══════════════════════════════════════════════════════════════════
+  // 4) Hardcoded fallback (14 yaygın malzeme)
+  // ═══════════════════════════════════════════════════════════════════
   for (const [key, value] of Object.entries(NUTRITION_DB)) {
     if (normalized.includes(key)) {
       return { ...value, source: 'hardcoded' as const };
@@ -249,9 +298,11 @@ router.post("/api/factory/recipes/:id/calculate-nutrition", isAuthenticated, asy
       const amount = Number(ing.amount || 0);
       const ratio = amount / totalGrams; // Bu malzemenin toplam içindeki oranı
 
-      // BUG-05 FIX: Önce DB-driven match (factory_ingredient_nutrition 141 kayıt)
-      // Bulamazsa hardcoded NUTRITION_DB fallback (14 kayıt)
-      const nutrition = await matchNutritionFromDB(ing.name);
+      // BUG-05 FIX + ASLAN 7 May FIX: 4 katmanlı match
+      // 1) inventory.id (rawMaterialId) — en güvenilir
+      // 2) factory_ingredient_nutrition tablosu (141 kayıt)
+      // 3) Hardcoded NUTRITION_DB fallback (14 kayıt)
+      const nutrition = await matchNutritionFromDB(ing.name, ing.rawMaterialId);
       if (nutrition) {
         totalKcal += nutrition.kcal * ratio;
         totalFat += nutrition.fat * ratio;

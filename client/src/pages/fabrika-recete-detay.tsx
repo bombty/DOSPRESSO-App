@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +19,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   ArrowLeft, ChefHat, Clock, Users, Package, Zap, Droplets,
   Lock, Unlock, FlaskConical, AlertTriangle, Scale,
-  Layers, Play, Edit, Eye, Timer, Flame, Snowflake,
+  Layers, Play, Edit, Save, Eye, Timer, Flame, Snowflake,
   Link2, Unlink, DollarSign, Pencil, Search, BadgeCheck, ShieldAlert,
   ArrowRight, Plus, Minus, History, ChevronRight, ClipboardCheck, User,
   Tag, Download, FileText, Boxes, Activity,
@@ -141,6 +141,50 @@ export default function FabrikaReceteDetay() {
   //   - ceo (Aslan) reçete tam yetkili (EKLENDİ)
   //   - sef (Ümit) reçete editleyemez (ÇIKARILDI)
   const canEdit = ["admin", "recete_gm", "ceo"].includes(user?.role || "") && !recipe?.editLocked;
+
+  // ASLAN 7 May 2026: Fire/Zai edit state
+  const [fireForm, setFireForm] = useState<any>({});
+  const [fireEditMode, setFireEditMode] = useState(false);
+
+  // Fire için ayrı yetki: admin + recete_gm + ceo + gida_muhendisi (Sema da girebilsin)
+  const canEditFire = ["admin", "recete_gm", "ceo", "gida_muhendisi", "sef"].includes(user?.role || "");
+
+  const handleStartFireEdit = () => {
+    setFireForm({
+      expectedLossGrams: recipe?.expectedLossGrams ?? '',
+      actualLossGrams: recipe?.actualLossGrams ?? '',
+    });
+    setFireEditMode(true);
+  };
+
+  const fireSaveMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("PATCH", `/api/factory/recipes/${recipeId}`, {
+        expectedLossGrams: data.expectedLossGrams === '' || data.expectedLossGrams == null ? null : Number(data.expectedLossGrams),
+        actualLossGrams: data.actualLossGrams === '' || data.actualLossGrams == null ? null : Number(data.actualLossGrams),
+        skipVersion: true,  // Sadece fire alanları güncellendi, versiyon snapshot'ı oluşturma
+        changeDescription: 'Fire/Zai oranları güncellendi',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/factory/recipes/${recipeId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/factory/recipes'] });
+      toast({ title: "✅ Kaydedildi", description: "Fire/Zai oranları güncellendi." });
+      setFireEditMode(false);
+      setFireForm({});
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Hata",
+        description: err?.message || "Fire kaydedilemedi.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFireSave = () => {
+    fireSaveMutation.mutate(fireForm);
+  };
   const isAdmin = ["admin", "recete_gm", "ceo"].includes(user?.role || "");
   const canEditIngredients = recipe?.canEditIngredients;
   const canViewCost = recipe?.canViewCost;
@@ -1165,6 +1209,97 @@ export default function FabrikaReceteDetay() {
 
           {/* LOT İZLEME */}
           <TabsContent value="lot" className="space-y-4 pb-8">
+            {/* ASLAN 7 May 2026: Fire/Zai oranları kart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-orange-500" />
+                  Fire / Zai Oranları
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Beklenen ve gerçekleşen fire miktarları. Üretim sonrası actual güncellenir.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-xs">Beklenen Fire (gram)</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="number"
+                        step="1"
+                        value={fireForm.expectedLossGrams ?? recipe?.expectedLossGrams ?? ''}
+                        onChange={e => setFireForm((f: any) => ({ ...f, expectedLossGrams: e.target.value }))}
+                        placeholder="0"
+                        className="h-9"
+                        data-testid="input-expected-loss"
+                        disabled={!fireEditMode}
+                      />
+                      <span className="text-xs text-muted-foreground">g</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Reçete planında öngörülen kayıp
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Gerçekleşen Fire (gram)</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="number"
+                        step="1"
+                        value={fireForm.actualLossGrams ?? recipe?.actualLossGrams ?? ''}
+                        onChange={e => setFireForm((f: any) => ({ ...f, actualLossGrams: e.target.value }))}
+                        placeholder="0"
+                        className="h-9"
+                        data-testid="input-actual-loss"
+                        disabled={!fireEditMode}
+                      />
+                      <span className="text-xs text-muted-foreground">g</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Üretim sonrası gerçek kayıp
+                    </p>
+                  </div>
+                </div>
+                {recipe?.expectedLossGrams && recipe?.actualLossGrams && (
+                  <div className="mt-3 p-2 bg-muted/30 rounded text-xs">
+                    <strong>Sapma:</strong>{' '}
+                    {(() => {
+                      const expected = Number(recipe.expectedLossGrams);
+                      const actual = Number(recipe.actualLossGrams);
+                      const diff = actual - expected;
+                      const pct = expected > 0 ? ((diff / expected) * 100).toFixed(1) : '∞';
+                      return (
+                        <span className={diff > 0 ? 'text-red-600' : diff < 0 ? 'text-green-600' : ''}>
+                          {diff > 0 ? '+' : ''}{diff}g ({pct}%)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 mt-3">
+                  {!fireEditMode ? (
+                    canEditFire && (
+                      <Button size="sm" variant="outline" onClick={handleStartFireEdit} data-testid="button-fire-edit">
+                        <Edit className="h-3 w-3 mr-1" />
+                        Düzenle
+                      </Button>
+                    )
+                  ) : (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => { setFireForm({}); setFireEditMode(false); }}>
+                        İptal
+                      </Button>
+                      <Button size="sm" onClick={handleFireSave} disabled={fireSaveMutation.isPending} data-testid="button-fire-save">
+                        <Save className="h-3 w-3 mr-1" />
+                        {fireSaveMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
