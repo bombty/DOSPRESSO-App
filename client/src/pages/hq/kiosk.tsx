@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { KvkkAydinlatma, KvkkFooterLink } from "@/components/kvkk-aydinlatma";  // Sprint 12 P-22: KVKK 6698
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -753,9 +754,19 @@ export default function HqKiosk() {
     </Button>
   );
 
-  if (!step || step === "select-user") return <>{renderSelectUser()}{exitButton}</>;
-  if (step === "enter-pin") return <>{renderEnterPin()}{exitButton}</>;
-  if (step === "exit-dialog") return <>{renderExitDialog()}{exitButton}</>;
-  if (step === "end-summary") return <>{renderEndSummary()}{exitButton}</>;
-  return <>{renderWorking()}{exitButton}</>;
+  // Sprint 12 P-22: KVKK Aydınlatma Metni — kiosk'un her ekranında bulunmalı
+  const kvkkOverlay = (
+    <>
+      <KvkkAydinlatma context="hq" />
+      <div className="fixed bottom-2 right-2 z-10 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm">
+        <KvkkFooterLink context="hq" />
+      </div>
+    </>
+  );
+
+  if (!step || step === "select-user") return <>{renderSelectUser()}{exitButton}{kvkkOverlay}</>;
+  if (step === "enter-pin") return <>{renderEnterPin()}{exitButton}{kvkkOverlay}</>;
+  if (step === "exit-dialog") return <>{renderExitDialog()}{exitButton}{kvkkOverlay}</>;
+  if (step === "end-summary") return <>{renderEndSummary()}{exitButton}{kvkkOverlay}</>;
+  return <>{renderWorking()}{exitButton}{kvkkOverlay}</>;
 }

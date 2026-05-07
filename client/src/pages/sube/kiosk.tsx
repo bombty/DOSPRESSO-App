@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { KvkkAydinlatma, KvkkFooterLink } from "@/components/kvkk-aydinlatma";  // Sprint 12 P-22: KVKK 6698
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -2433,6 +2434,14 @@ export default function BranchKiosk() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sprint 12 P-22: KVKK Aydınlatma Metni — ilk açılışta otomatik modal */}
+      <KvkkAydinlatma context="sube" />
+
+      {/* Footer'da her zaman erişilebilir KVKK linki */}
+      <div className="fixed bottom-2 right-2 z-10 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm">
+        <KvkkFooterLink context="sube" />
+      </div>
     </>
   );
 }
