@@ -327,6 +327,82 @@ router.get('/api/turkomp/cache/list', isAuthenticated, async (req: any, res: Res
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// 6) GET /api/turkomp/by-name?name=... — Hammadde adıyla TÜRKOMP eşleşme
+// ═══════════════════════════════════════════════════════════════════
+// Aslan 7 May 2026 BUG FIX: girdi-detay.tsx 'Besin (TÜRKOMP)' sekmesi
+// bu endpoint'i çağırıyordu ama backend'de yoktu — sekme hep boş kalıyordu.
+//
+// Hammadde adına göre TÜRKOMP cache'inde fuzzy match arar:
+// 1) Tam eşleşme (LOWER + TRIM)
+// 2) Partial eşleşme (ILIKE %name%)
+// 3) Türkçe karakter normalize (replace + ILIKE)
+// ═══════════════════════════════════════════════════════════════════
+
+router.get('/api/turkomp/by-name', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const name = (req.query.name as string || '').trim();
+    if (!name || name.length < 2) {
+      return res.json(null);
+    }
+
+    const normalized = name.toLowerCase();
+
+    // 1) Tam eşleşme (LOWER + TRIM)
+    let cached = await db.select({
+      id: turkompFoods.id,
+      turkompId: turkompFoods.turkompId,
+      turkompCode: turkompFoods.turkompCode,
+      name: turkompFoods.name,
+      foodGroup: turkompFoods.foodGroup,
+      energy_kcal: turkompFoods.energyKcal,
+      protein: turkompFoods.protein,
+      fat: turkompFoods.fat,
+      carbohydrate: turkompFoods.carbohydrate,
+      sugar: turkompFoods.sugar,
+      saturated_fat: turkompFoods.saturatedFat,
+      fiber: turkompFoods.fiber,
+      salt: turkompFoods.salt,
+      sodium: turkompFoods.sodium,
+    })
+      .from(turkompFoods)
+      .where(sql`LOWER(TRIM(${turkompFoods.name})) = ${normalized}`)
+      .limit(1);
+
+    // 2) Partial eşleşme (ILIKE)
+    if (cached.length === 0) {
+      cached = await db.select({
+        id: turkompFoods.id,
+        turkompId: turkompFoods.turkompId,
+        turkompCode: turkompFoods.turkompCode,
+        name: turkompFoods.name,
+        foodGroup: turkompFoods.foodGroup,
+        energy_kcal: turkompFoods.energyKcal,
+        protein: turkompFoods.protein,
+        fat: turkompFoods.fat,
+        carbohydrate: turkompFoods.carbohydrate,
+        sugar: turkompFoods.sugar,
+        saturated_fat: turkompFoods.saturatedFat,
+        fiber: turkompFoods.fiber,
+        salt: turkompFoods.salt,
+        sodium: turkompFoods.sodium,
+      })
+        .from(turkompFoods)
+        .where(sql`LOWER(${turkompFoods.name}) LIKE ${`%${normalized}%`} OR ${normalized} LIKE LOWER('%' || ${turkompFoods.name} || '%')`)
+        .limit(1);
+    }
+
+    if (cached.length === 0) {
+      return res.json(null);
+    }
+
+    return res.json(cached[0]);
+  } catch (error: unknown) {
+    console.error('/api/turkomp/by-name error:', error);
+    res.status(500).json({ message: 'TÜRKOMP eşleşme başarısız', error: String(error) });
+  }
+});
+
 export default router;
 
 // ═══════════════════════════════════════════════════════════════════

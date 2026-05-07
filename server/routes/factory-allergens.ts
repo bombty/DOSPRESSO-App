@@ -1278,4 +1278,95 @@ router.get("/api/public/allergens/recipes", async (req: any, res: Response) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// GET /api/quality/allergens/print-log — Etiket basım geçmişi
+// ═══════════════════════════════════════════════════════════════════
+// Aslan 7 May 2026 BUG FIX: kalite-alerjen.tsx bu endpoint'i çağırıyordu
+// ama backend'de yoktu — sayfa "Yüklenemedi" hatası veriyordu.
+//
+// Query params:
+//   recipeId?: number — sadece bu reçete için
+//   from?: ISO datetime — başlangıç tarihi
+//   to?: ISO datetime — bitiş tarihi
+//   limit?: number (default 20) — sayfa boyutu
+//   offset?: number (default 0) — sayfa başlangıcı
+//
+// Response:
+//   { entries: PrintLogEntry[], hasMore: boolean, total?: number }
+// ═══════════════════════════════════════════════════════════════════
+
+router.get("/api/quality/allergens/print-log", isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const user = req.user;
+    if (!ALLERGEN_VIEW_ROLES.includes(user?.role)) {
+      return res.status(403).json({ error: "Etiket basım geçmişi görüntüleme yetkiniz yok" });
+    }
+
+    const recipeId = req.query.recipeId ? Number(req.query.recipeId) : null;
+    const from = req.query.from ? new Date(String(req.query.from)) : null;
+    const to = req.query.to ? new Date(String(req.query.to)) : null;
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+
+    const conditions: any[] = [];
+    if (recipeId) conditions.push(eq(factoryRecipeLabelPrintLogs.recipeId, recipeId));
+    if (from) conditions.push(gte(factoryRecipeLabelPrintLogs.printedAt, from));
+    if (to) conditions.push(lte(factoryRecipeLabelPrintLogs.printedAt, to));
+
+    const rows = await db
+      .select({
+        id: factoryRecipeLabelPrintLogs.id,
+        recipeId: factoryRecipeLabelPrintLogs.recipeId,
+        recipeCode: factoryRecipeLabelPrintLogs.recipeCode,
+        recipeName: factoryRecipeLabelPrintLogs.recipeName,
+        printedById: factoryRecipeLabelPrintLogs.printedBy,
+        printedByFirstName: users.firstName,
+        printedByLastName: users.lastName,
+        printedByUsername: users.username,
+        printedByRole: users.role,
+        isDraft: factoryRecipeLabelPrintLogs.isDraft,
+        grammageApproved: factoryRecipeLabelPrintLogs.grammageApproved,
+        draftReason: factoryRecipeLabelPrintLogs.draftReason,
+        lotNumber: factoryRecipeLabelPrintLogs.lotNumber,
+        productionDate: factoryRecipeLabelPrintLogs.productionDate,
+        expiryDate: factoryRecipeLabelPrintLogs.expiryDate,
+        printedAt: factoryRecipeLabelPrintLogs.printedAt,
+      })
+      .from(factoryRecipeLabelPrintLogs)
+      .leftJoin(users, eq(factoryRecipeLabelPrintLogs.printedBy, users.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(factoryRecipeLabelPrintLogs.printedAt))
+      .limit(limit + 1)  // hasMore tespiti için 1 fazla çek
+      .offset(offset);
+
+    const hasMore = rows.length > limit;
+    const pageRows = hasMore ? rows.slice(0, limit) : rows;
+
+    const entries = pageRows.map(r => ({
+      id: r.id,
+      recipeId: r.recipeId,
+      recipeCode: r.recipeCode,
+      recipeName: r.recipeName,
+      printedById: r.printedById,
+      printedByName: [r.printedByFirstName, r.printedByLastName].filter(Boolean).join(' ') || r.printedByUsername || 'Bilinmiyor',
+      printedByRole: r.printedByRole,
+      isDraft: r.isDraft,
+      grammageApproved: r.grammageApproved,
+      draftReason: r.draftReason,
+      lotNumber: r.lotNumber,
+      productionDate: r.productionDate,
+      expiryDate: r.expiryDate,
+      printedAt: r.printedAt,
+    }));
+
+    return res.json({ entries, hasMore });
+  } catch (error: any) {
+    console.error('/api/quality/allergens/print-log error:', error);
+    return res.status(500).json({
+      error: "Etiket basım geçmişi yüklenemedi",
+      ...(process.env.NODE_ENV !== 'production' ? { debug: error?.message } : {}),
+    });
+  }
+});
+
 export default router;
