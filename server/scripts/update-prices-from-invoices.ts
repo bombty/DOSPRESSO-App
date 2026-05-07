@@ -11,7 +11,7 @@
  */
 
 import { db } from "../db";
-import { inventory, inventoryPriceHistory } from "@shared/schema/schema-09";
+import { inventory, inventoryPriceHistory } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import invoicePrices from "../data/invoice-prices.json";
 

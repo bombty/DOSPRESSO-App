@@ -31,12 +31,12 @@ import {
   factoryRecipeIngredients,
   factoryRecipePriceHistory,
   type FactoryRecipe,
-} from "@shared/schema/schema-22-factory-recipes";
+} from "@shared/schema";
 import {
   factoryProducts,
   factoryProductPriceHistory,
   type FactoryProduct,
-} from "@shared/schema/schema-08";
+} from "@shared/schema";
 import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
