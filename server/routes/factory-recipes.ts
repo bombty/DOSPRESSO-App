@@ -14,6 +14,7 @@ import {
   factoryRecipeCategoryAccess, factoryIngredientNutrition, factoryIngredientNutritionHistory,
   factoryRecipeApprovals, insertFactoryRecipeApprovalSchema,
   inventory, users,
+  tgkLabels,  // Aslan 7 May 2026: Onay sonrası otomatik etiket üretimi için
 } from "@shared/schema";
 import { eq, and, desc, sql, isNull, asc, inArray } from "drizzle-orm";
 import { isAuthenticated } from "../localAuth";
@@ -116,6 +117,113 @@ export function parseGrammageApproval(changeLog: string | null | undefined):
 // Task #173: Reçete onayında değişiklik öncesi/sonrası gramaj farkı
 // Son grammage_approval snapshot'ını bul (factory_recipe_versions üzerinden)
 const GRAMMAGE_APPROVAL_PREFIX = "[grammage_approval]";
+
+// ═══════════════════════════════════════════════════════════════════
+// ASLAN 7 May 2026: Onay sonrası OTOMATIK etiket üretimi
+// ═══════════════════════════════════════════════════════════════════
+// Reçete onaylandığında arka planda tgkLabels'a yeni bir taslak etiket
+// kaydı oluşturulur. Sema sonra bunu inceleyip aktive edebilir veya
+// "etiket bas" tıklayınca direk hazır olur.
+// ═══════════════════════════════════════════════════════════════════
+
+async function autoGenerateLabelAfterApproval(recipeId: number, userId: string): Promise<void> {
+  try {
+    // 1) Reçete + malzemeleri çek
+    const [recipe] = await db.select().from(factoryRecipes).where(eq(factoryRecipes.id, recipeId));
+    if (!recipe) {
+      console.warn(`[auto-label] Recipe ${recipeId} bulunamadı`);
+      return;
+    }
+
+    const ingredients = await db.select().from(factoryRecipeIngredients)
+      .where(eq(factoryRecipeIngredients.recipeId, recipeId));
+
+    if (ingredients.length === 0) {
+      console.warn(`[auto-label] Recipe ${recipeId} malzemesi yok, etiket üretilmiyor`);
+      return;
+    }
+
+    // 2) Mevcut aktif etiket varsa pasif yap (yeni versiyon)
+    const existing = await db.select()
+      .from(tgkLabels)
+      .where(and(
+        eq(tgkLabels.productId, recipeId),
+        eq(tgkLabels.productType, 'factory'),
+        eq(tgkLabels.isActive, true),
+      ))
+      .orderBy(sql`${tgkLabels.version} DESC`)
+      .limit(1);
+
+    let nextVersion = 1;
+    if (existing.length > 0) {
+      nextVersion = (existing[0].version || 1) + 1;
+      await db.update(tgkLabels)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(tgkLabels.id, existing[0].id));
+    }
+
+    // 3) Bileşen listesini hazırla (ingredient name'leri virgülle birleştir)
+    const ingredientsText = ingredients
+      .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))  // Çoktan aza sırala (TGK Madde 9/b)
+      .map(i => i.name)
+      .join(', ');
+
+    // 4) Alerjen toplama (inventory'den)
+    const allergenSet = new Set<string>();
+    for (const ing of ingredients) {
+      if (ing.rawMaterialId) {
+        const [inv] = await db.select({ allergenWarning: inventory.allergenWarning })
+          .from(inventory)
+          .where(eq(inventory.id, ing.rawMaterialId))
+          .limit(1);
+        if (inv?.allergenWarning) {
+          allergenSet.add(inv.allergenWarning);
+        }
+      }
+    }
+    const allergenWarning = allergenSet.size > 0 ? `İçerir: ${Array.from(allergenSet).join(', ')}` : '';
+
+    // 5) Etiket taslak kaydı
+    // Reçetenin nutritionFacts JSONB'sinden besin değerlerini al
+    const nf: any = recipe.nutritionFacts || {};
+
+    await db.insert(tgkLabels).values({
+      productId: recipeId,
+      productType: 'factory_product',  // tgkLabels enum: 'branch_product' | 'factory_product'
+      productName: recipe.name,
+      ingredientsText,
+      allergenWarning,
+      crossContaminationWarning: '',
+      // Beslenme bildirimi: nutritionFacts JSONB'den oku (önceden hesaplandıysa)
+      energyKcal: nf.energyKcal != null ? String(nf.energyKcal) : null,
+      energyKj: nf.energyKj != null ? String(nf.energyKj) : null,
+      fat: nf.fat != null ? String(nf.fat) : null,
+      saturatedFat: nf.saturatedFat != null ? String(nf.saturatedFat) : null,
+      carbohydrate: nf.carbohydrate != null ? String(nf.carbohydrate) : null,
+      sugar: nf.sugar != null ? String(nf.sugar) : null,
+      protein: nf.protein != null ? String(nf.protein) : null,
+      salt: nf.salt != null ? String(nf.salt) : null,
+      fiber: nf.fiber != null ? String(nf.fiber) : null,
+      netQuantityG: recipe.expectedUnitWeight ? String(recipe.expectedUnitWeight) : null,
+      shelfLifeDays: 180,
+      storageConditions: '-18°C\'de saklayınız.',
+      manufacturerName: 'DOSPRESSO Coffee & Donut',
+      manufacturerAddress: 'Antalya, Türkiye',
+      status: 'taslak',
+      version: nextVersion,
+      isActive: true,
+      createdById: userId,
+      notes: `Otomatik üretildi (kod: ${recipe.code}, onay: ${new Date().toISOString().slice(0, 10)})`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+
+    console.log(`[auto-label] ✅ Recipe ${recipeId} (${recipe.name}) için etiket v${nextVersion} otomatik üretildi`);
+  } catch (err) {
+    console.error(`[auto-label] Recipe ${recipeId} etiket üretim hatası:`, err);
+    throw err;
+  }
+}
 
 async function getLastApprovalSnapshot(recipeId: number) {
   const [row] = await db.select()
@@ -643,7 +751,16 @@ router.post("/api/factory/recipes/:id/approve-grammage", isAuthenticated, async 
       .returning();
 
     const approval = parseGrammageApproval(updated.changeLog);
-    res.json({ ok: true, grammageApproval: approval, reviewedCount, baselineExisted: !!lastSnap });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ASLAN 7 May 2026: Onay sonrası OTOMATIK etiket üretimi
+    // (background, hata olursa onay yine başarılı sayılır)
+    // ═══════════════════════════════════════════════════════════════════
+    autoGenerateLabelAfterApproval(id, userId).catch(err => {
+      console.error(`[auto-label] Recipe ${id} otomatik etiket üretilemedi:`, err);
+    });
+
+    res.json({ ok: true, grammageApproval: approval, reviewedCount, baselineExisted: !!lastSnap, autoLabelTriggered: true });
   } catch (error) {
     console.error("Grammage approve error:", error);
     res.status(500).json({ error: "Gramaj onayı kaydedilemedi" });
