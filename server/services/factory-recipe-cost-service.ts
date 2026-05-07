@@ -27,8 +27,8 @@ import {
   factoryRecipes,
   factoryRecipeIngredients,
   factoryRecipePriceHistory,
-} from "@shared/schema/schema-22-factory-recipes";
-import { factoryCostSettings } from "@shared/schema/schema-10";
+} from "@shared/schema";
+import { factoryCostSettings } from "@shared/schema";
 
 // ────────────────────────────────────────
 // CONFIG (Mahmut onayı ile güncellenir)

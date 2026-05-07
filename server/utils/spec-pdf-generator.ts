@@ -374,8 +374,9 @@ export async function generateSpecificationPDF(spec: SpecificationData): Promise
   ];
   summary.forEach(([k, v]) => {
     ctx = ensureSpace(ctx, 14);
-    ctx.page.drawText(k + ':', { x: MARGIN, y: ctx.y, size: 10, font: boldFont, color: rgb(0, 0, 0) });
-    ctx.page.drawText(v, { x: MARGIN + 130, y: ctx.y, size: 10, font, color: rgb(0, 0, 0) });
+    // FIX: drawText() string ister, integer/null durumu için String() cast
+    ctx.page.drawText(String(k) + ':', { x: MARGIN, y: ctx.y, size: 10, font: boldFont, color: rgb(0, 0, 0) });
+    ctx.page.drawText(String(v ?? '-'), { x: MARGIN + 130, y: ctx.y, size: 10, font, color: rgb(0, 0, 0) });
     ctx.y -= 14;
   });
   
@@ -553,29 +554,31 @@ export function recipeToSpec(recipe: any, options: {
   
   return {
     recipeId: recipe.id,
-    recipeCode: recipe.code,
-    productName: recipe.name,
-    productNameUpper: (recipe.name || '').toUpperCase().replace(/İ/g, 'İ'),
-    documentNo: options.documentNo || `SD-${String(recipe.id).padStart(2, '0')}`,
-    revisionNo: options.revisionNo || (recipe.version || '00'),
+    // FIX (7 May 2026): pdf-lib drawText() string bekler, recipe.version integer
+    // olduğunda runtime crash oluyor. TÜM string alanları String() ile zorla cast.
+    recipeCode: String(recipe.code ?? ''),
+    productName: String(recipe.name ?? ''),
+    productNameUpper: String(recipe.name ?? '').toUpperCase().replace(/İ/g, 'İ'),
+    documentNo: String(options.documentNo || `SD-${String(recipe.id).padStart(2, '0')}`),
+    revisionNo: String(options.revisionNo ?? recipe.version ?? '00'),
     revisionDate: '-',
-    effectiveDate: options.effectiveDate || (recipe.gramajApprovedAt 
-      ? new Date(recipe.gramajApprovedAt).toLocaleDateString('tr-TR') 
-      : new Date().toLocaleDateString('tr-TR')),
+    effectiveDate: String(options.effectiveDate || (recipe.gramajApprovedAt
+      ? new Date(recipe.gramajApprovedAt).toLocaleDateString('tr-TR')
+      : new Date().toLocaleDateString('tr-TR'))),
     preparedBy: 'Yönetim Temsilcisi',
     approvedBy: 'Genel Müdür',
     origin: 'Türkiye',
-    productCategory: recipe.category === 'donut' ? 'Hafif Fırıncılık Ürünleri (1.6.9.1)' : 
+    productCategory: recipe.category === 'donut' ? 'Hafif Fırıncılık Ürünleri (1.6.9.1)' :
                      recipe.category === 'cookie' ? 'Hafif Fırıncılık Ürünleri (1.6.9.1)' :
                      'Hafif Fırıncılık Ürünleri (1.6.9.1)',
     storageTemp: '-18°C',
     shelfLifeDays: 180,
-    containsAllergens: allergens.map((a: any) => typeof a === 'string' ? a : (a.name || a.label || '')),
-    mayContainAllergens: mayContain,
+    containsAllergens: allergens.map((a: any) => String(typeof a === 'string' ? a : (a.name || a.label || ''))),
+    mayContainAllergens: mayContain.map((a: any) => String(typeof a === 'string' ? a : (a.name || a.label || ''))),
     gmoStatus: 'GMO içermemektedir.',
     physicalProperties: recipe.expectedUnitWeight ? [
       { property: 'Net miktar', value: `${recipe.expectedUnitWeight} g` },
-      { property: 'Batch çıktı', value: `${recipe.baseBatchOutput} ${recipe.outputUnit || 'adet'}` },
+      { property: 'Batch çıktı', value: `${recipe.baseBatchOutput ?? '-'} ${recipe.outputUnit || 'adet'}` },
     ] : undefined,
   };
 }
