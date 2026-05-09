@@ -1,0 +1,12 @@
+# HQ Kiosk PIN Audit — 2026-05-10
+
+- **Çalıştırma:** 2026-05-09T23:07:11.519Z
+- **Politika:** `docs/pilot/hq-kiosk-pin-politikasi.md` §3
+- **Kapsam:** `branch_staff_pins.is_active = true` AND `branch_id != 23` AND HQ rolü
+- **HQ rolleri:** `admin`, `ceo`, `cgo`, `ceo_observer`, `muhasebe_ik`, `satinalma`, `kalite_kontrol`, `marketing`, `teknik`, `trainer`, `coach`, `destek`, `yatirimci_hq`
+- **İhlal sayısı:** 0
+- **Durum:** **PASS**
+
+## Sonuç
+
+HQ rolündeki hiçbir kullanıcının HQ branch dışında aktif kiosk PIN'i yok. Politika ihlali bulunmadı.
