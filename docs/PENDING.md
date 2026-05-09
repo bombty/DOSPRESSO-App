@@ -353,3 +353,32 @@ P-1 tamamlandıktan sonra:
 **Son güncelleme:** 6 May 2026, 23:55 (Sprint 12 P-19+P-20 tamamlandı, Sprint 13 D-44 prensibi, devir-teslim final)
 
 </details>
+
+---
+
+## 🤔 BELİRSİZ — Fabrika Müdürü Teyit Edecek (13 May Sabahı)
+
+### Pasif Fabrika User'ları (6 toplam)
+
+| Username | Aslan Cevabı (10 May Gece) | Aksiyon |
+|---|---|---|
+| `fatiharslanstj` | ❌ FATİH ARSLAN YOK fabrikada | Pasif kalsın (doğru) |
+| `umit` (Pasta Şefi) | ✅ ÇALIŞIYOR | Aktive (10 May gece SQL) |
+| `arifeyildirim0` | ✅ ÇALIŞIYOR | Aktive (10 May gece SQL) |
+| **3 belirsiz user** | ⏳ Bilinmiyor | **Fabrika müdürü 13 May sabahı teyit etsin** |
+
+### Belirsiz 3 User'ı Bulma SQL
+
+```sql
+SELECT id, username, first_name, last_name, role, is_active, deleted_at
+FROM users
+WHERE branch_id = 24
+  AND (is_active = false OR deleted_at IS NOT NULL)
+  AND username NOT IN ('fatiharslanstj')
+ORDER BY username;
+```
+
+Pilot günü (13 May) fabrika müdürü her bir user için karar verecek:
+- Çalışıyor → AKTIVE et + PIN ata
+- İşten ayrılmış → DROP (KVKK soft archive: `deleted_at = NOW()`, `account_status = 'archived'`)
+
