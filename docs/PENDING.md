@@ -1,11 +1,103 @@
-# ⏳ PENDING — Bekleyen İşler (v4.0)
+# ⏳ PENDING — Bekleyen İşler (v5.0 — 10 May Maraton)
 
-> **Sprint 10 BİTTİ. Sprint 11 P-15+P-16 hazır. Sprint 12 6/8 BİTTİ. Sprint 13 (gıda mühendisi fix + D-44) BİTTİ. Pilot 18 May.**
+> **PILOT 13 MAY 15:00 — 3 GÜN KALDI. MEGA PR #65 mergele bekliyor.**
 
-**Son güncelleme:** 6 May 2026, 23:55 (Sprint 12 P-19 + P-20 tamamlandı, Sprint 13 D-44 prensibi kabul, devir-teslim final)
-**Pilot tarihi:** 18 May 2026 Pazartesi 10:00
+**Son güncelleme:** 10 May 2026, 23:55 (5-10 May maraton özeti, 8 yeni PR, MEGA PR pilot için son temizlik)
+**Pilot tarihi:** **13 Mayıs 2026 Çarşamba 15:00** (önceki tarihler: 5 May → 12 May → 13 May)
 
 ---
+
+## 🎯 BUGÜNKÜ DURUM (10 May 23:55)
+
+| Sprint/Maraton | Durum | İlerleme |
+|---|---|---|
+| 5-10 May Maraton | ✅ **8 PR mergele + 1 bekliyor** | %95 |
+| Pilot Bloker (PR #65) | ⏳ Aslan onayı | Mergele beklenecek |
+| KVKK Temizlik (PR #65) | ⏳ Aslan onayı | 28 bordro arşiv + 11 snapshot drop |
+| 9 Reçete Seed | ✅ **DB'de** | Replit V2 ile yükledi |
+| Pilot Hazırlık | 🟢 **%99.999** | Sadece veri doldurma kaldı |
+
+---
+
+## 🔥 ŞU AN AKTİF (10 May Gece → 13 May 15:00)
+
+### P-1: Mahmut Bey Bordro Doğrulama 🔴 ASLAN
+**Süre:** 30 dk telefon | **Deadline:** 11 May Pazartesi | **Sahibi:** Aslan
+Excel'deki 5 pozisyon BRÜT rakamlarını al, Replit `PAYROLL_DRY_RUN=false` yapıp hesaplasın.
+
+### P-NEW (HQ-PIN-RESET) 🔴 ASLAN
+**Süre:** 5 dk + WhatsApp | **Deadline:** 13 May Çar 14:00 | **Sahibi:** Aslan
+- Sadece **eren + hqkiosk** PIN eksik (audit: 22 user toplam, 2 eksik)
+- Diğer 17 user için PIN'ler **VAR** (önceden tespit edilenden farklı)
+- Manuel SQL veya UI'dan tanımla
+
+### P-SEMA: 36 Yeni Hammadde + 4 Reçete 🟡 SEMA
+**Süre:** ~2 saat | **Deadline:** 12 May Salı | **Sahibi:** Sema
+1. `/girdi-yonetimi` filtre HAM-1000+ → 36 hammadde için fiyat + besin + tedarikçi + aktivasyon (~72 dk)
+2. DOREO + Golden Latte aktive (kategori düzelt) (~5 dk)
+3. 4 pilot reçete: "Besin Hesapla" + "Gramaj Onayla" → auto-label tetiklenir (~20 dk)
+
+### P-REPLIT: MEGA PR Çalıştırma 🟡 REPLİT AGENT
+**Süre:** 15 dk | **Deadline:** PR mergele sonrası | **Sahibi:** Replit
+1. `git pull origin main`
+2. DRY RUN: `tsx scripts/pilot-prep-2026-05-10/fix-pilot-blockers.ts --dry-run`
+3. DRY RUN: `tsx scripts/pilot-prep-2026-05-10/kvkk-cleanup.ts --dry-run`
+4. Aslan onaylarsa CANLI çalıştır
+5. Doğrulama: smoke + audit (0 FAIL hedef)
+
+---
+
+## ⚠️ POST-PILOT (13 May sonrası, Sprint 14+)
+
+| # | İş | Sebep | Süre |
+|---|---|---|---|
+| PP-1 | Çift bordro tablo birleştirme | `monthly_payroll` vs `monthly_payrolls` | 1 sprint |
+| PP-2 | `account_status` normalize ('active') | Dual değer raporları yanlış | 3 gün |
+| PP-3 | `leave_balances` carry-over fix | remaining > entitlement anomali | 2 gün |
+| PP-4 | `pdks_employee_mappings` doldurma | Excel import güvenliği | 3 gün |
+| PP-5 | 15 PDKS sayfası D-44 hub'da topla | UX kaosu | 1 sprint |
+| PP-6 | 3 kiosk endpoint → 1 standart | API consistency | 1 sprint |
+| PP-7 | 36 açık branch temizlik | Git hijyeni | 30 dk |
+| PP-8 | Skill files güncelleme | Çalışma Sistemi v2.0 kuralı | 1 saat |
+
+---
+
+## 📊 BU MARATON'UN PR'LARI (5-10 MAY)
+
+| PR | Konu | Durum |
+|---|---|---|
+| #46-#57 | Sprint 11/12 (KVKK, TGK audit, Spec PDF, drawer fix, çeşitli) | ✅ |
+| #58 | Derin audit + 5 schema fix | ✅ |
+| #59 | Aslan 5 akış (auto-label, fire/zai, drawer edit, nutrition rawMaterialId) | ✅ |
+| #60 | Kapsamlı 790 satır rapor | ✅ |
+| #61 | Pilot tarihi 18 → 12 düzeltme | ✅ |
+| #62 | 9 reçete seed | ✅ |
+| #63 | Smart Match V2 (7 yanlış eşleşmeyi önle) | ✅ |
+| #64 | Smoke test 12 madde + audit script | ✅ |
+| **#65** | **MEGA pilot prep + KVKK** | ⏳ **MERGE BEKLİYOR** |
+
+**Toplam:** 8 mergele + 1 bekleyen, ~165 commit, ~14.000 satır
+
+---
+
+## 🗓️ TAM TARİH (13 MAY 15:00 BAZLI)
+
+```
+10 May Pazar 23:55 ── ŞU AN
+11 May Pazartesi ──── Mahmut + HQ PIN + Sema'nın yarısı + dry run
+12 May Salı ────────── Demo + Sema'nın diğer yarısı + audit
+13 May Çar 09-14 ─── Final smoke + audit + backup + HQ PIN dağıt
+13 May Çarşamba 15:00 ─ 🎉 PILOT (4 lokasyon)
+```
+
+---
+
+
+---
+
+## 📚 ARŞİV — Önceki Sprint Detayları (6 May Öncesi)
+
+<details><summary>Tıkla aç (Sprint 11/12/13 detayları)</summary>
 
 ## 🎯 BUGÜNKÜ DURUM (6 May 23:55)
 
@@ -259,3 +351,5 @@ P-1 tamamlandıktan sonra:
 ---
 
 **Son güncelleme:** 6 May 2026, 23:55 (Sprint 12 P-19+P-20 tamamlandı, Sprint 13 D-44 prensibi, devir-teslim final)
+
+</details>
