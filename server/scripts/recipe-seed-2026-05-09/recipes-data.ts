@@ -11,10 +11,13 @@
  * - "adet" yumurta sarısı → 18g
  * - Virgülle ondalık (0,400) → nokta (0.400)
  *
- * EKSİK BİLGİLER (Aslan'a soracağım):
- * - San Sebastian reçetesi gönderilmedi
- * - "Donut Formül"deki bazı miktarlar belirsiz (yağ: 3100 g mı?)
- * - PST = ne? (Aslan'a sorulacak)
+ * EKSİK BİLGİLER:
+ * - San Sebastian reçetesi gönderilmedi — Aslan ayrıca yollayacak
+ *
+ * ASLAN'IN 9 MAY 2026 CEVAPLARI:
+ * - PST = Peynir Altı Suyu Tozu (4 reçetede geçer, açıldı)
+ * - Donut Formül "yağ: 3100 g" = Margarin Alba (doğrulandı)
+ * - "Oreo Reçete" = DOREO (DOSPRESSO'nun cookie'si, içecek topping)
  *
  * EŞLEŞME STRATEJİSİ:
  * - matchedRawMaterialId varsa: inventory'deki gerçek kayıtla bağlı
@@ -62,14 +65,14 @@ export const RECIPES_PILOT_5: RecipeData[] = [
       { name: 'İnvert Şeker Şurubu', amount: 250, unit: 'g' },
       { name: 'Gliserin', amount: 110, unit: 'g' },
 
-      // Yağlar (NOT: Aslan "yağ: 3100" yazdı, "Margarin Alba" varsayıyorum diğer cinnaboom gibi)
-      { name: 'Margarin Alba', amount: 3100, unit: 'g', notes: 'Aslan formülde sadece "yağ: 3100" yazdı, doğrula' },
+      // Yağlar (Aslan doğruladı: Margarin Alba)
+      { name: 'Margarin Alba', amount: 3100, unit: 'g' },
       { name: 'Sıvı Yağ', amount: 1300, unit: 'g' },
 
       // Süt + Soya
       { name: 'Yağsız Süt Tozu', amount: 500, unit: 'g' },
       { name: 'Soya Unu', amount: 120, unit: 'g' },
-      { name: 'PST', amount: 30, unit: 'g', notes: 'PST = ? Aslan\'a sor' },
+      { name: 'Peynir Altı Suyu Tozu', amount: 30, unit: 'g' },
       { name: 'Tuz', amount: 400, unit: 'g' },
 
       // Maya
@@ -118,7 +121,7 @@ export const RECIPES_PILOT_5: RecipeData[] = [
       { name: 'Tuz', amount: 450, unit: 'g' },
       { name: 'Yağsız Süt Tozu', amount: 450, unit: 'g' },
       { name: 'Soya Unu', amount: 120, unit: 'g' },
-      { name: 'PST', amount: 42, unit: 'g' },
+      { name: 'Peynir Altı Suyu Tozu', amount: 42, unit: 'g' },
       { name: 'Dekstroz', amount: 390, unit: 'g' },
       { name: 'Vital Gluten', amount: 150, unit: 'g' },
       { name: 'CMC (E466)', amount: 36, unit: 'g' },
@@ -173,7 +176,7 @@ export const RECIPES_PILOT_5: RecipeData[] = [
       { name: 'DATEM (E472e)', amount: 48, unit: 'g' },
       { name: 'Soya Unu', amount: 132, unit: 'g' },
       { name: 'Yağsız Süt Tozu', amount: 420, unit: 'g' },
-      { name: 'PST', amount: 42, unit: 'g' },
+      { name: 'Peynir Altı Suyu Tozu', amount: 42, unit: 'g' },
       { name: 'Kalsiyum Propiyonat (E282)', amount: 60, unit: 'g' },
     ],
   },
@@ -211,12 +214,16 @@ export const RECIPES_PILOT_5: RecipeData[] = [
 
 export const RECIPES_BONUS: RecipeData[] = [
 
-  // OREO REÇETE (PDF'den - kurabiye/cookie)
+  // OREO REÇETE (PDF'den) → DOREO Cookie (DOSPRESSO'nun Oreo benzeri kurabiyesi)
+  // Aslan: "oreo bisküviye benzeyen bir reçete. Bizdeki ismi DOREO. Tepsilerde
+  // fırınlanır, kırılıp 1kg paketlerde şubelere gönderilir. İçeceklerde topping
+  // olarak ve içeceklerin içinde kullanılır."
+  // ÖNEMLİ: Bu reçete sistemde YOK — factory_recipes'e otomatik oluşturulacak
   {
-    recipeName: 'Oreo Cheesecake',  // R-4 listesindeki adla eşleşiyor
-    recipeCode: 'ORC-001',
-    description: 'Oreo lezzetinde cookie/kurabiye reçetesi',
-    expectedOutput: 'Detayları doğrulanacak',
+    recipeName: 'DOREO',
+    recipeCode: 'DRO-001',
+    description: 'DOSPRESSO Oreo benzeri kurabiye — içecek topping ve içerik için kullanılır',
+    expectedOutput: '~19.3 kg hamur → tepsilerde fırınlanır → kırılarak 1kg paketler',
     ingredients: [
       { name: 'Toz Şeker', amount: 6000, unit: 'g' },
       { name: 'Vanilya', amount: 15, unit: 'g' },
@@ -228,7 +235,7 @@ export const RECIPES_BONUS: RecipeData[] = [
       { name: 'Tereyağ', amount: 4000, unit: 'g' },
       { name: 'Buğday Unu', amount: 6000, unit: 'g' },
     ],
-    notes: 'Reçete OREO_REC_ETE.pdf dosyasından alındı. Oreo Cheesecake mı yoksa Oreo Cookie mi olduğu Aslan ile teyit edilecek.',
+    notes: 'YENİ REÇETE — factory_recipes\'te yok, seed sırasında oluşturulmalı. Bu yarı-mamul: tepsilerde pişirilir, kırılarak 1kg paketlenir, şubelere içecek topping/içerik olarak gider.',
   },
 
   // SICAK ÇİKOLATA (Chocolate Powder)

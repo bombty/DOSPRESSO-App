@@ -160,13 +160,31 @@ async function ingestRecipe(recipe: RecipeData): Promise<IngestionResult> {
     .where(sql`LOWER(TRIM(${factoryRecipes.name})) = LOWER(TRIM(${recipe.recipeName}))`)
     .limit(1);
 
+  let recipeId: number;
+
   if (recipeRows.length === 0) {
-    result.status = 'recipe_not_found';
-    result.notes = `Reçete "${recipe.recipeName}" factory_recipes'te bulunamadı. Yeni reçete oluşturulmalı.`;
-    return result;
+    // YENİ REÇETE — factory_recipes'e otomatik oluştur (DOREO ve Golden Latte gibi)
+    if (DRY_RUN) {
+      result.status = 'recipe_not_found';
+      result.notes = `Reçete "${recipe.recipeName}" factory_recipes'te yok — DRY RUN'da CREATE atlandı, canlıda oluşturulacak`;
+      return result;
+    }
+
+    const [created] = await db.insert(factoryRecipes).values({
+      name: recipe.recipeName,
+      code: recipe.recipeCode || `AUTO-${Date.now()}`,
+      description: recipe.description || '',
+      category: 'donut',  // Default kategori, Sema sonra düzeltir
+      isActive: false,    // PASİF — Sema kontrol etmeli
+      version: 1,
+      createdBy: 'system-seed-2026-05-09',
+    } as any).returning({ id: factoryRecipes.id });
+    recipeId = created.id;
+    result.notes = `YENİ REÇETE oluşturuldu (id: ${recipeId}, status: pasif). Sema kontrol edip aktive etmeli.`;
+  } else {
+    recipeId = recipeRows[0].id;
   }
 
-  const recipeId = recipeRows[0].id;
   result.recipeId = recipeId;
 
   // 2) Reçetede zaten malzeme var mı? (idempotency)
