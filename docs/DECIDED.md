@@ -578,3 +578,83 @@ Bu gözlem D-44 prensibinin temelini oluşturdu.
 ---
 
 **Son güncelleme:** 6 May 2026, 22:55 (D-44 Bağlam-İçi Tab prensibi + Sprint 13 fix'leri)
+
+
+---
+
+## 📅 5-10 MAY MARATON KARARLARI (v5.0)
+
+> **Son güncelleme:** 10 May 2026, 23:55 (8 PR mergele + 1 mega bekliyor)
+
+### D-45: Pilot Tarihi 12 → 13 May 15:00 (Final)
+**Tarih:** 10 May 2026 | **Sebep:** Aslan kararı, daha çok hazırlık zamanı
+- 5 May → 12 May → **13 May Çarşamba 15:00** (final)
+- 15:00 saati = sabah 8 saat tam hazırlık zamanı
+- 4 lokasyon: Işıklar #5, Lara #8, HQ #23, Fabrika #24
+
+### D-46: Pilot 4 Ürünle Başlasın (San Sebastian Sonra)
+**Tarih:** 9 May 2026 | **Sebep:** Aslan kararı, San Sebastian reçetesi yok
+- Pilot ürünleri: Donut Base Hamuru, Cinnaboom Classic, Cinnaboom Brownie, Cheesecake Base
+- San Sebastian post-pilot eklenir
+- DOREO + Golden Latte yeni reçete olarak eklendi (yarı-mamul / topping)
+
+### D-47: rawMaterialId → inventory.id (raw_materials yedek)
+**Tarih:** 7 May 2026 | **Sebep:** PR #59'da bilinçli karar
+- `factory_recipe_ingredients.raw_material_id` → `inventory.id` FK
+- `raw_materials` artık yedek tablo (legacy)
+- Nutrition hesabı 4 katmanlı: inventory > factory_ingredient_nutrition (exact) > partial > hardcoded
+- 145 ingredient `raw_materials`'da yok ama inventory'de tam — DOĞRU
+
+### D-48: Onaylanmış Reçete → Otomatik Etiket (Auto-Trigger)
+**Tarih:** 7 May 2026 | **Sebep:** Aslan'ın 5 akış talebi
+- `approve-grammage` endpoint'inde `autoGenerateLabelAfterApproval()` helper
+- Background fire-and-forget — onay yine başarılı sayılır
+- `tgkLabels` taslak otomatik oluşur (TGK Madde 9 zorunlu 14 alan dolu)
+- Sema sonra "Etiket Bas" tıklayınca PDF üretir
+
+### D-49: Drawer'da Inline Edit (Reçeteden Hammadde)
+**Tarih:** 7 May 2026 | **Sebep:** Aslan'ın "fiyat girme eğer yoksa" talebi
+- `HammaddeDetayDrawer` 262 → 432 satır yeniden yazıldı
+- View modu: Eksiklik badge'leri (kırmızı "Fiyat eksik", turuncu "Besin eksik")
+- Edit modu: 6'lı besin grid + fiyat input + alerjen toggle
+- Cache invalidation: drawer save → reçete besin hesabı otomatik tazelenir
+
+### D-50: Smart Match V2 — FORCE_EXACT_MATCH + DENIED_KEYWORDS
+**Tarih:** 9 May 2026 | **Sebep:** V1'de 7 yanlış eşleşme (Tuz→Cihaz, Sıvı Yağ→Şanti, vs)
+- 4 katmanlı algoritma:
+  1. Tam eşleşme (her zaman önce)
+  2. FORCE_EXACT_MATCH listesi (10 ingredient yanlış eşleşmeyi önler)
+  3. Partial + word boundary + Levenshtein + MIN_CONFIDENCE 0.70
+  4. Yeni inventory item oluştur (PASIF)
+- DENIED_KEYWORDS: ölçer, cihaz, metre, ambalaj, deterjan, kasa, kutu, şişe
+- Sonuç: 9/9 reçete yüklendi, 0 yanlış eşleşme
+
+### D-51: KVKK Soft Archive (DROP DEĞİL) — Silinmiş User Bordrosu
+**Tarih:** 10 May 2026 | **Sebep:** İş Kanunu m.75 (10 yıl saklama) + KVKK m.7 (gizleme)
+- 28 silinmiş user bordrosu **silinmedi**, `status='archived'` ile gizlendi
+- `monthly_payroll`'a 3 yeni kolon: `status`, `archived_at`, `archived_reason`
+- UI default `status='active'` filter
+- 10 yıl yasal saklama yükümlülüğü korunur
+
+### D-52: KVKK Snapshot Tablo DROP (BACKUP'lı)
+**Tarih:** 10 May 2026 | **Sebep:** KVKK m.7 (silme) + 82 user şifre hash riski
+- 11 snapshot tablo (`*_pre_phase*`, `*_bk_2026*`) backup'a alındı + DROP edildi
+- `pg_dump` → `docs/audit/backups/snapshot-20260510-archive.dump`
+- `audit_logs` INSERT (kim/ne zaman/hangi tablolar)
+- Yasal tutanak: `docs/KVKK-VERI-IMHA-2026-05-10.md`
+
+### D-53: Tek Mega PR Yaklaşımı (Pilot Stresi Altında)
+**Tarih:** 10 May 2026 | **Sebep:** Aslan: "bugün 10 mayıs. dolayısıyla birçok işi bitirelim şimdi"
+- 6 ayrı küçük PR yerine 1 mega PR (#65)
+- 4 pilot bloker + 2 KVKK temizlik tek paket
+- Mergele süresi: 1 dk vs 6 ayrı dk
+- Risk daha yüksek (rollback 1 paketi geri alır), ama hız önemli
+
+### D-54: Sistem Tracker Dosyaları Güncellenmiyor (Tespit + Düzeltme)
+**Tarih:** 10 May 2026 | **Sebep:** Aslan'ın eleştirisi
+- 5 May'dan beri 91 commit yapıldı, AMA TODAY/PENDING/DECIDED güncellenmedi
+- 4 skill files de 5 May'dan beri update yok
+- Aslan'ın "Çalışma Sistemi v2.0" kuralı çiğnendi (mandatory update)
+- Çözüm: Bu MEGA PR'da hepsi güncellendi
+- Post-pilot kural: Her PR sonrası tracker update zorunlu (pre-commit hook?)
+

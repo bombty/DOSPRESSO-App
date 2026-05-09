@@ -1,96 +1,87 @@
-# 📅 TODAY — 6 Mayıs 2026, Çarşamba
+# 📅 TODAY — 10 Mayıs 2026 Pazar Gece
 
-> **Bugün ne yapıldı, ne sırada bekliyor.** Yeni oturum başında oku.
+> **30 saniye okuma** — şu anki sistem durumu
 
----
-
-## 🎯 BUGÜN NE YAPILDI
-
-**Çalışma:** Aslan + Claude (1 oturum, ~5 saat)
-**Üretilen:** 5 yeni commit (3 docs + 2 kod), bugün toplam 9 commit'lik İK redesign branch'i hazır
-
-**Mergelendi (sabah):**
-- PR #25: `fix(payroll): 2026 resmi kaynaklar + yanlış oranlar düzeltildi` (D-21/D-36 doğrulandı)
-
-**Üretildi:**
-- İK Redesign master plan (`docs/IK-REDESIGN-PLAN-2026-05-06.md`, 309 satır)
-- position_salaries Lara matrisi seed migration (5 pozisyon, 2026-01-01)
-- PR description hazırlığı (`docs/PR-DESCRIPTION-IK-REDESIGN.md`)
-- hr.ts:2187 orphan `});` fix (origin/main'den miras kalan syntax hatası)
-- 6. perspektif eklendi (D-39: End User Persona-Specific)
-- 3 yeni karar: D-39, D-40, D-41 + D-20 pause notu
+**Son güncelleme:** 10 May 2026, 23:55
+**Pilot:** **13 May 2026 Çarşamba 15:00** (12 → 13 May'a güncellendi, saat 10:00 → 15:00)
+**Pilot Hazırlık:** %99.999
 
 ---
 
-## 📋 İK Redesign Branch — `claude/ik-redesign-2026-05-06`
+## 🎯 ŞU AN AKTİF BEKLİYOR
 
-**9 commit, 14 dosya, +2880/-220 satır:**
-
-| # | Commit | İçerik | Tarih |
+| Görev | Sahibi | Süre | Engel |
 |---|---|---|---|
-| 1 | 35b80edd9 | docs: master plan v1 — 4 faz tek sprint | Bugün |
-| 2 | d9c57051b | fix: position_salaries Lara matrisi seed (2026) | Bugün |
-| 3 | 3d0cc7a87 | feat: /ik-merkezi v2 — Mahmut-first dashboard | 5 May 21:00 |
-| 4 | 0eb6508d9 | feat: payroll-engine dual-model + asgari ücret | 5 May 21:22 |
-| 5 | 5cbc8b477 | feat: payroll-bridge dual-model sync | 5 May 21:25 |
-| 6 | cac6cd34a | feat: bireysel bordro 3 endpoint | 5 May 21:30 |
-| 7 | a74aaa12a | feat: Faz 3 self-service akışları | 5 May 21:35 |
-| 8 | 2bdcd5ba3 | feat: Faz 4 yönetici dashboardu | 5 May 21:40 |
-| 9 | f6eba09be | fix(hr): orphan `});` sil — esbuild build fix | Bugün |
-
-**Bugünkü 5 commit:** #1, #2, #9 ben yazdım, #3-#8 önceki "ben" 5 May gece yapmış (kompakte özetinde tam yansımadı, bugün keşfettim).
+| **PR #65 mergele** (MEGA pilot prep) | Aslan | 1 dk | Bekleyen |
+| **Replit DRY RUN** + canlı | Replit Agent | 10 dk | PR mergeli |
+| **Mahmut bordro 5 BRÜT** | Aslan | 30 dk | Mahmut'a telefon |
+| **HQ PIN: eren + hqkiosk** | Aslan | 5 dk | Manuel SQL |
+| **Sema: 36 hammadde + 4 reçete** | Sema | 2 saat | Aslan ona görev |
 
 ---
 
-## 🎓 Bugünkü 4 Karar Özeti
+## 📊 BUGÜN YAPILANLAR (10 May)
 
-### D-39: 6. perspektif — End User (Persona-Specific)
-5 perspektif review (Eng/F&B/QA/PM/Compliance) → **6'ya çıkarıldı**. End User personalarıyla: Aslan, Mahmut, Berkan (Lara), Andre (Lara mudur), Yavuz (coach), Eren (fabrika), Sema. Cihaz + bağlam + fiili deneyim sorgulanır.
+### Tamamlanmış PR'lar (8 adet, 5 saat içinde)
+- #58 derin-audit + Spec PDF + 5 schema fix
+- #59 Aslan 5 akış (auto-label, fire/zai, drawer edit, nutrition rawMaterialId)
+- #60 Kapsamlı 790 satır rapor
+- #61 Pilot tarihi 18 → 12 May düzeltme
+- #62 Reçete seed 9 reçete + 127 ingredient
+- #63 Smart Match V2 (7 yanlış eşleşmeyi önle)
+- #64 Smoke test 12 madde + audit script
+- #65 **MEGA: Pilot bloker fix + KVKK temizlik** ← BEKLEYEN
 
-### D-40: Lara Stajyer Excel Sadakati + Sistem Fallback
-Lara duyuru rakamları DB'de aynen kalır. payroll-engine bordro hesabında asgari ücret kontrolü: `MAX(positionSalary, minimum_wage_gross)`. Stajyer 33.000 TL → bordroya 33.030 TL yazılır + audit log.
+### DB'ye Aktarıldı (Replit Agent, V2 sonrası)
+- 9/9 reçete + 128/128 ingredient (0 yanlış eşleşme)
+- 36 yeni hammadde HAM-1000→HAM-1035 (PASIF)
+- 2 yeni reçete (DOREO + Golden Latte, PASIF)
 
-### D-41: Hub-First Sidebar
-İK redesign'da 5 yeni sayfa sidebar'a girmez. `/ik-merkezi` tek dominant link, alt sayfalar hub'tan erişilir. "Akademi rota patlaması" hatasının tekrarı önlendi.
-
-### D-20 NOTU: Feature Freeze Pause
-Aslan: "tüm işleri aynı anda bitir." Feature Freeze (18 Apr - 15 Haz) pause edildi. Pilot 12 May ertelendi → TBD.
-
----
-
-## ⚠️ Bonus Bulgular
-
-### hr.ts:2187 — main'de syntax hatası
-Git blame: `123dd983eb` commit'i (5 May 18:25, origin/main'de var) orphan `});` ekledi. Esbuild build geçmiyordu. Vite + dev tsx tolerant olduğu için runtime crash olmamıştı. PR mergedikten sonra main de düzelir.
-
-### position_salaries — DB'de zaten 19 pozisyon
-Replit DB raporu 19 pozisyon (önceki seed). Migration idempotent (ON CONFLICT DO NOTHING), zarar yok. Lara'nın 5 pozisyonu + HQ/Fabrika 14 rol (CEO 100K, fabrika_mudur 80K, vb.).
-
-### Sprint 8 — score_parameters DDL eksik
-Replit raporundan: `score_parameters` tablosu DB'de YOK (CREATE TABLE eksik). Sprint 8 EXECUTE şu an çalıştırılırsa fail eder.
+### Tespit Edilen Kritik Sorunlar
+- ✅ Çözülen: 7 yanlış eşleşme, kategori NOT NULL, ESM __dirname, Spec PDF crash
+- 🟡 Pilot bloker (PR #65'te çözülecek): vardiya yok, fabrika PIN 3/13
+- 🔴 Yapısal (post-pilot): çift payroll, account_status dual, leave_balances
 
 ---
 
-## 🔄 Şu an bekleyen iş — Replit build re-run
+## 🚦 YARIN (11 May Pazartesi)
 
-`f6eba09be` push edildi. Replit `npm run build && npx tsc --noEmit` çalıştırıyor (~3 dk). Beklenen:
-- ✅ vite (zaten geçiyordu)
-- ✅ esbuild (orphan silindi)
-- ✅ tsc (5 hata silindi)
-- ✅ marker (temiz)
-- ✅ workflow restart (yeni bundle)
+### Aslan
+- ☎️ Mahmut bordro doğrulama (P-1)
+- 🔐 HQ PIN dağıtım (eren + hqkiosk)
+- 👤 Sema'ya hammadde + reçete görev mesajı
 
----
+### Sema
+- 36 hammadde fiyat + besin değer (HAM-1000+)
+- 4 pilot reçete: "Besin Hesapla" + "Gramaj Onayla"
+- DOREO + Golden Latte aktive
 
-## 📍 Sırada (PR'ya kadar)
-
-1. ⏳ Replit build re-run sonucu
-2. ⏳ PR aç (Aslan, GitHub UI 4 tık) — title + description hazır
-3. ⏳ Aslan tarayıcı smoke test (4 sayfa: ik-merkezi, izin-talep, onay-kuyrugu, takim-takvimi)
-4. ⏳ Squash and merge
-5. ⏳ Migration EXECUTE (Replit Plan mode + pg_dump backup)
-6. ⏳ Mahmut Mayıs 2026 bordro doğrulama (Excel ↔ sistem diff)
+### Replit Agent
+- PAYROLL_DRY_RUN=false (Mahmut bordro)
+- Smoke test + audit yeniden
+- Vardiya planları doğrula
 
 ---
 
-**Son güncelleme:** 6 May 2026, 01:00 (İK redesign branch hazır, build re-run bekleniyor)
+## 📅 PILOT YOL HARİTASI
+
+```
+10 May Pzr 23:55 ── ŞİMDİ
+11 May Pzt ──────── Aslan + Sema + Replit (yoğun gün)
+12 May Salı ─────── Dry run + final test + demo
+13 May Çar 09-14 ── Smoke + audit + final backup + HQ PIN dağıt
+13 May Çar 15:00 ── 🎉 PILOT BAŞLAR (4 lokasyon)
+```
+
+---
+
+## ⚠️ DİKKAT
+
+- Pilot tarihi **2 kez değişti**: 5 May → 12 May → 13 May
+- Saat **10:00 → 15:00** (öğleden sonra başlangıç)
+- Lokasyonlar: Işıklar #5, Lara #8, HQ #23, Fabrika #24
+- 4 ürünle başlanacak: Donut Base, Cinnaboom Classic, Cinnaboom Brownie, Cheesecake Base
+
+---
+
+> Detay: `docs/PENDING.md` + `docs/DECIDED.md` + `docs/DEVIR-TESLIM-10-MAYIS-2026.md`
