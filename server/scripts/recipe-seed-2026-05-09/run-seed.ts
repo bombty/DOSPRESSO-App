@@ -36,12 +36,108 @@ const DRY_RUN = process.argv.includes('--dry-run');
 const VERBOSE = process.argv.includes('--verbose');
 
 // ═══════════════════════════════════════════════════════════════════
-// HAMMADDE EŞLEŞTİRME — Smart match (Türkçe normalize + benzerlik)
+// HAMMADDE EŞLEŞTİRME — Smart match v2 (Aslan 9 May 2026 düzeltmeleri)
+// ═══════════════════════════════════════════════════════════════════
+//
+// V1 (önceki) sorunları:
+//   - "Tuz" → "TDS Metre Tuz Ölçer" (cihaz!)
+//   - "Sıvı Yağ" → "Sıvı Şanti" (krem!)
+//   - "İnvert Şeker Şurubu" → "Su" (su!)
+//   - "Kakao Aroması" → "Kakao Tozu" (toz!)
+//
+// V2 çözümü:
+//   1) Word boundary check (tam kelime, başka kelimenin parçası değil)
+//   2) DENIED keywords (eşleşme reddet: "ölçer", "cihaz", "metre")
+//   3) MANUAL OVERRIDE (force-create listesi — kesinlikle yeni oluştur)
+//   4) Confidence threshold (eşleşme oranı %70+ olmazsa reject)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
+ * Bu hammaddeler için inventory'de partial match BULSA BİLE
+ * yeni kayıt oluşturulur. Çünkü V1'de yanlış eşleşmişlerdi.
+ *
+ * Bu listede olan ingredient'lar:
+ * - Sadece exact match kabul edilir (tam isim eşitliği)
+ * - Partial/keyword match yapılmaz
+ * - Yoksa direkt "create" olur
+ */
+const FORCE_EXACT_MATCH: string[] = [
+  'invert şeker şurubu',
+  'tuz',                          // "TDS Metre Tuz Ölçer" gibi cihazlardan kaçın
+  'sıvı yağ',                     // "Sıvı Şanti" gibi krem/şuruplardan kaçın
+  'soya unu',                     // "Un (E.M)" buğday unundan kaçın
+  'kahve kreması tozu',           // "Espresso Çekirdek" gibi farklı üründen kaçın
+  'kakao aroması',                // "Kakao Tozu" ham maddesinden kaçın
+  'şeker kamışı aroması',         // "Beyaz Şeker" şekerinden kaçın
+  'acı badem aroması',
+  'bitter çikolata aroması',
+  'cha tea aroması',
+];
+
+/**
+ * Bu kelimeler bir inventory item adında geçiyorsa, o item ASLA eşleşme
+ * adayı olmaz. Cihaz/araç/etiket/temizlik ürünlerini filtreler.
+ */
+const DENIED_KEYWORDS: string[] = [
+  'ölçer', 'olcer',
+  'cihaz',
+  'metre',                        // "TDS Metre"
+  'sensör', 'sensor',
+  'temizlik',
+  'deterjan',
+  'ambalaj',
+  'kasa',                         // "Kasa Etiketi"
+  'kutu',
+  'şişe', 'sise',                 // boş şişe
+  'fileto',                       // et ürünü
+  'parfüm', 'parfum',
+];
+
+/**
+ * Levenshtein distance — 2 string arası benzerlik
+ * 0 = identical, daha büyük = daha farklı
+ */
+function levenshtein(a: string, b: string): number {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const matrix = Array.from({ length: b.length + 1 }, () =>
+    Array.from({ length: a.length + 1 }, () => 0)
+  );
+  for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+  for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+  for (let j = 1; j <= b.length; j++) {
+    for (let i = 1; i <= a.length; i++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1,        // delete
+        matrix[j - 1][i] + 1,        // insert
+        matrix[j - 1][i - 1] + cost  // substitute
+      );
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+/**
+ * Benzerlik skoru — 0.0 (farklı) ↔ 1.0 (identical)
+ */
+function similarity(a: string, b: string): number {
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 1.0;
+  return 1 - levenshtein(a, b) / maxLen;
+}
+
+/**
+ * Word boundary kontrolü — "tuz" kelimesi tam olarak geçiyor mu?
+ * "tuzlu" veya "tuzöğütücü" değil, "tuz" sözcüğü olarak.
+ */
+function hasWordBoundary(haystack: string, needle: string): boolean {
+  const regex = new RegExp(`\\b${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+  return regex.test(haystack);
+}
+
+/**
  * Türkçe karakterleri normalize et + lowercase
- * Örn: "Buğday Unu (E.M)" → "bugday unu em"
  */
 function normalize(text: string): string {
   return text
@@ -57,53 +153,98 @@ function normalize(text: string): string {
     .trim();
 }
 
+const MIN_CONFIDENCE = 0.70;  // %70+ olmayanlar reddedilir → create
+
 /**
- * inventory tablosunda hammadde ara — 4 strateji
+ * inventory tablosunda hammadde ara — V2 SMART MATCH
  */
 async function findOrCreateInventoryItem(
   ingredientName: string,
   unit: string,
-): Promise<{ id: number; matchType: 'exact' | 'partial' | 'created'; matchedName: string }> {
+): Promise<{ id: number; matchType: 'exact' | 'partial' | 'created'; matchedName: string; confidence?: number }> {
   const normalized = normalize(ingredientName);
 
-  // 1) Tam eşleşme (case-insensitive, normalize)
+  // inventory tablosundan tüm aktif kayıtları al
   const allInventory = await db.select({
     id: inventory.id,
     name: inventory.name,
   }).from(inventory);
 
+  // ═══════════════════════════════════════════════════════════════════
+  // 1) TAM EŞLEŞME (her zaman ÖNCE — en güvenilir)
+  // ═══════════════════════════════════════════════════════════════════
   const exactMatch = allInventory.find(inv => normalize(inv.name) === normalized);
   if (exactMatch) {
-    return { id: exactMatch.id, matchType: 'exact', matchedName: exactMatch.name };
+    return { id: exactMatch.id, matchType: 'exact', matchedName: exactMatch.name, confidence: 1.0 };
   }
 
-  // 2) Partial eşleşme (kelime içerme)
-  const partialMatch = allInventory.find(inv => {
+  // ═══════════════════════════════════════════════════════════════════
+  // 2) FORCE_EXACT_MATCH listesindeki ingredient'lar partial/keyword
+  //    yapmadan direkt CREATE olur (V1'deki yanlış eşleşmeleri önler)
+  // ═══════════════════════════════════════════════════════════════════
+  const forceCreateThisOne = FORCE_EXACT_MATCH.includes(normalized);
+  if (forceCreateThisOne) {
+    return await createNewInventoryItem(ingredientName, unit, 'force-exact-only');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 3) PARTIAL MATCH (denied keywords filter + word boundary + confidence)
+  // ═══════════════════════════════════════════════════════════════════
+  const candidates: Array<{ inv: { id: number; name: string }; score: number }> = [];
+
+  for (const inv of allInventory) {
     const invNorm = normalize(inv.name);
-    return invNorm.includes(normalized) || normalized.includes(invNorm);
-  });
-  if (partialMatch) {
-    return { id: partialMatch.id, matchType: 'partial', matchedName: partialMatch.name };
-  }
 
-  // 3) Anahtar kelime eşleşme (örn: "Margarin Alba" → "Margarin")
-  const firstWord = normalized.split(' ')[0];
-  if (firstWord.length > 3) {
-    const keywordMatch = allInventory.find(inv => {
-      const invNorm = normalize(inv.name);
-      return invNorm.includes(firstWord);
-    });
-    if (keywordMatch) {
-      return { id: keywordMatch.id, matchType: 'partial', matchedName: keywordMatch.name };
+    // DENIED keyword check — "ölçer", "cihaz" geçiyorsa atla
+    const hasDeniedKeyword = DENIED_KEYWORDS.some(denied => invNorm.includes(denied));
+    if (hasDeniedKeyword) continue;
+
+    // Tam içerme kontrolü (haystack invNorm'da needle normalized geçiyor mu?)
+    let score = 0;
+
+    if (invNorm === normalized) {
+      score = 1.0;  // Tam eşleşme
+    } else if (hasWordBoundary(invNorm, normalized)) {
+      // "Buğday Unu" içinde "buğday" tam kelime olarak var
+      score = similarity(invNorm, normalized) + 0.2; // word boundary bonus
+    } else if (invNorm.includes(normalized) || normalized.includes(invNorm)) {
+      // Partial içerme (kötü eşleşme riski)
+      score = similarity(invNorm, normalized);
+    }
+
+    if (score >= MIN_CONFIDENCE) {
+      candidates.push({ inv, score });
     }
   }
 
-  // 4) Yok → otomatik oluştur (PASİF olarak — Sema sonra kontrol eder)
-  if (DRY_RUN) {
-    return { id: -1, matchType: 'created', matchedName: ingredientName + ' (CREATE)' };
+  // En yüksek skorlu adayı seç
+  candidates.sort((a, b) => b.score - a.score);
+  const best = candidates[0];
+
+  if (best && best.score >= MIN_CONFIDENCE) {
+    return {
+      id: best.inv.id,
+      matchType: 'partial',
+      matchedName: best.inv.name,
+      confidence: Math.min(best.score, 1.0),
+    };
   }
 
-  // Code generate: HAM-XXX
+  // ═══════════════════════════════════════════════════════════════════
+  // 4) HİÇBİR ŞEY EŞLEŞMEDİ → YENİ INVENTORY ITEM OLUŞTUR
+  // ═══════════════════════════════════════════════════════════════════
+  return await createNewInventoryItem(ingredientName, unit, 'no-match');
+}
+
+async function createNewInventoryItem(
+  ingredientName: string,
+  unit: string,
+  reason: string,
+): Promise<{ id: number; matchType: 'created'; matchedName: string }> {
+  if (DRY_RUN) {
+    return { id: -1, matchType: 'created', matchedName: `${ingredientName} (CREATE — ${reason})` };
+  }
+
   const lastCode = await db.select({ code: inventory.code })
     .from(inventory)
     .where(ilike(inventory.code, 'HAM-%'))
@@ -117,7 +258,7 @@ async function findOrCreateInventoryItem(
     name: ingredientName,
     unit: unit as any,
     isActive: false,  // PASİF — Sema kontrol etmeli
-    description: `Otomatik oluşturuldu (9 May 2026 reçete seed). Sema kontrol etmeli, fiyat + besin değer doldurulmalı.`,
+    description: `Otomatik oluşturuldu (9 May 2026 reçete seed v2, sebep: ${reason}). Sema kontrol etmeli, fiyat + besin değer doldurulmalı.`,
   } as any).returning({ id: inventory.id });
 
   return { id: created.id, matchType: 'created', matchedName: ingredientName };
@@ -140,6 +281,7 @@ type IngestionResult = {
     rawMaterialId: number;
     matchType: string;
     matchedName: string;
+    confidence?: number;
   }>;
   notes?: string;
 };
@@ -210,6 +352,7 @@ async function ingestRecipe(recipe: RecipeData): Promise<IngestionResult> {
       rawMaterialId: match.id,
       matchType: match.matchType,
       matchedName: match.matchedName,
+      confidence: match.confidence,
     });
 
     if (match.matchType === 'exact') result.matched.exact++;
@@ -264,7 +407,9 @@ async function main() {
     if (VERBOSE) {
       result.ingredientLog.forEach(log => {
         const icon = log.matchType === 'exact' ? '✅' : log.matchType === 'partial' ? '🔶' : '🆕';
-        console.log(`    ${icon} ${log.name} (${log.amount}${log.unit}) → ${log.matchedName} (id:${log.rawMaterialId})`);
+        const confStr = log.confidence !== undefined ? ` [${(log.confidence * 100).toFixed(0)}%]` : '';
+        const warning = log.matchType === 'partial' && (log.confidence ?? 1) < 0.85 ? ' ⚠️' : '';
+        console.log(`    ${icon}${warning} ${log.name} (${log.amount}${log.unit}) → ${log.matchedName} (id:${log.rawMaterialId})${confStr}`);
       });
     }
   }
