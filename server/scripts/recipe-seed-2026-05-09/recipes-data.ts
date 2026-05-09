@@ -48,7 +48,7 @@ export const RECIPES_PILOT_5: RecipeData[] = [
   // 1) DONUT BASE HAMURU (Aslan'ın "Donut Formül" mesajı)
   // ═══════════════════════════════════════════════════════════════════
   {
-    recipeName: 'Donut Base Hamuru',
+    recipeName: 'Donut Base Hamuru Reçetesi',
     recipeCode: 'DBH-001',
     description: 'Donut için temel hamur reçetesi - 30kg un bazlı',
     expectedOutput: '30 kg un bazlı toplam ~58 kg hamur',
@@ -104,7 +104,7 @@ export const RECIPES_PILOT_5: RecipeData[] = [
   // 2) CINNABOOM CLASSIC (Beyaz Cinnaboom)
   // ═══════════════════════════════════════════════════════════════════
   {
-    recipeName: 'Cinnaboom Classic',
+    recipeName: 'Cinnaboom Classic Reçetesi',
     recipeCode: 'CC-001',
     description: 'Beyaz cinnaboom hamuru - 30kg un bazlı',
     expectedOutput: '30 kg un bazlı toplam ~58 kg hamur',
@@ -143,7 +143,7 @@ export const RECIPES_PILOT_5: RecipeData[] = [
   // 3) CINNABOOM BROWNIE (Siyah Cinnaboom — kakaolu)
   // ═══════════════════════════════════════════════════════════════════
   {
-    recipeName: 'Cinnaboom Brownie',
+    recipeName: 'Cinnaboom Brownie Reçetesi',
     recipeCode: 'CB-001',
     description: 'Siyah cinnaboom (kakaolu) - 30kg un bazlı',
     expectedOutput: '30 kg un bazlı toplam ~62 kg hamur',
@@ -185,7 +185,7 @@ export const RECIPES_PILOT_5: RecipeData[] = [
   // 4) CHEESECAKE BASE
   // ═══════════════════════════════════════════════════════════════════
   {
-    recipeName: 'Cheesecake Base',
+    recipeName: 'Cheesecake Base Reçetesi',
     recipeCode: 'CHB-001',
     description: 'Cheesecake temel reçetesi (krema bazı)',
     expectedOutput: '~22.3 kg cheesecake harcı',
@@ -240,7 +240,7 @@ export const RECIPES_BONUS: RecipeData[] = [
 
   // SICAK ÇİKOLATA (Chocolate Powder)
   {
-    recipeName: 'Chocolate Powder',
+    recipeName: 'Chocolate Powder Reçetesi',
     recipeCode: 'CHP-001',
     description: 'Sıcak çikolata için içecek tozu karışımı',
     expectedOutput: '~120 kg toz karışım',
@@ -261,7 +261,7 @@ export const RECIPES_BONUS: RecipeData[] = [
 
   // CREAMCIE TOZ KARIŞIMI (Creambase Powder)
   {
-    recipeName: 'Creambase Powder',
+    recipeName: 'Creambase Powder Reçetesi',
     recipeCode: 'CRP-001',
     description: 'Cream-cie içecek toz karışımı',
     expectedOutput: '~25.5 kg toz karışım',
@@ -274,7 +274,7 @@ export const RECIPES_BONUS: RecipeData[] = [
 
   // BOMTYLATTE TOZ KARIŞIMI (Bombty Latte Powder)
   {
-    recipeName: 'Bombty Latte Powder',
+    recipeName: 'Bombty Latte Powder Reçetesi',
     recipeCode: 'BLP-001',
     description: 'Bombty Latte için toz karışım',
     expectedOutput: '~26.1 kg toz karışım',
