@@ -2,6 +2,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { KvkkAydinlatma, KvkkFooterLink } from "@/components/kvkk-aydinlatma";  // Sprint 12 P-22: KVKK 6698
+// Aslan 10 May 2026: Yeni KVKK per-user modal + mola sayaç + dönüş özeti
+import { KvkkPerUserModal } from "@/components/kvkk-per-user-modal";
+import { BreakCountdown } from "@/components/break-countdown";
+import { BreakReturnSummary } from "@/components/break-return-summary";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -129,6 +133,17 @@ export default function BranchKiosk() {
   const [lobbyData, setLobbyData] = useState<any>(null);
   const [displayQr, setDisplayQr] = useState<any>(null);
   const [sessionLoading, setSessionLoading] = useState(false);
+  // Aslan 10 May 2026: KVKK per-user + mola sayaç state
+  const [showKvkkModal, setShowKvkkModal] = useState(false);
+  const [pendingPostLoginAction, setPendingPostLoginAction] = useState<(() => void) | null>(null);
+  const [breakReturnSummary, setBreakReturnSummary] = useState<{
+    userName: string;
+    breakStartTime: string;
+    breakEndTime: string;
+    plannedMinutes: number;
+    overtimeMinutes: number;
+    newWarningsToday: number;
+  } | null>(null);
   const inactivityRef = useRef<NodeJS.Timeout | null>(null);
   const INACTIVITY_MS = 3 * 60 * 1000; // 3 dakika
   
@@ -544,24 +559,46 @@ export default function BranchKiosk() {
       if (data.activeSession) {
         setCurrentSession(data.activeSession);
       }
-      // Vardiya başı zorunlu duyuru kontrolü
-      try {
-        const userId = data.user?.id || selectedUser?.id;
-        if (userId && branchId) {
-          const annRes = await fetch(`/api/branches/${branchId}/kiosk/pending-announcements/${userId}`, { credentials: 'include' });
-          if (annRes.ok) {
-            const pending = await annRes.json();
-            if (Array.isArray(pending) && pending.length > 0) {
-              setPendingAnnouncements(pending);
-              setStep('announcements');
-              toast({ title: "Duyuru", description: `${pending.length} onay bekleyen duyuru var` });
-              return;
+
+      // Login sonrası yapılacak akış (KVKK sonrası veya direkt çalıştırılır)
+      const continueAfterKvkk = async () => {
+        // Vardiya başı zorunlu duyuru kontrolü
+        try {
+          const userId = data.user?.id || selectedUser?.id;
+          if (userId && branchId) {
+            const annRes = await fetch(`/api/branches/${branchId}/kiosk/pending-announcements/${userId}`, { credentials: 'include' });
+            if (annRes.ok) {
+              const pending = await annRes.json();
+              if (Array.isArray(pending) && pending.length > 0) {
+                setPendingAnnouncements(pending);
+                setStep('announcements');
+                toast({ title: "Duyuru", description: `${pending.length} onay bekleyen duyuru var` });
+                return;
+              }
             }
           }
+        } catch (e) { /* skip — duyuru kontrolü başarısız olsa da vardiya başlasın */ }
+        setStep('working');
+        toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user?.firstName}` });
+      };
+
+      // Aslan 10 May 2026: KVKK per-user kontrolü
+      // İlk giriş yapan kullanıcının aydınlatma metnini onaylaması zorunlu
+      try {
+        const kvkkRes = await fetch('/api/kvkk/my-status', { credentials: 'include' });
+        if (kvkkRes.ok) {
+          const kvkkStatus = await kvkkRes.json();
+          if (kvkkStatus.requiresApproval) {
+            // KVKK onayı gerekli — modal aç, sonra devam et
+            setPendingPostLoginAction(() => continueAfterKvkk);
+            setShowKvkkModal(true);
+            return;
+          }
         }
-      } catch (e) { /* skip — duyuru kontrolü başarısız olsa da vardiya başlasın */ }
-      setStep('working');
-      toast({ title: "Giriş başarılı", description: `Hoş geldin ${data.user?.firstName}` });
+      } catch (e) { /* skip — KVKK kontrolü başarısız olsa bile devam et */ }
+
+      // KVKK onayı varsa direkt devam
+      await continueAfterKvkk();
     },
     onError: (error: any) => {
       toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
@@ -649,7 +686,25 @@ export default function BranchKiosk() {
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Aslan 10 May 2026: Mola dönüş özeti göster
+      if (currentSession?.breakStartTime) {
+        const breakStart = new Date(currentSession.breakStartTime);
+        const breakEnd = new Date();
+        const actualMin = Math.floor((breakEnd.getTime() - breakStart.getTime()) / 60000);
+        const plannedMin = 60;
+        const overtime = Math.max(0, actualMin - plannedMin);
+
+        setBreakReturnSummary({
+          userName: selectedUser?.firstName || "Kullanıcı",
+          breakStartTime: currentSession.breakStartTime,
+          breakEndTime: breakEnd.toISOString(),
+          plannedMinutes: plannedMin,
+          overtimeMinutes: overtime,
+          newWarningsToday: data?.warningsToday || 0,
+        });
+      }
+
       if (currentSession) {
         setCurrentSession({ ...currentSession, status: 'active' });
       }
@@ -1128,7 +1183,18 @@ export default function BranchKiosk() {
         }
         return 'Çalışıyor';
       }
-      if (s === 'on_break') return `Molada${staff.breakMinutes ? ` · ${staff.breakMinutes}dk` : ''}`;
+      if (s === 'on_break') {
+        // Aslan 10 May 2026: Kalan mola süresini hesapla (1 saat default)
+        const breakMin = staff.breakMinutes || 0;
+        const remaining = Math.max(0, 60 - breakMin);
+        if (remaining > 0) {
+          return `Molada · ${breakMin}dk yapıldı · ${remaining}dk kaldı`;
+        }
+        if (breakMin > 60) {
+          return `🔴 MOLA AŞIM · ${breakMin}dk (+${breakMin - 60}dk)`;
+        }
+        return `Molada · ${breakMin}dk yapıldı · süre doldu`;
+      }
       if (s === 'late') return `${staff.lateMinutes}dk geç — ${staff.shiftStartTime?.slice(0,5)||''}`;
       if (s === 'missing') return `Gelmedi — ${staff.shiftStartTime?.slice(0,5)||''}`;
       if (s === 'scheduled' && staff.shiftStartTime) {
@@ -1464,10 +1530,21 @@ export default function BranchKiosk() {
               </div>
             ) : isOnBreak ? (
               <div>
-                <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                  <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#f59e0b', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Mola Süresi</p>
-                </div>
+                {/* Aslan 10 May 2026: Yeni BreakCountdown — geri sayım + alarm */}
+                {currentSession?.breakStartTime ? (
+                  <div className="mb-3">
+                    <BreakCountdown
+                      breakStartTime={currentSession.breakStartTime}
+                      plannedMinutes={60}
+                      context="sube"
+                    />
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                    <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#f59e0b', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
+                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Mola Süresi (eski sayaç)</p>
+                  </div>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <button
                     onClick={() => breakEndMutation.mutate(currentSession?.id || 0)}
@@ -1487,7 +1564,7 @@ export default function BranchKiosk() {
                   </button>
                 </div>
                 {currentSession.breakMinutes > 0 && (
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 10 }}>Toplam mola: {formatMinutes(currentSession.breakMinutes)}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 10 }}>Toplam mola bugün: {formatMinutes(currentSession.breakMinutes)}</p>
                 )}
               </div>
             ) : (
@@ -2435,8 +2512,36 @@ export default function BranchKiosk() {
         </DialogContent>
       </Dialog>
 
-      {/* Sprint 12 P-22: KVKK Aydınlatma Metni — ilk açılışta otomatik modal */}
-      <KvkkAydinlatma context="sube" />
+      {/* Aslan 10 May 2026: KVKK Per-User Modal (PIN sonrası açılır, DB tabanlı) */}
+      <KvkkPerUserModal
+        open={showKvkkModal}
+        approvalMethod="kiosk_pin"
+        branchId={String(branchId || "")}
+        required={true}
+        onApproved={() => {
+          setShowKvkkModal(false);
+          // KVKK onay sonrası bekleyen action'ı çalıştır (duyuru kontrolü vs.)
+          if (pendingPostLoginAction) {
+            pendingPostLoginAction();
+            setPendingPostLoginAction(null);
+          }
+        }}
+      />
+
+      {/* Aslan 10 May 2026: Mola Dönüş Özeti modal */}
+      {breakReturnSummary && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <BreakReturnSummary
+            userName={breakReturnSummary.userName}
+            breakStartTime={breakReturnSummary.breakStartTime}
+            breakEndTime={breakReturnSummary.breakEndTime}
+            plannedMinutes={breakReturnSummary.plannedMinutes}
+            totalDailyBreakMinutes={undefined}
+            newWarningsToday={breakReturnSummary.newWarningsToday}
+            onReturnToShift={() => setBreakReturnSummary(null)}
+          />
+        </div>
+      )}
 
       {/* Footer'da her zaman erişilebilir KVKK linki */}
       <div className="fixed bottom-2 right-2 z-10 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm">
