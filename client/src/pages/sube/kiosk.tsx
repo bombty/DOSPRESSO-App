@@ -704,17 +704,19 @@ export default function BranchKiosk() {
       return res.json();
     },
     onSuccess: (data) => {
-      // Aslan 10 May 2026: Mola dönüş özeti göster
-      if (currentSession?.breakStartTime) {
-        const breakStart = new Date(currentSession.breakStartTime);
+      // Aslan 11 May 2026: Mola bitince breakMinutes TOPLA — sonraki molada doğru kalan dakika için kritik!
+      const breakStartTime = (currentSession as any)?.breakStartTime;
+      let breakDuration = 0;
+      if (breakStartTime) {
+        const breakStart = new Date(breakStartTime);
         const breakEnd = new Date();
-        const actualMin = Math.floor((breakEnd.getTime() - breakStart.getTime()) / 60000);
-        const plannedMin = 60;
-        const overtime = Math.max(0, actualMin - plannedMin);
+        breakDuration = Math.floor((breakEnd.getTime() - breakStart.getTime()) / 60000);
 
+        const plannedMin = 60;
+        const overtime = Math.max(0, breakDuration - plannedMin);
         setBreakReturnSummary({
           userName: selectedUser?.firstName || "Kullanıcı",
-          breakStartTime: currentSession.breakStartTime,
+          breakStartTime: breakStartTime,
           breakEndTime: breakEnd.toISOString(),
           plannedMinutes: plannedMin,
           overtimeMinutes: overtime,
@@ -723,9 +725,24 @@ export default function BranchKiosk() {
       }
 
       if (currentSession) {
-        setCurrentSession({ ...currentSession, status: 'active' });
+        const oldBreakMinutes = (currentSession as any).breakMinutes || 0;
+        const newBreakMinutes = oldBreakMinutes + breakDuration;
+        const dailyRemaining = Math.max(0, 60 - newBreakMinutes);
+
+        setCurrentSession({
+          ...currentSession,
+          status: 'active',
+          breakMinutes: newBreakMinutes,  // KÜMÜLATİF — bu kritik!
+          breakStartTime: null,
+          dailyUsedMinutes: newBreakMinutes,
+          dailyRemainingMinutes: dailyRemaining,
+        } as any);
       }
-      toast({ title: "Mola bitti", description: "Çalışmaya devam" });
+
+      const remainText = breakDuration > 0
+        ? ` (${breakDuration} dk mola yapıldı, ${Math.max(0, 60 - ((currentSession as any)?.breakMinutes || 0) - breakDuration)} dk hakkın kaldı)`
+        : '';
+      toast({ title: "Mola bitti", description: `Çalışmaya devam${remainText}` });
     },
     onError: (error: any) => {
       toast({ title: "Mola bitirilemedi", description: error.message, variant: "destructive" });
