@@ -1258,12 +1258,12 @@ export default function BranchKiosk() {
       return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 48, marginBottom: 4 }}>
         <button style={pbStyle(staff.shiftStatus || 'off', staff)} onClick={() => handlePerson(staff)} data-testid={`staff-btn-${staff.id}`}>
-          <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 500, flexShrink: 0 }}>
+          <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, flexShrink: 0 }}>
             {staff.firstName?.[0]}{staff.lastName?.[0]}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 94 }}>{staff.firstName} {staff.lastName?.[0]}.</div>
-            <div style={{ fontSize: 10, color: '#fff', whiteSpace: 'nowrap', fontWeight: isOnBreak ? 700 : 400 }}>{statusTxt(staff)}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 94 }}>{staff.firstName} {staff.lastName?.[0]}.</div>
+            <div style={{ fontSize: 13, color: '#fff', whiteSpace: 'nowrap', fontWeight: isOnBreak ? 700 : 400 }}>{statusTxt(staff)}</div>
           </div>
           {/* Aslan 11 May 2026: Molada büyük rakam — herkesin görmesi için */}
           {isOnBreak && breakRemaining !== null && !isBreakViolation && (
@@ -1276,7 +1276,7 @@ export default function BranchKiosk() {
               flexShrink: 0,
             }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1, fontFamily: 'monospace' }}>{breakRemaining}</div>
-              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>dk kaldı</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>dk kaldı</div>
             </div>
           )}
         </button>
@@ -1289,8 +1289,8 @@ export default function BranchKiosk() {
     const SecHead = ({ label, count, color, bg }: any) => (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0 5px' }}>
         <div style={{ flex: 1, height: 0.5, background: 'rgba(255,255,255,0.1)' }} />
-        <span style={{ fontSize: 11, fontWeight: 500, color, whiteSpace: 'nowrap' }}>{label}</span>
-        <span style={{ fontSize: 9, padding: '1px 7px', borderRadius: 10, fontWeight: 500, background: bg, color }}>{count}</span>
+        <span style={{ fontSize: 14, fontWeight: 500, color, whiteSpace: 'nowrap' }}>{label}</span>
+        <span style={{ fontSize: 14, padding: '1px 7px', borderRadius: 10, fontWeight: 500, background: bg, color }}>{count}</span>
         <div style={{ flex: 1, height: 0.5, background: 'rgba(255,255,255,0.1)' }} />
       </div>
     );
@@ -1299,9 +1299,9 @@ export default function BranchKiosk() {
         <div style={{ background: '#ef4444', padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>{branchAuth?.name || 'Şube Kiosk'}</div>
-            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{dateStr2} - {timeStr2}</div>
+            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>{dateStr2} - {timeStr2}</div>
           </div>
-          <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
+          <div style={{ display: 'flex', gap: 12, fontSize: 14 }}>
             {activeAndBreak.length > 0 && <span style={{ color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />{active.length} aktif{onBreak.length > 0 ? ` - ${onBreak.length} mola` : ''}</span>}
             {late.length > 0 && <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f87171', display: 'inline-block' }} />{late.length} gecikmeli</span>}
             {scheduled.length > 0 && <span style={{ color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#93c5fd', display: 'inline-block' }} />{scheduled.length} bekliyor</span>}
@@ -1309,7 +1309,7 @@ export default function BranchKiosk() {
             {noShift.length > 0 && <span style={{ color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'inline-block' }} />{noShift.length} plansız</span>}
             <button
               onClick={() => { setShowExitConfirm(true); setExitPasswordInput(''); }}
-              style={{ marginLeft: 8, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, color: 'rgba(255,255,255,0.7)', padding: '5px 10px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+              style={{ marginLeft: 8, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, color: 'rgba(255,255,255,0.7)', padding: '5px 10px', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
               data-testid="btn-kiosk-exit-header"
             >
               🔒 Çık
@@ -1324,7 +1324,7 @@ export default function BranchKiosk() {
                   {['07','09','11','13','15','17','19','21','23','01','03'].map(t => (
                     <div key={t} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                       <div style={{ width: 1, height: 6, background: 'rgba(255,255,255,0.2)' }} />
-                      <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>{t}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>{t}</span>
                     </div>
                   ))}
                 </div>
@@ -1334,11 +1334,11 @@ export default function BranchKiosk() {
                 {activeAndBreak.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
                   {staff.checkInTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(new Date(staff.checkInTime).toTimeString().slice(0,5))}%`, width: `${Math.max(1, nowPct - pct(new Date(staff.checkInTime).toTimeString().slice(0,5)))}%`, background: 'rgba(34,197,94,0.6)', borderRadius: 3, display:'flex', alignItems:'center', paddingLeft:4 }}>
-                    <span style={{fontSize:8,color:'rgba(255,255,255,0.8)',whiteSpace:'nowrap'}}>{new Date(staff.checkInTime).toTimeString().slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(255,255,255,0.8)',whiteSpace:'nowrap'}}>{new Date(staff.checkInTime).toTimeString().slice(0,5)}</span>
                   </div>}
                   {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.2)', border: '0.5px dashed rgba(147,197,253,0.5)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 4px' }}>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftStartTime.slice(0,5)}</span>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.8)'}}>{staff.shiftStartTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
                   </div>}
                 </>} />))}
               </>)}
@@ -1347,10 +1347,10 @@ export default function BranchKiosk() {
                 {late.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
                   {staff.shiftStartTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, nowPct - pct(staff.shiftStartTime))}%`, background: 'rgba(239,68,68,0.55)', borderRadius: 3, display:'flex', alignItems:'center', paddingLeft:4 }}>
-                    <span style={{fontSize:8,color:'rgba(255,255,255,0.8)'}}>gelmedi</span>
+                    <span style={{fontSize:14,color:'rgba(255,255,255,0.8)'}}>gelmedi</span>
                   </div>}
                   {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${nowPct}%`, width: `${Math.max(0, pct(staff.shiftEndTime) - nowPct)}%`, background: 'rgba(59,130,246,0.2)', border: '0.5px dashed rgba(147,197,253,0.5)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'flex-end', paddingRight:4 }}>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
                   </div>}
                 </>} />))}
               </>)}
@@ -1359,8 +1359,8 @@ export default function BranchKiosk() {
                 {scheduled.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
                   {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.28)', border: '0.5px dashed rgba(147,197,253,0.55)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 4px' }}>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.9)'}}>{staff.shiftStartTime.slice(0,5)}</span>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.9)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.9)'}}>{staff.shiftStartTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.9)'}}>{staff.shiftEndTime.slice(0,5)}</span>
                   </div>}
                 </>} />))}
               </>)}
@@ -1376,19 +1376,19 @@ export default function BranchKiosk() {
                 {[{c:'rgba(34,197,94,0.4)',l:'Çalışıldı'},{c:'rgba(245,158,11,0.45)',l:'Mola'},{c:'rgba(59,130,246,0.18)',l:'Planlı',d:true},{c:'rgba(239,68,68,0.4)',l:'Gecikmeli'}].map(x=>(
                   <div key={x.l} style={{ display:'flex',alignItems:'center',gap:3 }}>
                     <div style={{ width:9,height:6,borderRadius:2,background:x.c,...(x.d?{border:'0.5px dashed rgba(147,197,253,0.5)'}:{}) }} />
-                    <span style={{ fontSize:8,color:'rgba(255,255,255,0.3)' }}>{x.l}</span>
+                    <span style={{ fontSize:14,color:'rgba(255,255,255,0.3)' }}>{x.l}</span>
                   </div>
                 ))}
-                <div style={{ display:'flex',alignItems:'center',gap:3 }}><div style={{ width:2,height:10,background:'#ef4444' }}/><span style={{ fontSize:8,color:'rgba(255,255,255,0.3)' }}>Su an</span></div>
+                <div style={{ display:'flex',alignItems:'center',gap:3 }}><div style={{ width:2,height:10,background:'#ef4444' }}/><span style={{ fontSize:14,color:'rgba(255,255,255,0.3)' }}>Su an</span></div>
               </div>
             </div>
             <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.07)', padding: '6px 14px', textAlign: 'right', flexShrink: 0 }}>
-              <button onClick={() => { setShowExitConfirm(true); setExitPasswordInput(''); }} style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan çık</button>
+              <button onClick={() => { setShowExitConfirm(true); setExitPasswordInput(''); }} style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan çık</button>
             </div>
           </div>
           <div style={{ borderLeft: '0.5px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ borderBottom: '0.5px solid rgba(255,255,255,0.07)', padding: '10px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Telefonunla tara</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Telefonunla tara</div>
               {displayQr ? (
                 <div style={{ background: '#fff', borderRadius: 8, padding: 7, width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <QRCodeSVG value={JSON.stringify(displayQr)} size={74} level="M" />
@@ -1398,32 +1398,32 @@ export default function BranchKiosk() {
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               )}
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.5 }}>Vardiya - Mola - Cikis<br/>45sn yenilenir</div>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>veya ismine tikla PIN</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.5 }}>Vardiya - Mola - Cikis<br/>45sn yenilenir</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>veya ismine tikla PIN</div>
             </div>
             <div style={{ flex: 1, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto' }}>
               {lobbyData?.announcements?.length > 0 && (<>
-                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Duyurular</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Duyurular</p>
                 {lobbyData.announcements.slice(0,3).map((ann: any) => (
                   <div key={`ann-${ann.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(59,130,246,0.1)', borderLeft: '2px solid #3b82f6' }}>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{ann.title}</div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{ann.title}</div>
                   </div>
                 ))}
               </>)}
               {late.length > 0 && (<>
-                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Uyarilar</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Uyarilar</p>
                 {late.map((s: any) => (
                   <div key={`late-${s.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(239,68,68,0.12)', borderLeft: '2px solid #ef4444' }}>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{s.firstName} {s.lastName}</div>
-                    <div style={{ fontSize: 9, color: '#fca5a5', marginTop: 1 }}>{s.shiftStatus === 'missing' ? 'Gelmedi' : `${s.lateMinutes}dk gec`}</div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{s.firstName} {s.lastName}</div>
+                    <div style={{ fontSize: 14, color: '#fca5a5', marginTop: 1 }}>{s.shiftStatus === 'missing' ? 'Gelmedi' : `${s.lateMinutes}dk gec`}</div>
                   </div>
                 ))}
               </>)}
               {lobbyData?.notifications?.length > 0 && (<>
-                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Bildirimler</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Bildirimler</p>
                 {lobbyData.notifications.slice(0,3).map((n: any) => (
                   <div key={`notif-${n.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(245,158,11,0.1)', borderLeft: '2px solid #f59e0b' }}>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{n.title}</div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{n.title}</div>
                   </div>
                 ))}
               </>)}
@@ -1523,8 +1523,8 @@ export default function BranchKiosk() {
           <div key={n.id} style={{ margin: '8px 12px 0', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(127,119,221,0.18)', borderLeft: '3px solid #7F77DD' }}>
             <span style={{ color: '#a5a0f0', fontSize: 14 }}>◈</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#a5a0f0' }}>{n.title}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{n.message}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#a5a0f0' }}>{n.title}</div>
+              <div style={{ fontSize: 14, color: '#94a3b8' }}>{n.message}</div>
             </div>
           </div>
         ))}
@@ -1537,7 +1537,7 @@ export default function BranchKiosk() {
             </div>
             <div>
               <p style={{ color: '#fff', fontWeight: 600, fontSize: 14, margin: 0 }}>{selectedUser?.firstName} {selectedUser?.lastName}</p>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: 0 }}>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>
                 {isOnBreak ? 'Molada' : hasSession ? 'Çalışıyor' : 'Vardiya bekleniyor'}
               </p>
             </div>
@@ -1567,7 +1567,7 @@ export default function BranchKiosk() {
 
           {/* Vardiya Durumu */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>⏱ Vardiya Durumu</p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>⏱ Vardiya Durumu</p>
 
             {sessionLoading ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
@@ -1576,7 +1576,7 @@ export default function BranchKiosk() {
               </div>
             ) : !hasSession ? (
               <div style={{ padding: '12px 0' }}>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', marginBottom: 14 }}>Vardiya başlatılmadı</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', marginBottom: 14 }}>Vardiya başlatılmadı</p>
                 <button
                   onClick={handleStartShift}
                   disabled={startShiftMutation.isPending}
@@ -1600,7 +1600,7 @@ export default function BranchKiosk() {
                 ) : (
                   <div style={{ textAlign: 'center', marginBottom: 16 }}>
                     <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#f59e0b', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Mola Süresi (eski sayaç)</p>
+                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 4 }}>Mola Süresi (eski sayaç)</p>
                   </div>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1622,17 +1622,17 @@ export default function BranchKiosk() {
                   </button>
                 </div>
                 {currentSession.breakMinutes > 0 && (
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 10 }}>Toplam mola bugün: {formatMinutes(currentSession.breakMinutes)}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', marginTop: 10 }}>Toplam mola bugün: {formatMinutes(currentSession.breakMinutes)}</p>
                 )}
               </div>
             ) : (
               <div>
                 <div style={{ textAlign: 'center', marginBottom: 16 }}>
                   <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#fbbf24', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Çalışma Süresi</p>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 4 }}>Çalışma Süresi</p>
                   {/* Aslan 10 May 2026: Vardiya başlama zamanı + kalan mola hakkı */}
                   {currentSession?.checkInTime && (
-                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 8 }}>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 8 }}>
                       ⏱ Başlangıç: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
                         {new Date(currentSession.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -1652,13 +1652,13 @@ export default function BranchKiosk() {
                           borderRadius: 10,
                           textAlign: 'center'
                         }}>
-                          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4 }}>
+                          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 4 }}>
                             ☕ Mola Hakkın
                           </div>
                           <div style={{ color, fontSize: 24, fontWeight: 700, fontFamily: 'monospace' }}>
                             {remaining} dk kaldı
                           </div>
-                          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 2 }}>
+                          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 2 }}>
                             ({usedBreak}/{60} dk yapıldı)
                           </div>
                         </div>
@@ -1673,13 +1673,13 @@ export default function BranchKiosk() {
                         borderRadius: 10,
                         textAlign: 'center'
                       }}>
-                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4 }}>
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 4 }}>
                           ☕ Mola Hakkın
                         </div>
                         <div style={{ color: '#22c55e', fontSize: 24, fontWeight: 700, fontFamily: 'monospace' }}>
                           60 dk
                         </div>
-                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 2 }}>
+                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 2 }}>
                           (henüz kullanılmadı)
                         </div>
                       </div>
@@ -1710,7 +1710,7 @@ export default function BranchKiosk() {
 
           {/* Görevlerim */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📋 Görevlerim</p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📋 Görevlerim</p>
             {userTasks.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
@@ -1721,7 +1721,7 @@ export default function BranchKiosk() {
                 {userTasks.slice(0, 5).map((task: any) => (
                   <div key={task.id} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 7, fontSize: 13 }}>
                     <p style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{task.title}</p>
-                    {task.dueDate && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '2px 0 0' }}>{new Date(task.dueDate).toLocaleDateString('tr-TR')}</p>}
+                    {task.dueDate && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '2px 0 0' }}>{new Date(task.dueDate).toLocaleDateString('tr-TR')}</p>}
                   </div>
                 ))}
               </div>
@@ -1745,15 +1745,15 @@ export default function BranchKiosk() {
           {/* Şube Görev Havuzu — isteyen üstlenir, skor kazanır */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto', gridColumn: 'span 2' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
                 📌 Şube Görev Havuzu
                 {kioskBranchTasks.length > 0 && (
-                  <span style={{ marginLeft: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ marginLeft: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', borderRadius: 20, padding: '2px 8px', fontSize: 14, fontWeight: 600 }}>
                     {kioskBranchTasks.filter((t: any) => !t.assignedTo && !t.claimedBy).length} açık
                   </span>
                 )}
               </p>
-              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
                 💡 Sahiplenen kişiye puan eklenir
               </span>
             </div>
@@ -1779,16 +1779,16 @@ export default function BranchKiosk() {
                       <div>
                         <p style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)', fontSize: 13, margin: 0, lineHeight: 1.3 }}>{task.title}</p>
                         <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>
+                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>
                             {task.category}
                           </span>
                           {task.photoRequired && (
-                            <span style={{ color: '#fbbf24', fontSize: 10, background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                            <span style={{ color: '#fbbf24', fontSize: 13, background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4 }}>
                               📷 Foto
                             </span>
                           )}
                           {isMine && (
-                            <span style={{ color: '#22c55e', fontSize: 10, background: 'rgba(34,197,94,0.1)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                            <span style={{ color: '#22c55e', fontSize: 13, background: 'rgba(34,197,94,0.1)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
                               ✓ Sende
                             </span>
                           )}
@@ -1811,7 +1811,7 @@ export default function BranchKiosk() {
                           ✅ Tamamla
                         </button>
                       ) : (
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: 0, textAlign: 'center', fontStyle: 'italic' }}>
+                        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: 0, textAlign: 'center', fontStyle: 'italic' }}>
                           {task.claimedByName || task.assignedToName || 'Birisi'} üstlendi
                         </p>
                       )}
@@ -1824,7 +1824,7 @@ export default function BranchKiosk() {
 
           {/* Bugünkü Skorum — kullanıcı motivasyonu için */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
               ⭐ Bugünkü Skorum
             </p>
             {/* S-UX Pilot Day-1 Banner (21 Nis 2026) - demotivasyon önleme */}
@@ -1842,10 +1842,10 @@ export default function BranchKiosk() {
                     padding: '8px 10px',
                     marginBottom: 12
                   }}>
-                    <p style={{ color: '#fbbf24', fontSize: 11, fontWeight: 600, margin: 0 }}>
+                    <p style={{ color: '#fbbf24', fontSize: 14, fontWeight: 600, margin: 0 }}>
                       🎯 Pilot İlk Hafta
                     </p>
-                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, margin: '2px 0 0', lineHeight: 1.4 }}>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, margin: '2px 0 0', lineHeight: 1.4 }}>
                       Skor toplama dönemi. Değerler stabil değil, 7 gün sonra normalleşir.
                     </p>
                   </div>
@@ -1861,52 +1861,52 @@ export default function BranchKiosk() {
                   </span>
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>/ 100</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 14 }}>
                   <div style={{ padding: '8px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: 6 }}>
                     <p style={{ color: '#22c55e', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.completed || 0}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: 0 }}>Tamamlanan</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Tamamlanan</p>
                   </div>
                   <div style={{ padding: '8px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6 }}>
                     <p style={{ color: '#ef4444', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.overdue || 0}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: 0 }}>Gecikmiş</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Gecikmiş</p>
                   </div>
                 </div>
-                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, marginTop: 8, textAlign: 'center' }}>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>
                   Son 30 gün
                 </p>
               </div>
             ) : (
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
                 Henüz görev üstlenmediniz<br/>
-                <span style={{ fontSize: 11 }}>Üstte "Üstlen" butonu ile başlayın</span>
+                <span style={{ fontSize: 14 }}>Üstte "Üstlen" butonu ile başlayın</span>
               </p>
             )}
           </div>
 
           {/* Telefonundan Aç bilgi kutusu */}
           <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: '#3b82f6', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+            <p style={{ color: '#3b82f6', fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
               📱 Telefonundan Aç
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: '0 0 8px', lineHeight: 1.4 }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: '0 0 8px', lineHeight: 1.4 }}>
               Quiz, eğitim ve detaylı görevlerin için <strong style={{ color: '#fff' }}>Benim Günüm</strong> sayfasını kullan.
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, margin: 0 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>
               Mola sırasında veya vardiya bitiminde aç.
             </p>
           </div>
 
           {/* Ekip Durumu */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
               👥 Ekip Durumu
-              {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '2px 8px', fontSize: 12 }}>{teamStatus.length} kişi</span>}
+              {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '2px 8px', fontSize: 14 }}>{teamStatus.length} kişi</span>}
             </p>
             {pdksAnomalyUsers.length > 0 && (
               <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
                 <p style={{ color: '#ef4444', fontWeight: 600, fontSize: 13, margin: '0 0 4px' }}>⚠ Mola Süresi Aşıldı</p>
                 {pdksAnomalyUsers.map((m: any) => (
-                  <p key={m.userId} style={{ color: '#fca5a5', fontSize: 12, margin: 0 }}>{m.name} — {m.breakMinutes} dk molada (limit: 90 dk)</p>
+                  <p key={m.userId} style={{ color: '#fca5a5', fontSize: 14, margin: 0 }}>{m.name} — {m.breakMinutes} dk molada (limit: 90 dk)</p>
                 ))}
               </div>
             )}
@@ -1915,8 +1915,8 @@ export default function BranchKiosk() {
                 <div key={member.userId} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: member.status === 'active' ? '#22c55e' : member.status === 'on_break' ? '#f59e0b' : '#6b7280', flexShrink: 0 }} />
                   <div>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{member.firstName} {member.lastName}</p>
-                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{member.firstName} {member.lastName}</p>
+                    <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
                   </div>
                 </div>
               ))}
@@ -1927,20 +1927,20 @@ export default function BranchKiosk() {
           {/* Bildirimler & Duyurular */}
           {(kioskNotifications.length > 0 || kioskAnnouncements.length > 0) && (
             <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
                 🔔 Bildirimler & Duyurular
-                {kioskNotifications.length > 0 && <span style={{ marginLeft: 8, background: '#ef4444', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 11 }}>{kioskNotifications.length}</span>}
+                {kioskNotifications.length > 0 && <span style={{ marginLeft: 8, background: '#ef4444', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 14 }}>{kioskNotifications.length}</span>}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {kioskAnnouncements.slice(0,2).map((ann: any) => (
                   <div key={`ann-${ann.id}`} style={{ padding: '8px 10px', background: 'rgba(59,130,246,0.08)', borderLeft: '3px solid #3b82f6', borderRadius: '0 8px 8px 0' }}>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{ann.title}</p>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{ann.title}</p>
                   </div>
                 ))}
                 {kioskNotifications.slice(0,3).map((n: any) => (
                   <div key={`notif-${n.id}`} style={{ padding: '8px 10px', background: 'rgba(245,158,11,0.08)', borderLeft: '3px solid #f59e0b', borderRadius: '0 8px 8px 0' }}>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{n.title}</p>
-                    {n.message && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.message}</p>}
+                    <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{n.title}</p>
+                    {n.message && <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.message}</p>}
                   </div>
                 ))}
               </div>
@@ -1950,15 +1950,15 @@ export default function BranchKiosk() {
           {/* Checklistlerim */}
           {userChecklists.length > 0 && (
             <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>✅ Checklistlerim</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>✅ Checklistlerim</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {userChecklists.map((cl: any) => {
                   const pct = cl.totalTasks > 0 ? Math.round((cl.completedTasks / cl.totalTasks) * 100) : 0;
                   return (
                     <div key={cl.id}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{cl.name}</p>
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{cl.completedTasks}/{cl.totalTasks}</span>
+                        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{cl.name}</p>
+                        <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{cl.completedTasks}/{cl.totalTasks}</span>
                       </div>
                       <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3 }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#ef4444', borderRadius: 3, transition: 'width 0.3s' }} />
