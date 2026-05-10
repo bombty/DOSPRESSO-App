@@ -219,6 +219,7 @@ const CgoSubeVeriToplama = lazyWithRetry(() => import("@/pages/cgo-sube-veri-top
 const SubeEkipmanYonetimi = lazyWithRetry(() => import("@/pages/sube-ekipman-yonetimi"));  // Aslan 10 May 2026
 const KioskYenilikDemo = lazyWithRetry(() => import("@/pages/sube/kiosk-yenilik-demo"));  // Aslan 10 May 2026 — Demo
 const KvkkDenetim = lazyWithRetry(() => import("@/pages/kvkk-denetim"));  // Aslan 10 May 2026 — KVKK Denetim Merkezi
+const HqCanliVardiya = lazyWithRetry(() => import("@/pages/hq-canli-vardiya"));  // Aslan 10 May 2026 — HQ Canlı Vardiya
 const Cowork = lazyWithRetry(() => import("@/pages/cowork"));
 const CoachKontrolMerkezi = lazyWithRetry(() => import("@/pages/coach-kontrol-merkezi"));
 const TrainerEgitimMerkezi = lazyWithRetry(() => import("@/pages/trainer-egitim-merkezi"));
@@ -621,6 +622,7 @@ function Router() {
           <Route path="/sube/ekipman-yonetimi">{() => <ProtectedRoute allowedRoles={["branch_manager","mudur","owner","supervisor","cgo","admin","ceo"]}><SubeEkipmanYonetimi /></ProtectedRoute>}</Route>
           <Route path="/sube/kiosk-yenilik-demo">{() => <ProtectedRoute allowedRoles={["branch_manager","mudur","owner","supervisor","cgo","admin","ceo","barista","bar_buddy","supervisor_buddy"]}><KioskYenilikDemo /></ProtectedRoute>}</Route>
           <Route path="/kvkk-denetim">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","muhasebe_ik","owner"]}><KvkkDenetim /></ProtectedRoute>}</Route>
+          <Route path="/hq/canli-vardiya">{() => <ProtectedRoute allowedRoles={["admin","ceo","cgo","owner","coach","trainer","muhasebe_ik","muhasebe","mudur","branch_manager"]}><HqCanliVardiya /></ProtectedRoute>}</Route>
           <Route path="/cowork">{() => <ExecutiveOnly><Cowork /></ExecutiveOnly>}</Route>
           <Route path="/coach-kontrol-merkezi">{() => <ProtectedRoute allowedRoles={["coach","admin","ceo"]}><CoachKontrolMerkezi /></ProtectedRoute>}</Route>
           <Route path="/trainer-egitim-merkezi">{() => <ProtectedRoute allowedRoles={["trainer","admin","ceo"]}><TrainerEgitimMerkezi /></ProtectedRoute>}</Route>
