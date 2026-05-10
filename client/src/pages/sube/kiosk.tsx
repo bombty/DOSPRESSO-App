@@ -1154,15 +1154,35 @@ export default function BranchKiosk() {
       <div key={p} style={{ position: 'absolute', top: 0, bottom: 0, left: `${p}%`, width: '0.5px', background: 'rgba(255,255,255,0.05)', zIndex: 1 }} />
     ));
     const NowLine = () => <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${nowPct}%`, width: 2, background: '#ef4444', zIndex: 3 }} />;
-    const pbStyle = (s: string): React.CSSProperties => ({
-      width: 164, height: 48, flexShrink: 0 as const, borderRadius: 10, padding: '0 10px',
-      display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', border: 'none',
-      ...(s === 'active'   ? { background: '#16a34a', boxShadow: '0 2px 10px rgba(22,163,74,0.35)' } :
-         s === 'on_break'  ? { background: '#d97706', boxShadow: '0 2px 10px rgba(217,119,6,0.35)' } :
-         s === 'late' || s === 'missing' ? { background: '#dc2626', boxShadow: '0 2px 10px rgba(220,38,38,0.35)' } :
-         s === 'scheduled' ? { background: '#1d4ed8', boxShadow: '0 2px 10px rgba(29,78,216,0.3)' } :
-         { background: '#142030', boxShadow: '0 0 0 1px rgba(255,255,255,0.15)' })
-    });
+    const pbStyle = (s: string, staff?: any): React.CSSProperties => {
+      // Aslan 10 May 2026: Mola ihlali kırmızı + animasyon (realtime)
+      let breakMin = staff?.breakMinutes || 0;
+      if (staff?.breakStartTime) {
+        breakMin = Math.floor(
+          (Date.now() - new Date(staff.breakStartTime).getTime()) / 60000
+        );
+      }
+      const isBreakViolation = s === 'on_break' && breakMin > 60;
+      if (isBreakViolation) {
+        return {
+          width: 164, height: 48, flexShrink: 0 as const, borderRadius: 10, padding: '0 10px',
+          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+          border: '2px solid #fff',
+          background: '#dc2626',
+          boxShadow: '0 0 20px rgba(220,38,38,0.8)',
+          animation: 'pulse 1.5s ease-in-out infinite',
+        };
+      }
+      return {
+        width: 164, height: 48, flexShrink: 0 as const, borderRadius: 10, padding: '0 10px',
+        display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', border: 'none',
+        ...(s === 'active'   ? { background: '#16a34a', boxShadow: '0 2px 10px rgba(22,163,74,0.35)' } :
+           s === 'on_break'  ? { background: '#d97706', boxShadow: '0 2px 10px rgba(217,119,6,0.35)' } :
+           s === 'late' || s === 'missing' ? { background: '#dc2626', boxShadow: '0 2px 10px rgba(220,38,38,0.35)' } :
+           s === 'scheduled' ? { background: '#1d4ed8', boxShadow: '0 2px 10px rgba(29,78,216,0.3)' } :
+           { background: '#142030', boxShadow: '0 0 0 1px rgba(255,255,255,0.15)' })
+      };
+    };
     const statusColor = (s: string) => '#fff';
     const statusTxt = (staff: any) => {
       const s = staff.shiftStatus;
@@ -1184,16 +1204,23 @@ export default function BranchKiosk() {
         return 'Çalışıyor';
       }
       if (s === 'on_break') {
-        // Aslan 10 May 2026: Kalan mola süresini hesapla (1 saat default)
-        const breakMin = staff.breakMinutes || 0;
+        // Aslan 10 May 2026: Realtime mola süresi (60sn API yerine her render'da hesapla)
+        let breakMin = staff.breakMinutes || 0;
+        if (staff.breakStartTime) {
+          // Backend'den breakStartTime geliyorsa kesin hesap (saniyelik doğru)
+          breakMin = Math.floor(
+            (now.getTime() - new Date(staff.breakStartTime).getTime()) / 60000
+          );
+        }
         const remaining = Math.max(0, 60 - breakMin);
         if (remaining > 0) {
           return `Molada · ${breakMin}dk yapıldı · ${remaining}dk kaldı`;
         }
         if (breakMin > 60) {
-          return `🔴 MOLA AŞIM · ${breakMin}dk (+${breakMin - 60}dk)`;
+          const overtime = breakMin - 60;
+          return `🚨 İHLAL · ${breakMin}dk (+${overtime}dk geç!)`;
         }
-        return `Molada · ${breakMin}dk yapıldı · süre doldu`;
+        return `Molada · ${breakMin}dk · ⚠️ süre doldu`;
       }
       if (s === 'late') return `${staff.lateMinutes}dk geç — ${staff.shiftStartTime?.slice(0,5)||''}`;
       if (s === 'missing') return `Gelmedi — ${staff.shiftStartTime?.slice(0,5)||''}`;
@@ -1214,7 +1241,7 @@ export default function BranchKiosk() {
     };
     const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 48, marginBottom: 4 }}>
-        <button style={pbStyle(staff.shiftStatus || 'off')} onClick={() => handlePerson(staff)} data-testid={`staff-btn-${staff.id}`}>
+        <button style={pbStyle(staff.shiftStatus || 'off', staff)} onClick={() => handlePerson(staff)} data-testid={`staff-btn-${staff.id}`}>
           <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 500, flexShrink: 0 }}>
             {staff.firstName?.[0]}{staff.lastName?.[0]}
           </div>
@@ -1572,6 +1599,30 @@ export default function BranchKiosk() {
                 <div style={{ textAlign: 'center', marginBottom: 16 }}>
                   <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#fbbf24', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
                   <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Çalışma Süresi</p>
+                  {/* Aslan 10 May 2026: Vardiya başlama zamanı + kalan mola hakkı */}
+                  {currentSession?.checkInTime && (
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 8 }}>
+                      ⏱ Başlangıç: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                        {new Date(currentSession.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </p>
+                  )}
+                  {(() => {
+                    const usedBreak = currentSession?.breakMinutes || 0;
+                    const remaining = Math.max(0, 60 - usedBreak);
+                    if (usedBreak > 0) {
+                      return (
+                        <p style={{ color: remaining > 10 ? 'rgba(34,197,94,0.7)' : remaining > 0 ? 'rgba(251,191,36,0.7)' : 'rgba(239,68,68,0.7)', fontSize: 11, marginTop: 4 }}>
+                          ☕ Mola hakkın: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{remaining} dk kaldı</span> ({usedBreak}/{60} dk yapıldı)
+                        </p>
+                      );
+                    }
+                    return (
+                      <p style={{ color: 'rgba(34,197,94,0.7)', fontSize: 11, marginTop: 4 }}>
+                        ☕ Mola hakkın: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>60 dk</span> (henüz kullanılmadı)
+                      </p>
+                    );
+                  })()}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <button
@@ -1591,9 +1642,6 @@ export default function BranchKiosk() {
                     {endShiftMutation.isPending ? 'Kaydediliyor...' : 'Vardiyayı Bitir'}
                   </button>
                 </div>
-                {currentSession.breakMinutes > 0 && (
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 10 }}>Toplam mola: {formatMinutes(currentSession.breakMinutes)}</p>
-                )}
               </div>
             )}
           </div>

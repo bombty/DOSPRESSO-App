@@ -3972,6 +3972,7 @@ router.get('/api/branches/:branchId/kiosk/team-status', isKioskOrAuthenticated, 
         role: s.role,
         status: s.status,
         checkInTime: s.checkInTime,
+        breakStartTime: breakStart, // Aslan 10 May 2026: Frontend realtime hesap için
         breakMinutes,
         isBreakAnomaly: s.status === 'on_break' && breakMinutes > maxBreakMinutes,
         maxBreakMinutes,
