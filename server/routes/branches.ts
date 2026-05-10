@@ -3536,7 +3536,7 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
 
     const userTasks = await db.select().from(tasks)
       .where(and(
-        eq(tasks.assignedTo, userId),
+        eq(tasks.assignedToId, userId),
         or(
           eq(tasks.status, 'pending'),
           eq(tasks.status, 'in_progress')
