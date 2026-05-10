@@ -42,6 +42,8 @@ export const ROLE_LABELS: Record<string, string> = {
   barista: "Barista",
   supervisor_buddy: "Supervisor Buddy",
   supervisor: "Supervisor",
+  mudur: "Müdür",
+  owner: "Partner", // Aslan 10 May 2026: Franchise sahibi
 };
 
 export const CERTIFICATE_TEMPLATES: CertificateTemplate[] = [

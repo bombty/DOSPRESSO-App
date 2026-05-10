@@ -750,6 +750,18 @@ export async function runPeriodicChecks() {
     results.total += annFollowups;
   } catch (e) { /* skip */ }
 
+  // ═══════════════════════════════════════
+  // 8. EKİPMAN BAKIM HATIRLATMA (Aslan 10 May 2026)
+  // ═══════════════════════════════════════
+  try {
+    const { runEquipmentMaintenanceChecks } = await import("./equipment-maintenance-check");
+    const eqResult = await runEquipmentMaintenanceChecks(fireEvent);
+    results.business += eqResult.totalNotifications;
+    results.total += eqResult.totalNotifications;
+  } catch (e: any) {
+    console.error("[runPeriodicChecks] equipment maintenance error:", e.message);
+  }
+
   return results;
 }
 

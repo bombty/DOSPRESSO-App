@@ -20,6 +20,7 @@ const ROLE_LABELS: Record<string, string> = {
   supervisor: "Supervisor",
   supervisor_buddy: "Sup. Buddy",
   mudur: "Müdür",
+  owner: "Partner", // Aslan 10 May 2026
   fabrika_mudur: "Fab. Müdür",
   fabrika_operator: "Operatör",
   fabrika_sorumlu: "Sorumlu",
