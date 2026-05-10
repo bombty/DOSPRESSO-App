@@ -200,7 +200,6 @@ export default function GirdiDetay() {
   if (isLoading) return <LoadingState />;
   if (error || !hammadde) return <ErrorState message="Hammadde yüklenemedi" />;
 
-  const canEdit = ROLE_CAN_EDIT.includes(user?.role || '');
   const allergens = Array.isArray(hammadde.allergens) ? hammadde.allergens : [];
   const hasAllergens = allergens.length > 0;
 
