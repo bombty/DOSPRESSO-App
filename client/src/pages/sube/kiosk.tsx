@@ -114,6 +114,11 @@ export default function BranchKiosk() {
   const [kioskUsername, setKioskUsername] = useState('');
   const [selectedUser, setSelectedUser] = useState<StaffMember | null>(null);
   const [pinInput, setPinInput] = useState('');
+  // Aslan 11 May 2026: PIN Sıfırlama (8 hatalı deneme sonra)
+  const [showPinResetModal, setShowPinResetModal] = useState(false);
+  const [pinResetEmail, setPinResetEmail] = useState('');
+  const [pinResetLoading, setPinResetLoading] = useState(false);
+  const [pinFailedAttempts, setPinFailedAttempts] = useState(0);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [userTasks, setUserTasks] = useState<Task[]>([]);
   const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
@@ -607,7 +612,25 @@ export default function BranchKiosk() {
       await continueAfterKvkk();
     },
     onError: (error: any) => {
-      toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
+      // Aslan 11 May 2026: Hatalı PIN sayacını artır
+      const newCount = pinFailedAttempts + 1;
+      setPinFailedAttempts(newCount);
+      const errMsg = error.message || 'Giriş başarısız';
+      const isLocked = errMsg.toLowerCase().includes('kilitlend') || errMsg.toLowerCase().includes('too many');
+      // 8+ hatalı deneme veya kilit mesajı → PIN sıfırla seçeneğini öner
+      if (newCount >= 8 || isLocked) {
+        toast({
+          title: "🔒 Çok fazla hatalı deneme",
+          description: "PIN'inizi unuttuysanız 'PIN'imi Unuttum' butonu ile sıfırlayabilirsiniz",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Giriş başarısız",
+          description: `${errMsg} (${newCount}/8 deneme)`,
+          variant: "destructive"
+        });
+      }
       setPinInput('');
     },
   });
@@ -1540,6 +1563,35 @@ export default function BranchKiosk() {
                 </Button>
               ))}
             </div>
+            {/* Aslan 11 May 2026: PIN'imi unuttum - 3+ hatalı denemeden sonra göster */}
+            {pinFailedAttempts >= 3 && (
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <button
+                  onClick={() => {
+                    setShowPinResetModal(true);
+                    setPinResetEmail(selectedUser?.email || '');
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: '1.5px solid rgba(192,57,43,0.6)',
+                    color: '#C0392B',
+                    padding: '10px 20px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  data-testid="button-forgot-pin"
+                >
+                  🔑 PIN'imi Unuttum
+                </button>
+                {pinFailedAttempts >= 6 && (
+                  <p style={{ color: '#dc2626', fontSize: 13, marginTop: 8, fontWeight: 500 }}>
+                    ⚠️ {pinFailedAttempts}/8 hatalı deneme — 8'de hesabınız kilitlenir
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -2744,6 +2796,153 @@ export default function BranchKiosk() {
             newWarningsToday={breakReturnSummary.newWarningsToday}
             onReturnToShift={() => setBreakReturnSummary(null)}
           />
+        </div>
+      )}
+
+      {/* Aslan 11 May 2026: PIN Sıfırlama Modal */}
+      {showPinResetModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+          }}
+          onClick={() => !pinResetLoading && setShowPinResetModal(false)}
+        >
+          <div
+            style={{
+              background: '#141820',
+              borderRadius: 16,
+              padding: 28,
+              maxWidth: 500,
+              width: '100%',
+              border: '2px solid #C0392B',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>🔑</div>
+              <h2 style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+                PIN'imi Unuttum
+              </h2>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>
+                Yeni PIN'iniz kayıtlı e-posta adresinize gönderilecek
+              </p>
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: 'block', color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                E-posta adresiniz <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="email"
+                value={pinResetEmail}
+                onChange={(e) => setPinResetEmail(e.target.value)}
+                placeholder="ornek@dospresso.com"
+                disabled={pinResetLoading}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1.5px solid rgba(255,255,255,0.15)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 16,
+                  outline: 'none',
+                }}
+                data-testid="input-pin-reset-email"
+              />
+              {selectedUser && (
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 6 }}>
+                  Seçili kullanıcı: <strong>{selectedUser.firstName} {selectedUser.lastName}</strong>
+                </p>
+              )}
+            </div>
+
+            <div style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 8, padding: 12, marginBottom: 20 }}>
+              <p style={{ color: '#fbbf24', fontSize: 13, lineHeight: 1.5 }}>
+                ⚠️ <strong>Güvenlik:</strong> Yeni PIN sadece kayıtlı e-postanıza gönderilir. E-postanıza erişiminiz yoksa şube müdürünüze başvurun.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setShowPinResetModal(false)}
+                disabled={pinResetLoading}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: 'transparent',
+                  border: '1.5px solid rgba(255,255,255,0.2)',
+                  borderRadius: 8,
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+                data-testid="button-pin-reset-cancel"
+              >
+                İptal
+              </button>
+              <button
+                onClick={async () => {
+                  if (!pinResetEmail || !pinResetEmail.includes('@')) {
+                    toast({ title: 'Geçerli e-posta girin', variant: 'destructive' });
+                    return;
+                  }
+                  setPinResetLoading(true);
+                  try {
+                    const res = await fetch('/api/kiosk/pin-reset/request', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        email: pinResetEmail,
+                        branchId: branchId,
+                        firstName: selectedUser?.firstName,
+                        lastName: selectedUser?.lastName,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      toast({
+                        title: '✅ Mail gönderildi',
+                        description: data.message || 'E-postanızı kontrol edin (1-2 dakika)',
+                      });
+                      setShowPinResetModal(false);
+                      setPinResetEmail('');
+                      setPinFailedAttempts(0);
+                      setPinInput('');
+                    } else {
+                      toast({
+                        title: 'Sıfırlama başarısız',
+                        description: data.error || data.message || 'Bir hata oluştu',
+                        variant: 'destructive',
+                      });
+                    }
+                  } catch (e: any) {
+                    toast({ title: 'Bağlantı hatası', description: e.message, variant: 'destructive' });
+                  } finally {
+                    setPinResetLoading(false);
+                  }
+                }}
+                disabled={pinResetLoading || !pinResetEmail}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: pinResetLoading ? 'rgba(192,57,43,0.5)' : '#C0392B',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: pinResetLoading ? 'not-allowed' : 'pointer',
+                }}
+                data-testid="button-pin-reset-submit"
+              >
+                {pinResetLoading ? 'Gönderiliyor...' : '📧 Mail Gönder'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

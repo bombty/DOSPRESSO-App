@@ -127,7 +127,7 @@ async function createAutoLot(params: {
 
 const kioskLoginAttempts = new Map<string, { count: number; lastAttempt: number; blockedUntil?: number }>();
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 8;
 const BLOCK_DURATION = 30 * 60 * 1000;
 
 function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter?: number; remainingAttempts?: number } {
