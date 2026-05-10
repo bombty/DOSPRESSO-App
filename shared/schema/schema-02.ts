@@ -3320,6 +3320,16 @@ export const EQUIPMENT_TYPES = {
   KIOSK: "kiosk",                // Kiosk System
   TEA: "tea",                    // Tea Machine
   ICE: "ice",                    // Manitowock Ice Machine
+  // Aslan 10 May 2026 ekledi: 9 yeni cihaz tipi
+  FILTRE_KAHVE: "filtre_kahve",  // Filtre Kahve Makinası
+  TURK_KAHVE: "turk_kahve",      // Türk Kahve Makinası
+  DONUT_TESHIR: "donut_teshir",  // Donut Teşhir Dolabı
+  POSITIVE_TESHIR: "positive_teshir", // +4 Teşhir Dolabı (positive cool)
+  NOTR_TESHIR: "notr_teshir",    // Nötr Teşhir Dolabı (oda sıcaklığı)
+  TESHIR_SET: "teshir_set",      // Teşhir Dolabı Set (kombinasyon)
+  FIRIN: "firin",                // Fırın
+  HIZLI_FIRIN: "hizli_firin",    // Hızlı Fırın (rapid oven)
+  TOST: "tost",                  // Tost Makinası
 } as const;
 
 export type EquipmentType = typeof EQUIPMENT_TYPES[keyof typeof EQUIPMENT_TYPES];
@@ -3387,6 +3397,70 @@ export const EQUIPMENT_METADATA: Record<EquipmentType, {
     maintenanceInterval: 60,
     maintenanceResponsible: "branch",
     faultProtocol: "branch",
+  },
+  // === Aslan 10 May 2026 ekledi: 9 yeni cihaz ===
+  filtre_kahve: {
+    nameTr: "Filtre Kahve Makinesi",
+    category: "kahve",
+    maintenanceInterval: 90, // Quarterly
+    maintenanceResponsible: "branch",
+    faultProtocol: "branch",
+  },
+  turk_kahve: {
+    nameTr: "Türk Kahvesi Makinesi",
+    category: "kahve",
+    maintenanceInterval: 180, // Semi-annual
+    maintenanceResponsible: "branch",
+    faultProtocol: "branch",
+  },
+  donut_teshir: {
+    nameTr: "Donut Teşhir Dolabı",
+    category: "teshir", // Teşhir kategorisi (yeni)
+    maintenanceInterval: 180, // Semi-annual
+    maintenanceResponsible: "branch",
+    faultProtocol: "hq_teknik", // Soğutma kritik, HQ teknik
+  },
+  positive_teshir: {
+    nameTr: "+4 Teşhir Dolabı (Soğutmalı)",
+    category: "teshir",
+    maintenanceInterval: 180,
+    maintenanceResponsible: "branch",
+    faultProtocol: "hq_teknik", // Soğutma kritik
+  },
+  notr_teshir: {
+    nameTr: "Nötr Teşhir Dolabı (Oda Sıcaklığı)",
+    category: "teshir",
+    maintenanceInterval: 365, // Annual
+    maintenanceResponsible: "branch",
+    faultProtocol: "branch",
+  },
+  teshir_set: {
+    nameTr: "Teşhir Dolabı Set (Kombinasyon)",
+    category: "teshir",
+    maintenanceInterval: 180,
+    maintenanceResponsible: "branch",
+    faultProtocol: "hq_teknik",
+  },
+  firin: {
+    nameTr: "Fırın",
+    category: "pisirme", // Yeni kategori
+    maintenanceInterval: 90, // Quarterly (yoğun kullanım)
+    maintenanceResponsible: "branch",
+    faultProtocol: "hq_teknik", // Gaz/elektrik bağlantısı kritik
+  },
+  hizli_firin: {
+    nameTr: "Hızlı Fırın (Rapid Oven)",
+    category: "pisirme",
+    maintenanceInterval: 90,
+    maintenanceResponsible: "branch",
+    faultProtocol: "hq_teknik",
+  },
+  tost: {
+    nameTr: "Tost Makinesi",
+    category: "pisirme",
+    maintenanceInterval: 365, // Annual
+    maintenanceResponsible: "branch",
+    faultProtocol: "branch", // Şube halletmeli (basit cihaz)
   },
 };
 
