@@ -40,6 +40,7 @@ import breakManagementRoutes from "./routes/break-management";  // Aslan 10 May 
 import hqLivePdksRoutes from "./routes/hq-live-pdks";  // Aslan 10 May 2026: HQ canlı vardiya + geçmiş PDKS
 import kvkkDataRequestsRoutes from "./routes/kvkk-data-requests";  // Aslan 10 May 2026: KVKK m.11 talepleri
 import pinResetRoutes from "./routes/pin-reset";  // Aslan 11 May 2026: PIN sıfırlama (mail ile)
+import longShiftRoutes from "./routes/long-shift";  // Aslan 11 May 2026: Uzun vardiya uyarısı
 import employeeSummaryRoutes from "./routes/employee-summary";
 import auditV2Routes from "./routes/audit-v2";
 import dobodyProposalRoutes from "./routes/dobody-proposals";
@@ -1293,6 +1294,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(hqLivePdksRoutes);  // Aslan 10 May 2026: HQ canlı vardiya + PDKS geçmiş
   app.use(kvkkDataRequestsRoutes);  // Aslan 10 May 2026: KVKK m.11 talepleri
   app.use(pinResetRoutes);  // Aslan 11 May 2026: PIN sıfırlama (mail ile)
+  app.use(longShiftRoutes);  // Aslan 11 May 2026: Uzun vardiya uyarısı
   app.use(branchSummaryRoutes);
   app.use(hqSummaryRoutes);
   app.use(coachSummaryRoutes);

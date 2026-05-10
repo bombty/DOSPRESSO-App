@@ -227,4 +227,56 @@ router.post(
   }
 );
 
+// Aslan 11 May 2026: ADMIN — Tüm kiosk login deneme sayaçlarını sıfırla (test için)
+// Hem in-memory rate limit hem DB'deki pinLockedUntil temizlenir
+router.post(
+  "/api/admin/kiosk/reset-all-attempts",
+  async (req: Request, res: Response) => {
+    try {
+      const userRole = (req.user as any)?.role || "";
+      if (!["admin", "ceo", "owner", "cgo"].includes(userRole)) {
+        return res.status(403).json({ error: "Yetkisiz" });
+      }
+
+      // 1. DB tarafındaki kilit kayıtları sıfırla
+      const result = await db
+        .update(branchStaffPins)
+        .set({
+          pinFailedAttempts: 0,
+          pinLockedUntil: null,
+          updatedAt: new Date(),
+        });
+
+      // 2. In-memory rate limit'i sıfırla
+      try {
+        const { resetAllKioskLoginAttempts } = await import("./branches");
+        const memResult = resetAllKioskLoginAttempts();
+        return res.json({
+          success: true,
+          dbReset: true,
+          memoryReset: memResult,
+          message: "Tüm PIN deneme sayaçları sıfırlandı (DB + memory)",
+        });
+      } catch (memErr: any) {
+        return res.json({
+          success: true,
+          dbReset: true,
+          memoryReset: false,
+          warning: "DB sıfırlandı, memory cache temizlenemedi (server restart sonrası sıfırlanacak)",
+        });
+      }
+    } catch (error: any) {
+      console.error("[admin/reset-all-attempts]", error);
+      res.status(500).json({
+        error: "Sıfırlama başarısız",
+        message: error.message,
+      });
+    }
+  }
+);
+
 export default router;
+
+// ═══════════════════════════════════════════════════════════════════
+// Aslan 11 May 2026: Long-shift warnings endpoint (kiosk anasayfa için)
+// ═══════════════════════════════════════════════════════════════════

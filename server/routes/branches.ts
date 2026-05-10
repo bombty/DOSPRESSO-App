@@ -176,6 +176,12 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
   return { allowed: true, remainingAttempts: MAX_ATTEMPTS - record.count };
 }
 
+// Aslan 11 May 2026: Admin login deneme sayacını sıfırlasın (test için)
+export function resetAllKioskLoginAttempts() {
+  kioskLoginAttempts.clear();
+  return { cleared: true, time: new Date().toISOString() };
+}
+
 // ========================================
 // BRANCH CRUD ENDPOINTS
 // ========================================
@@ -3534,6 +3540,39 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
       return res.json({ activeSession: null });
     }
 
+    // Aslan 11 May 2026: Aktif mola varsa breakStartTime + dailyRemainingMinutes ekle
+    // (Sayfa yenilenince frontend state'te breakStartTime kalsın diye)
+    let enrichedSession: any = { ...session };
+    if (session.status === 'on_break') {
+      const [activeBreak] = await db.select()
+        .from(branchBreakLogs)
+        .where(and(
+          eq(branchBreakLogs.sessionId, session.id),
+          isNull(branchBreakLogs.breakEndTime)
+        ))
+        .orderBy(desc(branchBreakLogs.breakStartTime))
+        .limit(1);
+      
+      if (activeBreak) {
+        const now = new Date();
+        const elapsedMin = Math.floor((now.getTime() - new Date(activeBreak.breakStartTime).getTime()) / 60000);
+        const usedBeforeThisBreak = session.breakMinutes || 0;
+        const totalUsed = usedBeforeThisBreak + elapsedMin;
+        const dailyRemaining = Math.max(0, 60 - totalUsed);
+        
+        enrichedSession.breakStartTime = activeBreak.breakStartTime;
+        enrichedSession.dailyPlannedMinutes = 60;
+        enrichedSession.dailyUsedMinutes = totalUsed;
+        enrichedSession.dailyRemainingMinutes = dailyRemaining;
+      }
+    } else {
+      // Çalışıyor durumunda da dailyRemaining gösterilebilir (kalan hak)
+      const used = session.breakMinutes || 0;
+      enrichedSession.dailyPlannedMinutes = 60;
+      enrichedSession.dailyUsedMinutes = used;
+      enrichedSession.dailyRemainingMinutes = Math.max(0, 60 - used);
+    }
+
     const userTasks = await db.select().from(tasks)
       .where(and(
         eq(tasks.assignedToId, userId),
@@ -3583,7 +3622,7 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
       .limit(5);
 
     res.json({
-      activeSession: session,
+      activeSession: enrichedSession,
       tasks: userTasks,
       checklists: userChecklists,
       branchTasks: branchOpenTasks,

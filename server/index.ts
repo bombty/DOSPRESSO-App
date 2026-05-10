@@ -685,6 +685,14 @@ function startConsolidatedHourlyJobs() {
     try {
       await cleanupStaleShiftSessions();
     } catch (e) { console.error("Error in stale shift cleanup:", e); }
+    // Aslan 11 May 2026: Uzun vardiya kontrolü (10sa warning, 12sa auto-close)
+    try {
+      const { checkLongShifts } = await import("./services/long-shift-monitor");
+      const result = await checkLongShifts();
+      if (result.warnings > 0 || result.autoClosed > 0) {
+        log(`[Long-Shift] ${result.warnings} uyarı, ${result.autoClosed} otomatik kapatma`);
+      }
+    } catch (e) { console.error("Error in long-shift monitor:", e); }
     // Dobody periyodik kontroller (saatlik)
     try {
       const { runPeriodicChecks } = await import("./lib/dobody-workflow-engine");

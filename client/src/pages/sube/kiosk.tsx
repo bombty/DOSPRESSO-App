@@ -119,6 +119,8 @@ export default function BranchKiosk() {
   const [pinResetEmail, setPinResetEmail] = useState('');
   const [pinResetLoading, setPinResetLoading] = useState(false);
   const [pinFailedAttempts, setPinFailedAttempts] = useState(0);
+  // Aslan 11 May 2026: Long-shift uyarıları (10sa+, 12sa+)
+  const [longShiftWarnings, setLongShiftWarnings] = useState<any[]>([]);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [userTasks, setUserTasks] = useState<Task[]>([]);
   const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
@@ -905,8 +907,25 @@ export default function BranchKiosk() {
       }
     };
 
+    // Aslan 11 May 2026: Long-shift uyarıları (10sa+, 12sa+)
+    const fetchLongShifts = async () => {
+      try {
+        const res = await fetch(`/api/branches/${branchId}/kiosk/long-shift-warnings`);
+        if (res.ok) {
+          const data = await res.json();
+          setLongShiftWarnings(data.warnings || []);
+        }
+      } catch (err) {
+        console.error('Long-shift fetch error:', err);
+      }
+    };
+
     fetchLobby();
-    const lobbyInterval = setInterval(fetchLobby, 60000);
+    fetchLongShifts();
+    const lobbyInterval = setInterval(() => {
+      fetchLobby();
+      fetchLongShifts();
+    }, 60000);
 
     // QR 30sn'de yenile (45sn geçerli, rahat margin)
     const fetchQr = async () => {
@@ -1333,6 +1352,30 @@ export default function BranchKiosk() {
             </button>
           </div>
         </div>
+        {/* Aslan 11 May 2026: Uzun vardiya uyarı banner (10sa+, 12sa+ otomatik kapatma) */}
+        {longShiftWarnings.length > 0 && (
+          <div style={{
+            background: longShiftWarnings.some((w: any) => w.severity === 'critical') ? '#dc2626' : '#f59e0b',
+            padding: '10px 16px',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexShrink: 0,
+            animation: longShiftWarnings.some((w: any) => w.severity === 'critical') ? 'pulse 2s ease-in-out infinite' : 'none',
+          }}>
+            <span style={{ fontSize: 20 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <strong>UZUN VARDIYA UYARISI:</strong>{' '}
+              {longShiftWarnings.map((w: any) => `${w.userName} (${w.elapsedHours}sa)`).join(' · ')}
+              {longShiftWarnings.some((w: any) => w.severity === 'critical')
+                ? ' — 12sa+: OTOMATİK ÇIKIŞ yapılacak. Mesai talebi varsa kişi kendi adına tıklayıp talep etmeli.'
+                : ' — Vardiyayı bitirin veya mesai talep edin (kendi adınıza tıklayıp).'}
+            </div>
+          </div>
+        )}
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 220px', overflow: 'hidden' }}>
           <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ flex: 1, padding: '10px 14px 6px', overflowY: 'auto' }}>
@@ -1651,11 +1694,11 @@ export default function BranchKiosk() {
         )}
 
         {/* İçerik */}
-        <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignContent: 'start' }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignContent: 'start' }}>
 
           {/* Vardiya Durumu */}
-          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>⏱ Vardiya Durumu</p>
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 10 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>⏱ Vardiya Durumu</p>
 
             {sessionLoading ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>

@@ -1241,6 +1241,11 @@ export const branchShiftSessions = pgTable("branch_shift_sessions", {
   
   checkinMethod: varchar("checkin_method", { length: 10 }).default("pin").notNull(),
   
+  // Aslan 11 May 2026: Otomatik kapatma (12+ saat uyari + auto-close)
+  autoClosed: boolean("auto_closed").default(false),
+  autoClosedReason: varchar("auto_closed_reason", { length: 50 }),
+  autoClosedAt: timestamp("auto_closed_at"),
+  
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("branch_shift_sessions_user_idx").on(table.userId),
