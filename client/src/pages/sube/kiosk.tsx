@@ -1204,23 +1204,23 @@ export default function BranchKiosk() {
         return 'Çalışıyor';
       }
       if (s === 'on_break') {
-        // Aslan 10 May 2026: Realtime mola süresi (60sn API yerine her render'da hesapla)
+        // Aslan 11 May 2026: Daha kısa, daha net mola durumu (card 164px dar)
         let breakMin = staff.breakMinutes || 0;
         if (staff.breakStartTime) {
-          // Backend'den breakStartTime geliyorsa kesin hesap (saniyelik doğru)
           breakMin = Math.floor(
             (now.getTime() - new Date(staff.breakStartTime).getTime()) / 60000
           );
         }
         const remaining = Math.max(0, 60 - breakMin);
-        if (remaining > 0) {
-          return `Molada · ${breakMin}dk yapıldı · ${remaining}dk kaldı`;
-        }
         if (breakMin > 60) {
-          const overtime = breakMin - 60;
-          return `🚨 İHLAL · ${breakMin}dk (+${overtime}dk geç!)`;
+          // İhlal — kart zaten kırmızı animasyonlu
+          return `🚨 +${breakMin - 60}dk geç`;
         }
-        return `Molada · ${breakMin}dk · ⚠️ süre doldu`;
+        if (remaining === 0) {
+          return `⚠️ Süre doldu (${breakMin}dk)`;
+        }
+        // Normal: kalan dakikayı vurgula
+        return `Molada · ${remaining}dk kaldı`;
       }
       if (s === 'late') return `${staff.lateMinutes}dk geç — ${staff.shiftStartTime?.slice(0,5)||''}`;
       if (s === 'missing') return `Gelmedi — ${staff.shiftStartTime?.slice(0,5)||''}`;
@@ -1239,22 +1239,53 @@ export default function BranchKiosk() {
       }
       return 'İzinli';
     };
-    const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => (
+    const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => {
+      // Aslan 11 May 2026: Mola durumu net görünsün
+      const isOnBreak = staff.shiftStatus === 'on_break';
+      let breakRemaining: number | null = null;
+      let isBreakViolation = false;
+      if (isOnBreak) {
+        let breakMin = staff.breakMinutes || 0;
+        if (staff.breakStartTime) {
+          breakMin = Math.floor(
+            (Date.now() - new Date(staff.breakStartTime).getTime()) / 60000
+          );
+        }
+        breakRemaining = Math.max(0, 60 - breakMin);
+        isBreakViolation = breakMin > 60;
+      }
+
+      return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 48, marginBottom: 4 }}>
         <button style={pbStyle(staff.shiftStatus || 'off', staff)} onClick={() => handlePerson(staff)} data-testid={`staff-btn-${staff.id}`}>
           <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 500, flexShrink: 0 }}>
             {staff.firstName?.[0]}{staff.lastName?.[0]}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 500, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 94 }}>{staff.firstName} {staff.lastName?.[0]}.</div>
-            <div style={{ fontSize: 8, color: statusColor(staff.shiftStatus || 'off'), whiteSpace: 'nowrap' }}>{statusTxt(staff)}</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 94 }}>{staff.firstName} {staff.lastName?.[0]}.</div>
+            <div style={{ fontSize: 10, color: '#fff', whiteSpace: 'nowrap', fontWeight: isOnBreak ? 700 : 400 }}>{statusTxt(staff)}</div>
           </div>
+          {/* Aslan 11 May 2026: Molada büyük rakam — herkesin görmesi için */}
+          {isOnBreak && breakRemaining !== null && !isBreakViolation && (
+            <div style={{
+              background: breakRemaining > 10 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.3)',
+              borderRadius: 6,
+              padding: '2px 6px',
+              minWidth: 36,
+              textAlign: 'center',
+              flexShrink: 0,
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1, fontFamily: 'monospace' }}>{breakRemaining}</div>
+              <div style={{ fontSize: 7, color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>dk kaldı</div>
+            </div>
+          )}
         </button>
         <div style={{ flex: 1, height: 48, background: 'rgba(255,255,255,0.04)', borderRadius: 5, position: 'relative', overflow: 'hidden' }}>
           {gridLines}{bar}
         </div>
       </div>
     );
+    };
     const SecHead = ({ label, count, color, bg }: any) => (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0 5px' }}>
         <div style={{ flex: 1, height: 0.5, background: 'rgba(255,255,255,0.1)' }} />
@@ -1611,16 +1642,47 @@ export default function BranchKiosk() {
                     const usedBreak = currentSession?.breakMinutes || 0;
                     const remaining = Math.max(0, 60 - usedBreak);
                     if (usedBreak > 0) {
+                      const color = remaining > 10 ? '#22c55e' : remaining > 0 ? '#fbbf24' : '#ef4444';
                       return (
-                        <p style={{ color: remaining > 10 ? 'rgba(34,197,94,0.7)' : remaining > 0 ? 'rgba(251,191,36,0.7)' : 'rgba(239,68,68,0.7)', fontSize: 11, marginTop: 4 }}>
-                          ☕ Mola hakkın: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{remaining} dk kaldı</span> ({usedBreak}/{60} dk yapıldı)
-                        </p>
+                        <div style={{
+                          marginTop: 10,
+                          padding: '10px 14px',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: `1.5px solid ${color}`,
+                          borderRadius: 10,
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4 }}>
+                            ☕ Mola Hakkın
+                          </div>
+                          <div style={{ color, fontSize: 24, fontWeight: 700, fontFamily: 'monospace' }}>
+                            {remaining} dk kaldı
+                          </div>
+                          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 2 }}>
+                            ({usedBreak}/{60} dk yapıldı)
+                          </div>
+                        </div>
                       );
                     }
                     return (
-                      <p style={{ color: 'rgba(34,197,94,0.7)', fontSize: 11, marginTop: 4 }}>
-                        ☕ Mola hakkın: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>60 dk</span> (henüz kullanılmadı)
-                      </p>
+                      <div style={{
+                        marginTop: 10,
+                        padding: '10px 14px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1.5px solid #22c55e',
+                        borderRadius: 10,
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginBottom: 4 }}>
+                          ☕ Mola Hakkın
+                        </div>
+                        <div style={{ color: '#22c55e', fontSize: 24, fontWeight: 700, fontFamily: 'monospace' }}>
+                          60 dk
+                        </div>
+                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, marginTop: 2 }}>
+                          (henüz kullanılmadı)
+                        </div>
+                      </div>
                     );
                   })()}
                 </div>
