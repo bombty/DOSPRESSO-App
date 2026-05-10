@@ -181,14 +181,15 @@ export const ROLE_LABELS: Record<string, string> = {
   teknik: "Teknik",
   destek: "Destek",
   fabrika: "Fabrika",
-  yatirimci_hq: "Yatırımcı Merkez",
+  yatirimci_hq: "Partner (Merkez)", // Aslan 10 May 2026: Yatırımcı → Partner
   stajyer: "Stajyer",
-  bar_buddy: "Bar Yardımcısı",
+  bar_buddy: "Bar Buddy", // Aslan 10 May 2026: "Bar Yardımcısı" → "Bar Buddy" (modern, kahve kültürü)
   barista: "Barista",
-  supervisor_buddy: "Süpervizör Yardımcısı",
-  supervisor: "Süpervizör",
+  supervisor_buddy: "Supervisor Buddy", // Aslan 10 May 2026: "Süpervizör Yardımcısı" → "Supervisor Buddy"
+  supervisor: "Supervisor", // Aslan 10 May 2026: "Süpervizör" → "Supervisor" (uluslararası)
   mudur: "Müdür",
-  yatirimci_branch: "Yatırımcı Şube",
+  yatirimci_branch: "Partner (Şube)", // Aslan 10 May 2026: Yatırımcı → Partner
+  owner: "Partner", // Aslan 10 May 2026: YENİ — Franchise sahibi için
   fabrika_operator: "Fabrika Operatörü",
   fabrika_sorumlu: "Fabrika Sorumlusu",
   fabrika_personel: "Fabrika Personeli",
