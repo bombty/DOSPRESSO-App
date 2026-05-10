@@ -135,6 +135,12 @@ export default function BranchKiosk() {
   const [sessionLoading, setSessionLoading] = useState(false);
   // Aslan 10 May 2026: KVKK per-user + mola sayaç state
   const [showKvkkModal, setShowKvkkModal] = useState(false);
+  // Aslan 11 May 2026: Her saniye render için tick (mola countdown)
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
   const [pendingPostLoginAction, setPendingPostLoginAction] = useState<(() => void) | null>(null);
   const [breakReturnSummary, setBreakReturnSummary] = useState<{
     userName: string;
@@ -667,11 +673,22 @@ export default function BranchKiosk() {
       const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/break-start`, { sessionId });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Aslan 11 May 2026: Backend response'tan breakStartTime + dailyRemaining
       if (currentSession) {
-        setCurrentSession({ ...currentSession, status: 'on_break' });
+        setCurrentSession({
+          ...currentSession,
+          status: 'on_break',
+          breakStartTime: data?.breakStartTime || new Date().toISOString(),
+          dailyPlannedMinutes: data?.dailyPlannedMinutes ?? 60,
+          dailyUsedMinutes: data?.dailyUsedMinutes ?? 0,
+          dailyRemainingMinutes: data?.dailyRemainingMinutes ?? 60,
+        } as any);
       }
-      toast({ title: "Mola başladı", description: "İyi dinlenmeler!" });
+      const remainText = data?.dailyRemainingMinutes !== undefined
+        ? ` (${data.dailyRemainingMinutes} dk hakkın var)`
+        : '';
+      toast({ title: "Mola başladı", description: `İyi dinlenmeler!${remainText}` });
     },
     onError: (error: any) => {
       toast({ title: "Mola başlatılamadı", description: error.message, variant: "destructive" });
@@ -1204,23 +1221,27 @@ export default function BranchKiosk() {
         return 'Çalışıyor';
       }
       if (s === 'on_break') {
-        // Aslan 11 May 2026: Daha kısa, daha net mola durumu (card 164px dar)
-        let breakMin = staff.breakMinutes || 0;
+        // Aslan 11 May 2026: Bugünkü kümülatif mola hesabı (parçalı mola destekler)
+        let currentBreakMin = staff.breakMinutes || 0;
         if (staff.breakStartTime) {
-          breakMin = Math.floor(
+          currentBreakMin = Math.floor(
             (now.getTime() - new Date(staff.breakStartTime).getTime()) / 60000
           );
         }
-        const remaining = Math.max(0, 60 - breakMin);
-        if (breakMin > 60) {
-          // İhlal — kart zaten kırmızı animasyonlu
-          return `🚨 +${breakMin - 60}dk geç`;
+        // dailyRemainingMinutes backend'den geliyorsa onu kullan (en doğrusu)
+        // Yoksa: 60 - mevcut mola (fallback)
+        const dailyRemaining = staff.dailyRemainingMinutes !== undefined
+          ? Math.max(0, staff.dailyRemainingMinutes - currentBreakMin)
+          : Math.max(0, 60 - currentBreakMin);
+        const totalUsed = (staff.dailyUsedMinutes || 0) + currentBreakMin;
+
+        if (totalUsed > 60) {
+          return `🚨 +${totalUsed - 60}dk geç (toplam ${totalUsed}dk)`;
         }
-        if (remaining === 0) {
-          return `⚠️ Süre doldu (${breakMin}dk)`;
+        if (dailyRemaining === 0) {
+          return `⚠️ Hak doldu (${totalUsed}dk)`;
         }
-        // Normal: kalan dakikayı vurgula
-        return `Molada · ${remaining}dk kaldı`;
+        return `Molada · ${dailyRemaining}dk hakkın kaldı`;
       }
       if (s === 'late') return `${staff.lateMinutes}dk geç — ${staff.shiftStartTime?.slice(0,5)||''}`;
       if (s === 'missing') return `Gelmedi — ${staff.shiftStartTime?.slice(0,5)||''}`;
@@ -1240,43 +1261,54 @@ export default function BranchKiosk() {
       return 'İzinli';
     };
     const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => {
-      // Aslan 11 May 2026: Mola durumu net görünsün
+      // Aslan 11 May 2026: Mola durumu — günlük KÜMÜLATİF (parçalı mola destekler)
       const isOnBreak = staff.shiftStatus === 'on_break';
-      let breakRemaining: number | null = null;
+      let dailyRemaining: number | null = null;
       let isBreakViolation = false;
       if (isOnBreak) {
-        let breakMin = staff.breakMinutes || 0;
+        let currentBreakMin = staff.breakMinutes || 0;
         if (staff.breakStartTime) {
-          breakMin = Math.floor(
+          currentBreakMin = Math.floor(
             (Date.now() - new Date(staff.breakStartTime).getTime()) / 60000
           );
         }
-        breakRemaining = Math.max(0, 60 - breakMin);
-        isBreakViolation = breakMin > 60;
+        // Backend'den günlük kümülatif → tercih edilen
+        if (staff.dailyRemainingMinutes !== undefined) {
+          dailyRemaining = Math.max(0, staff.dailyRemainingMinutes - currentBreakMin);
+        } else {
+          // Fallback
+          dailyRemaining = Math.max(0, 60 - currentBreakMin);
+        }
+        const totalUsed = (staff.dailyUsedMinutes || 0) + currentBreakMin;
+        isBreakViolation = totalUsed > 60;
       }
+
+      // Tick referansı (her saniye re-render için — countdown animasyonu)
+      void tick;
 
       return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 48, marginBottom: 4 }}>
         <button style={pbStyle(staff.shiftStatus || 'off', staff)} onClick={() => handlePerson(staff)} data-testid={`staff-btn-${staff.id}`}>
-          <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, flexShrink: 0 }}>
+          <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0 }}>
             {staff.firstName?.[0]}{staff.lastName?.[0]}
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 94 }}>{staff.firstName} {staff.lastName?.[0]}.</div>
             <div style={{ fontSize: 13, color: '#fff', whiteSpace: 'nowrap', fontWeight: isOnBreak ? 700 : 400 }}>{statusTxt(staff)}</div>
           </div>
-          {/* Aslan 11 May 2026: Molada büyük rakam — herkesin görmesi için */}
-          {isOnBreak && breakRemaining !== null && !isBreakViolation && (
+          {/* Aslan 11 May 2026: GERİ SAYIM badge — saniyede güncellenir (countdown) */}
+          {isOnBreak && dailyRemaining !== null && !isBreakViolation && (
             <div style={{
-              background: breakRemaining > 10 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.3)',
+              background: dailyRemaining > 10 ? 'rgba(34,197,94,0.3)' : dailyRemaining > 0 ? 'rgba(251,191,36,0.4)' : 'rgba(220,38,38,0.5)',
+              border: `1px solid ${dailyRemaining > 10 ? 'rgba(34,197,94,0.6)' : dailyRemaining > 0 ? 'rgba(251,191,36,0.8)' : 'rgba(220,38,38,1)'}`,
               borderRadius: 6,
-              padding: '2px 6px',
-              minWidth: 36,
+              padding: '3px 7px',
+              minWidth: 44,
               textAlign: 'center',
               flexShrink: 0,
             }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1, fontFamily: 'monospace' }}>{breakRemaining}</div>
-              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>dk kaldı</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', lineHeight: 1, fontFamily: 'monospace' }}>{dailyRemaining}</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', lineHeight: 1.1, fontWeight: 600 }}>dk kaldı</div>
             </div>
           )}
         </button>
@@ -1588,20 +1620,49 @@ export default function BranchKiosk() {
               </div>
             ) : isOnBreak ? (
               <div>
-                {/* Aslan 10 May 2026: Yeni BreakCountdown — geri sayım + alarm */}
+                {/* Aslan 11 May 2026: BreakCountdown — günlük KÜMÜLATİF kalan dakika ile */}
                 {currentSession?.breakStartTime ? (
                   <div className="mb-3">
                     <BreakCountdown
                       breakStartTime={currentSession.breakStartTime}
-                      plannedMinutes={60}
+                      plannedMinutes={
+                        (currentSession as any)?.dailyRemainingMinutes !== undefined
+                          ? (currentSession as any).dailyRemainingMinutes
+                          : 60
+                      }
                       context="sube"
                     />
+                    {(currentSession as any)?.dailyUsedMinutes > 0 && (
+                      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginTop: 8 }}>
+                        Bugün önceki molalar: {(currentSession as any).dailyUsedMinutes} dk
+                      </p>
+                    )}
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                    <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#f59e0b', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 4 }}>Mola Süresi (eski sayaç)</p>
-                  </div>
+                  // Fallback: backend henüz breakStartTime döndürmedi
+                  // Mevcut mola sürecini local olarak hesapla
+                  (() => {
+                    const usedBefore = currentSession?.breakMinutes || 0;
+                    const dailyRemaining = Math.max(0, 60 - usedBefore);
+                    return (
+                      <div style={{ textAlign: 'center', marginBottom: 16, padding: 14, background: 'rgba(245,158,11,0.1)', border: '2px solid #f59e0b', borderRadius: 10 }}>
+                        <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginBottom: 8 }}>
+                          ☕ Mola Hakkın Kalan
+                        </div>
+                        <div style={{ fontSize: 44, fontWeight: 800, fontFamily: 'monospace', color: '#f59e0b', letterSpacing: 2 }}>
+                          {dailyRemaining}
+                        </div>
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginTop: 4 }}>
+                          dk hakkın kaldı
+                        </div>
+                        {usedBefore > 0 && (
+                          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 8 }}>
+                            (Bugün önceden {usedBefore} dk kullanıldı)
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <button
