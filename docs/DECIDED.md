@@ -658,3 +658,62 @@ Bu gözlem D-44 prensibinin temelini oluşturdu.
 - Çözüm: Bu MEGA PR'da hepsi güncellendi
 - Post-pilot kural: Her PR sonrası tracker update zorunlu (pre-commit hook?)
 
+
+---
+
+## 🆕 KARARLAR — 11 MAY 2026 GECE (Pilot Öncesi Final)
+
+### D-50: Mola Günlük Kümülatif (Parçalı Destek)
+**Karar:** Personel günde toplam 60 dk mola hakkına sahiptir, parçalı kullanabilir.
+- 1. mola 10 dk → 2. mola başlangıç: 50 dk hak
+- Backend `break-start` response'unda `dailyRemainingMinutes` döner
+- Frontend `breakEnd.onSuccess`'te `breakMinutes` toplama eklenir
+
+**Neden:** Aslan istek: "günlük mola 60 dakikadan geçmemeli, kalan süre kullanılmalı"
+
+### D-51: PIN Lockout 5 → 8 Deneme
+**Karar:** Şube + Fabrika kiosk PIN limit: 5 → 8 deneme.
+- 8 hatalı denemeden sonra kilit (30 dk)
+- 3+ deneme sonrası "PIN'imi Unuttum" butonu görünür
+- Mail ile yeni PIN gönderilir
+
+**Neden:** Personel yorgun, 5 deneme az. 8 daha gerçekçi.
+
+### D-52: Long-Shift Otomatik Kapatma
+**Karar:** 12 saat aktif vardiya → otomatik checkout.
+- 10 saat: kiosk anasayfa soft warning
+- 12 saat: auto-close (`checkOutTime = scheduledEndTime`)
+- Audit log + `auto_closed=true` işareti
+
+**Neden:** Personel "Vardiya Bitir" basmadan ayrılırsa PDKS/bordro hatalı. Otomatik düzelt.
+
+### D-53: KVKK v1.1 Yurtdışı Aktarım Beyanı
+**Karar:** Aydınlatma metnine Neon DB (AWS US-East) yurtdışı aktarım eklendi.
+- KVKK m.9 yasal uyum
+- v1.0 deaktif → v1.1 aktif
+- Tüm kullanıcılar v1.1 yeniden onaylamalı
+
+**Neden:** AWS US-East yurtdışı → beyan zorunlu (KVKK m.9). Frankfurt'a taşıma post-pilot.
+
+### D-54: Time Line Üzerinde Mola Bar (Countdown)
+**Karar:** Kiosk ana ekranda mola detayı **time line üzerinde** gösterilir, sol kartta DEĞİL.
+- Sol kart: sadece "Molada" tek kelime
+- Time line: turuncu bar (60 dk genişlik), countdown azalan sayı
+
+**Neden:** Sol kart küçük (164px), detay sığmıyor. Time line zaten geniş, görsel bilgi orada.
+
+### D-55: Font Standardı (DIN-1450, 12px Minimum)
+**Karar:** Yeni kod yazarken `fontSize < 12` kullanılamaz.
+- caption: 12px, body: 14px, label: 18px, action: 20px
+- İstisna: avatar circle harfler, timeline scale markers
+- Migration: pilot-critical 5 dosya düzeltildi (kiosk.tsx 76 yer)
+
+**Neden:** Endüstri standart (DIN-1450, WCAG AA, Frank Mayer kiosk uzmanı). iPad 30-50cm görüş mesafesi.
+
+### D-56: Triangle Workflow — Replit Cannot Push
+**Karar:** Replit Agent commit yapabilir AMA push yapamaz.
+- Replit: migration + build + smoke test
+- Claude: kod yazma + GitHub push + skill MD update
+- Aslan: business/UX kararları
+
+**Neden:** Çakışma önleme. Tek push noktası = tek doğruluk kaynağı.

@@ -1,87 +1,85 @@
-# 📅 TODAY — 10 Mayıs 2026 Pazar Gece
+# 📅 TODAY — 11 Mayıs 2026 Pazartesi Gece (Pilot Öncesi Final)
 
 > **30 saniye okuma** — şu anki sistem durumu
 
-**Son güncelleme:** 10 May 2026, 23:55
-**Pilot:** **13 May 2026 Çarşamba 15:00** (12 → 13 May'a güncellendi, saat 10:00 → 15:00)
-**Pilot Hazırlık:** %99.999
+**Son güncelleme:** 11 May 2026, 02:30
+**Pilot:** **13 May 2026 Çarşamba 15:00** (~37 saat kaldı)
+**Pilot Hazırlık:** %99.5 — sadece test ve manuel görevler kaldı
 
 ---
 
-## 🎯 ŞU AN AKTİF BEKLİYOR
+## 🎯 ŞU AN AKTİF — Bekleyen 4 Görev
 
 | Görev | Sahibi | Süre | Engel |
 |---|---|---|---|
-| **PR #65 mergele** (MEGA pilot prep) | Aslan | 1 dk | Bekleyen |
-| **Replit DRY RUN** + canlı | Replit Agent | 10 dk | PR mergeli |
-| **Mahmut bordro 5 BRÜT** | Aslan | 30 dk | Mahmut'a telefon |
-| **HQ PIN: eren + hqkiosk** | Aslan | 5 dk | Manuel SQL |
-| **Sema: 36 hammadde + 4 reçete** | Sema | 2 saat | Aslan ona görev |
+| **PR mergele** (kiosk-mega-improvements-2026-05-10) | Aslan | 1 dk | Bekleyen |
+| **Long-shift migration çalıştır** | Replit/Aslan | 1 dk | psql komut |
+| **Mola kümülatif test** (45+15 senaryosu) | Aslan | 5 dk | Workflow restart |
+| **PIN reset mail test** | Aslan | 3 dk | SMTP secrets kontrol |
 
 ---
 
-## 📊 BUGÜN YAPILANLAR (10 May)
+## 🆕 BU OTURUMDA YAPILANLAR (10-11 May Gece)
 
-### Tamamlanmış PR'lar (8 adet, 5 saat içinde)
-- #58 derin-audit + Spec PDF + 5 schema fix
-- #59 Aslan 5 akış (auto-label, fire/zai, drawer edit, nutrition rawMaterialId)
-- #60 Kapsamlı 790 satır rapor
-- #61 Pilot tarihi 18 → 12 May düzeltme
-- #62 Reçete seed 9 reçete + 127 ingredient
-- #63 Smart Match V2 (7 yanlış eşleşmeyi önle)
-- #64 Smoke test 12 madde + audit script
-- #65 **MEGA: Pilot bloker fix + KVKK temizlik** ← BEKLEYEN
+15+ commit, ~6,500 satır kod:
 
-### DB'ye Aktarıldı (Replit Agent, V2 sonrası)
-- 9/9 reçete + 128/128 ingredient (0 yanlış eşleşme)
-- 36 yeni hammadde HAM-1000→HAM-1035 (PASIF)
-- 2 yeni reçete (DOREO + Golden Latte, PASIF)
-
-### Tespit Edilen Kritik Sorunlar
-- ✅ Çözülen: 7 yanlış eşleşme, kategori NOT NULL, ESM __dirname, Spec PDF crash
-- 🟡 Pilot bloker (PR #65'te çözülecek): vardiya yok, fabrika PIN 3/13
-- 🔴 Yapısal (post-pilot): çift payroll, account_status dual, leave_balances
+1. ✅ KVKK Per-User Sistemi (v1.0 + v1.1 yurtdışı beyanı)
+2. ✅ Mola Sayaç + Alarm + Auto-Tutanak
+3. ✅ Kiosk UI Yenileme (yeni ana ekran)
+4. ✅ HQ Canlı Vardiya Dashboard (25 şube grid)
+5. ✅ PDKS Geçmiş Raporlama (mahkeme/dava için 6 ay)
+6. ✅ Font Sistem Refactor (12px min, kiosk.tsx 76 yer)
+7. ✅ Kümülatif Günlük Mola (45+15 fix)
+8. ✅ Time Line Mola Bar (countdown azalan)
+9. ✅ PIN 8 Deneme + Mail Sıfırlama
+10. ✅ Long-Shift Monitoring (10sa uyarı, 12sa otomatik kapat) ⭐ YENİ
+11. ✅ Skill MD'ler (4 dosya, 1746 satır)
+12. ✅ Devir Teslim v2 (800 satır eksiksiz rehber)
 
 ---
 
-## 🚦 YARIN (11 May Pazartesi)
+## ⏳ ASLAN MANUEL GÖREVLERİ (Bekleyenler)
 
-### Aslan
-- ☎️ Mahmut bordro doğrulama (P-1)
-- 🔐 HQ PIN dağıtım (eren + hqkiosk)
-- 👤 Sema'ya hammadde + reçete görev mesajı
-
-### Sema
-- 36 hammadde fiyat + besin değer (HAM-1000+)
-- 4 pilot reçete: "Besin Hesapla" + "Gramaj Onayla"
-- DOREO + Golden Latte aktive
-
-### Replit Agent
-- PAYROLL_DRY_RUN=false (Mahmut bordro)
-- Smoke test + audit yeniden
-- Vardiya planları doğrula
+- [ ] Mahmut payroll 5 BRÜT figures (P-1)
+- [ ] HQ PIN setup (eren + hqkiosk via UI)
+- [ ] WhatsApp Sema (36 hammadde HAM-1000–HAM-1035 + 4 reçete onay)
+- [ ] Fabrika manager 3 user doğrulama (13 May sabah)
+- [ ] PR mergele (kiosk-mega-improvements)
+- [ ] Long-shift migration çalıştır (psql -1 -f)
 
 ---
 
-## 📅 PILOT YOL HARİTASI
+## 📦 SİSTEM DURUMU
 
 ```
-10 May Pzr 23:55 ── ŞİMDİ
-11 May Pzt ──────── Aslan + Sema + Replit (yoğun gün)
-12 May Salı ─────── Dry run + final test + demo
-13 May Çar 09-14 ── Smoke + audit + final backup + HQ PIN dağıt
-13 May Çar 15:00 ── 🎉 PILOT BAŞLAR (4 lokasyon)
+Branch:     claude/kiosk-mega-improvements-2026-05-10
+Senkron:    ✅ Local ↔ GitHub
+TS check:   ✅ 0 hata
+Skill MD:   ✅ 4 dosya güncel (1746 satır)
+Doküman:    ✅ DEVIR-TESLIM-11-MAYIS-2026-GECE.md (eksiksiz, 800+ satır)
+Migration:  ✅ 4 çalıştı, ⏳ 1 bekliyor (long-shift)
 ```
 
 ---
 
-## ⚠️ DİKKAT
+## 🔥 PİLOT GÜNÜ — 13 May Çar 15:00
 
-- Pilot tarihi **2 kez değişti**: 5 May → 12 May → 13 May
-- Saat **10:00 → 15:00** (öğleden sonra başlangıç)
-- Lokasyonlar: Işıklar #5, Lara #8, HQ #23, Fabrika #24
-- 4 ürünle başlanacak: Donut Base, Cinnaboom Classic, Cinnaboom Brownie, Cheesecake Base
+**Pilot Lokasyonları:**
+- Antalya Işıklar #5 (HQ-owned)
+- Antalya Lara #8 (Franchise)
+- Merkez HQ #23
+- Fabrika #24
+
+**Pilot Ürünler:**
+- Donut Base Hamuru
+- Cinnaboom Classic
+- Cinnaboom Brownie
+- Cheesecake Base
 
 ---
 
-> Detay: `docs/PENDING.md` + `docs/DECIDED.md` + `docs/DEVIR-TESLIM-10-MAYIS-2026.md`
+**Yeni Claude oturumu için:**
+1. `docs/DEVIR-TESLIM-11-MAYIS-2026-GECE.md` (zorunlu okuma)
+2. `docs/PENDING.md` (bekleyen işler)
+3. `docs/DECIDED.md` (kalıcı kararlar)
+4. Skill MD'ler `/mnt/skills/user/dospresso-*/` (otomatik yüklendi)
