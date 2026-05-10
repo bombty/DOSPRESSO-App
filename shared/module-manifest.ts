@@ -280,6 +280,9 @@ export const M06_EKIPMAN: ModuleManifest = {
     { id: 'fault-reporting', name: 'Arıza Bildirimi', description: 'Fotoğraflı bildirim', path: '/ariza', canDisable: false, defaultEnabled: true, flagBehavior: 'always_on' },
     { id: 'sla', name: 'SLA Yönetimi', description: 'Servis sözleşmeleri', path: '/ekipman', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'maintenance', name: 'Bakım Takvimi', description: 'Periyodik bakım', path: '/ekipman', canDisable: true, defaultEnabled: false, flagBehavior: 'fully_hidden' },
+    // === Aslan 10 May 2026: Şube Veri Toplama Sistemi ===
+    { id: 'cgo-branch-data', name: 'CGO Şube Veri Toplama', description: '25 şubeden Excel ile personel + ekipman bilgisi topla', path: '/cgo/sube-veri-toplama', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
+    { id: 'sube-equipment-mgmt', name: 'Şube Ekipman Yönetimi', description: 'Şube müdürü kendi ekipmanını günceller', path: '/sube/ekipman-yonetimi', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
   ],
   roles: {
     admin:            { view: true, create: true, edit: true, delete: true, approve: true, scope: 'all_branches' },
