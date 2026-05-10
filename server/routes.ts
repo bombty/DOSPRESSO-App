@@ -35,6 +35,10 @@ import unifiedDashboardRoutes from "./routes/unified-dashboard-routes";
 import productionPlanningRoutes from "./routes/production-planning-routes";
 import dobodyGenerateMessageRoutes from "./routes/dobody-generate-message";
 import cgoBranchDataRoutes from "./routes/cgo-branch-data";  // Aslan 10 May 2026: Şube Veri Toplama
+import kvkkApprovalsRoutes from "./routes/kvkk-approvals";  // Aslan 10 May 2026: KVKK per-user
+import breakManagementRoutes from "./routes/break-management";  // Aslan 10 May 2026: Mola sayaç + tutanak
+import hqLivePdksRoutes from "./routes/hq-live-pdks";  // Aslan 10 May 2026: HQ canlı vardiya + geçmiş PDKS
+import kvkkDataRequestsRoutes from "./routes/kvkk-data-requests";  // Aslan 10 May 2026: KVKK m.11 talepleri
 import employeeSummaryRoutes from "./routes/employee-summary";
 import auditV2Routes from "./routes/audit-v2";
 import dobodyProposalRoutes from "./routes/dobody-proposals";
@@ -1283,6 +1287,10 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   registerNotificationPreferenceRoutes(app);
   app.use(myDayRoutes);
   app.use(cgoBranchDataRoutes);  // Aslan 10 May 2026: Şube Veri Toplama API
+  app.use(kvkkApprovalsRoutes);  // Aslan 10 May 2026: KVKK per-user onay
+  app.use(breakManagementRoutes);  // Aslan 10 May 2026: Mola sayaç + tutanak
+  app.use(hqLivePdksRoutes);  // Aslan 10 May 2026: HQ canlı vardiya + PDKS geçmiş
+  app.use(kvkkDataRequestsRoutes);  // Aslan 10 May 2026: KVKK m.11 talepleri
   app.use(branchSummaryRoutes);
   app.use(hqSummaryRoutes);
   app.use(coachSummaryRoutes);
