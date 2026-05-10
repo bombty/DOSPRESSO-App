@@ -30,3 +30,4 @@ export * from './schema/schema-25-score-parameters';
 export * from './schema/schema-26-supplier-allergen-forms';  // Aslan 7 May 2026: Tedarikçi Alerjen Kontrol Formu (0011.A.FR.GG.36)
 export * from './schema/schema-27-branch-data-collection';
 export * from './schema/schema-28-kvkk-approvals';  // Aslan 10 May 2026: KVKK per-user
+export * from './schema/schema-29-kvkk-data-requests';  // Aslan 10 May 2026: KVKK m.11 talepleri
