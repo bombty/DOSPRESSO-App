@@ -34,6 +34,7 @@ import dashboardDataRoutes from "./routes/dashboard-data-routes";
 import unifiedDashboardRoutes from "./routes/unified-dashboard-routes";
 import productionPlanningRoutes from "./routes/production-planning-routes";
 import dobodyGenerateMessageRoutes from "./routes/dobody-generate-message";
+import cgoBranchDataRoutes from "./routes/cgo-branch-data";  // Aslan 10 May 2026: Şube Veri Toplama
 import employeeSummaryRoutes from "./routes/employee-summary";
 import auditV2Routes from "./routes/audit-v2";
 import dobodyProposalRoutes from "./routes/dobody-proposals";
@@ -1281,6 +1282,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   registerQuickActionRoutes(app);
   registerNotificationPreferenceRoutes(app);
   app.use(myDayRoutes);
+  app.use(cgoBranchDataRoutes);  // Aslan 10 May 2026: Şube Veri Toplama API
   app.use(branchSummaryRoutes);
   app.use(hqSummaryRoutes);
   app.use(coachSummaryRoutes);
