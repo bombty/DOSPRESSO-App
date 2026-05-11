@@ -295,7 +295,7 @@ export default function PersonelDetay() {
   // Şifre sıfırlama mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: { userId: string; password: string }) => {
-      return apiRequest("POST", `/api/employees/${data.userId}/reset-password`, { password: data.password });
+      return apiRequest("POST", `/api/employees/${data.userId}/reset-password`, { newPassword: data.password });
     },
     onSuccess: () => {
       setResetPasswordDialogOpen(false);
