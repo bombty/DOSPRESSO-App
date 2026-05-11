@@ -218,6 +218,7 @@ const CgoTeknikKomuta = lazyWithRetry(() => import("@/pages/cgo-teknik-komuta"))
 const CgoSubeVeriToplama = lazyWithRetry(() => import("@/pages/cgo-sube-veri-toplama"));  // Aslan 10 May 2026
 const SubeEkipmanYonetimi = lazyWithRetry(() => import("@/pages/sube-ekipman-yonetimi"));  // Aslan 10 May 2026
 const KioskYenilikDemo = lazyWithRetry(() => import("@/pages/sube/kiosk-yenilik-demo"));  // Aslan 10 May 2026 — Demo
+const KioskSupervisorShift = lazyWithRetry(() => import("@/pages/sube/kiosk-supervisor-shift"));  // Sprint 15.1 (11 May 2026) — Kiosk vardiya planlama (iskelet)
 const KvkkDenetim = lazyWithRetry(() => import("@/pages/kvkk-denetim"));  // Aslan 10 May 2026 — KVKK Denetim Merkezi
 const HqCanliVardiya = lazyWithRetry(() => import("@/pages/hq-canli-vardiya"));  // Aslan 10 May 2026 — HQ Canlı Vardiya
 const KvkkHaklarim = lazyWithRetry(() => import("@/pages/kvkk-haklarim"));  // Aslan 10 May 2026 — KVKK m.11
@@ -455,6 +456,7 @@ function Router() {
       <Route path="/sube/checklist-execution/:completionId" component={ChecklistExecutionPage} />
       <Route path="/sube/kiosk/:branchId">{() => <SubeKiosk />}</Route>
       <Route path="/sube/kiosk">{() => <SubeKiosk />}</Route>
+      <Route path="/sube/kiosk-supervisor-shift">{() => <KioskSupervisorShift />}</Route>
       <Route path="/sube/employee-dashboard" component={EmployeeDashboard} />
       <Route path="/sube/dashboard" component={SubeDashboard} />
 

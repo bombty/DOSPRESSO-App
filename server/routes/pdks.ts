@@ -1164,6 +1164,92 @@ router.get('/api/pdks/consistency-check', isAuthenticated, async (req: any, res:
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// Sprint 16 V2 (11 May 2026) — S16.7: Compliance Trend Endpoint
+// ═══════════════════════════════════════════════════════════════════
+// Mahmut için aylık compliance trend grafiği (recharts LineChart)
+// GET /api/pdks/compliance-trend?branchId=&months=6
+// Response: { months: [{ month: "2026-05", avgCompliance: 85, ... }, ...] }
+
+router.get('/api/pdks/compliance-trend', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const reqUser = req.user;
+    if (!reqUser?.role || !PDKS_ROLES.includes(reqUser.role)) {
+      return res.status(403).json({ error: 'Yetki yok' });
+    }
+
+    const { branchId, months } = req.query as any;
+    if (!branchId) {
+      return res.status(400).json({ error: 'branchId gerekli' });
+    }
+
+    const monthCount = Math.min(12, Math.max(1, parseInt(months as string) || 6));
+    const branchIdInt = parseInt(branchId as string);
+
+    // Son N ayı topla
+    const now = new Date();
+    const trendData: any[] = [];
+
+    for (let i = monthCount - 1; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+      const monthLabel = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;
+
+      try {
+        const agg = await db
+          .select({
+            avgCompliance: sql<number>`AVG(${shiftAttendance.complianceScore})`,
+            sumLateness: sql<number>`SUM(${shiftAttendance.latenessMinutes})`,
+            sumBreakOverage: sql<number>`SUM(${shiftAttendance.breakOverageMinutes})`,
+            sumEarlyLeave: sql<number>`SUM(${shiftAttendance.earlyLeaveMinutes})`,
+            attendanceCount: sql<number>`COUNT(*)`,
+            absentCount: sql<number>`SUM(CASE WHEN ${shiftAttendance.status} = 'absent' THEN 1 ELSE 0 END)`,
+          })
+          .from(shiftAttendance)
+          .innerJoin(users, eq(users.id, shiftAttendance.userId))
+          .where(and(
+            eq(users.branchId, branchIdInt),
+            gte(shiftAttendance.checkInTime, monthStart),
+            lte(shiftAttendance.checkInTime, monthEnd),
+          ));
+
+        const row = agg[0] || { avgCompliance: 100, sumLateness: 0, sumBreakOverage: 0, sumEarlyLeave: 0, attendanceCount: 0, absentCount: 0 };
+        trendData.push({
+          month: monthLabel,
+          monthLabel: monthStart.toLocaleString('tr-TR', { month: 'short', year: 'numeric' }),
+          avgCompliance: Math.round(Number(row.avgCompliance) || 100),
+          totalLateness: Number(row.sumLateness) || 0,
+          totalBreakOverage: Number(row.sumBreakOverage) || 0,
+          totalEarlyLeave: Number(row.sumEarlyLeave) || 0,
+          attendanceCount: Number(row.attendanceCount) || 0,
+          absentCount: Number(row.absentCount) || 0,
+        });
+      } catch (mErr: any) {
+        console.warn(`[compliance-trend] month ${monthLabel} failed:`, mErr.message);
+        trendData.push({
+          month: monthLabel,
+          monthLabel: monthStart.toLocaleString('tr-TR', { month: 'short', year: 'numeric' }),
+          avgCompliance: 100,
+          totalLateness: 0,
+          totalBreakOverage: 0,
+          totalEarlyLeave: 0,
+          attendanceCount: 0,
+          absentCount: 0,
+        });
+      }
+    }
+
+    res.json({
+      branchId: branchIdInt,
+      months: monthCount,
+      data: trendData,
+    });
+  } catch (error: any) {
+    console.error('[PDKS-COMPLIANCE-TREND]', error);
+    res.status(500).json({ error: error?.message || 'Trend verisi alınamadı' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // Sprint 15 (11 May 2026) — S15.3: Haftalık 45h Kontrol Endpoint
 // ═══════════════════════════════════════════════════════════════════
 // İş Kanunu m.63: Fulltime 45h/hafta üst sınırı
