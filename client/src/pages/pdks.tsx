@@ -86,14 +86,58 @@ const MONTHS = [
 
 const DAY_NAMES = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof UserCheck }> = {
-  worked: { label: "Çalıştı", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: UserCheck },
-  program_off: { label: "Off (Program)", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", icon: Coffee },
-  kapanish_off: { label: "Off (Kapanış)", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400", icon: Coffee },
-  absent: { label: "Eksik", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", icon: UserX },
-  unpaid_leave: { label: "Ücretsiz İzin", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400", icon: AlertTriangle },
-  sick_leave: { label: "Rapor", color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400", icon: AlertTriangle },
-  annual_leave: { label: "Yıllık İzin", color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400", icon: CalendarDays },
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof UserCheck; description: string }> = {
+  worked: {
+    label: "Çalıştı",
+    color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    icon: UserCheck,
+    description: "Personel o gün vardiyaya girdi ve mesaisini tamamladı."
+  },
+  program_off: {
+    label: "İzin (Program)",
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    icon: Coffee,
+    description: "O gün programlı izin günü. Çalışma beklenmiyor."
+  },
+  kapanish_off: {
+    label: "İzin (Kapanış)",
+    color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400",
+    icon: Coffee,
+    description: "Şube/fabrika kapalıydı. Çalışma beklenmiyor."
+  },
+  // Sprint 15.6 (11 May 2026) Mahmut UX FIX:
+  // Eskiden 'no_shift' STATUS_CONFIG'de tanımlı değildi → fallback 'absent' (Eksik) gösteriliyordu
+  // Bu nedenle vardiya planlanmamış günler "Devamsızlık" gibi görünüyordu, Mahmut'u yanıltıyordu
+  no_shift: {
+    label: "Vardiya Yok",
+    color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+    icon: CalendarDays,
+    description: "O gün için planlı vardiya yok (kişi henüz başlamadı, vardiyasız gün, vb)."
+  },
+  absent: {
+    label: "Devamsız ⚠️",
+    color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    icon: UserX,
+    description: "Vardiya PLANLANMIŞTI ama kişi gelmedi. Yazılı uyarı/tutanak gerekir."
+  },
+  unpaid_leave: {
+    label: "Ücretsiz İzin",
+    color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+    icon: AlertTriangle,
+    description: "Ücretsiz izin günü. Bordrodan düşülür."
+  },
+  sick_leave: {
+    label: "Rapor",
+    color: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+    icon: AlertTriangle,
+    description: "Sağlık raporu. Doktor raporu ile belgelenmiş."
+  },
+  annual_leave: {
+    label: "Yıllık İzin",
+    color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400",
+    icon: CalendarDays,
+    description: "Yıllık izin. Kullanılan izin hakkından düşülür."
+  },
 };
 
 function formatMinutes(minutes: number): string {
@@ -238,6 +282,7 @@ export default function PdksPage() {
   const [selectedMonth, setSelectedMonth] = useState(String(now.getMonth() + 1));
   const [selectedYear] = useState(String(now.getFullYear()));
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);  // Sprint 15.6: Detay popover state
   const [manualOpen, setManualOpen] = useState(false);
   const [manualForm, setManualForm] = useState({ userId: "", date: "", time: "", type: "giris", reason: "" });
 
@@ -308,21 +353,21 @@ export default function PdksPage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Card><CardContent className="p-3 text-center">
-            <div className="text-xs text-muted-foreground">Çalışılan</div>
-            <div className="text-xl font-bold" data-testid="text-worked-days">{detail.workedDays}</div>
+          <Card><CardContent className="p-3 text-center" title="Bu ay vardiyaya gelip mesaisini tamamladığı gün sayısı">
+            <div className="text-xs text-muted-foreground">Çalıştı</div>
+            <div className="text-xl font-bold text-green-700 dark:text-green-400" data-testid="text-worked-days">{detail.workedDays}</div>
           </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <div className="text-xs text-muted-foreground">Off</div>
-            <div className="text-xl font-bold" data-testid="text-off-days">{detail.offDays}</div>
+          <Card><CardContent className="p-3 text-center" title="Programlı izin günleri (off)">
+            <div className="text-xs text-muted-foreground">İzin</div>
+            <div className="text-xl font-bold text-blue-700 dark:text-blue-400" data-testid="text-off-days">{detail.offDays}</div>
           </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <div className="text-xs text-muted-foreground">Eksik</div>
-            <div className="text-xl font-bold" data-testid="text-absent-days">{detail.absentDays}</div>
+          <Card><CardContent className="p-3 text-center" title="Vardiya planlanmıştı, kişi gelmedi (yazılı tutanak gerekir)">
+            <div className="text-xs text-muted-foreground">Devamsız</div>
+            <div className={`text-xl font-bold ${detail.absentDays > 0 ? 'text-destructive' : ''}`} data-testid="text-absent-days">{detail.absentDays}{detail.absentDays > 0 && ' ⚠️'}</div>
           </CardContent></Card>
-          <Card><CardContent className="p-3 text-center">
-            <div className="text-xs text-muted-foreground">FM</div>
-            <div className="text-xl font-bold" data-testid="text-overtime">{detail.totalOvertimeMinutes} dk</div>
+          <Card><CardContent className="p-3 text-center" title="Fazla mesai dakikası (haftalık 45h üstü)">
+            <div className="text-xs text-muted-foreground">Fazla Mesai</div>
+            <div className="text-xl font-bold text-orange-600" data-testid="text-overtime">{detail.totalOvertimeMinutes} dk</div>
           </CardContent></Card>
         </div>
 
@@ -334,18 +379,70 @@ export default function PdksPage() {
                 const dayName = DAY_NAMES[date.getDay()];
                 const dayNum = date.getDate();
                 const cfg = STATUS_CONFIG[day.status] || STATUS_CONFIG.absent;
+                const isExpanded = expandedDay === day.date;
+                const hasDetail = day.status === 'worked' || day.status === 'absent';
 
                 return (
-                  <div key={day.date} className="flex items-center gap-3 px-4 py-2" data-testid={`row-day-${dayNum}`}>
-                    <div className="w-8 text-sm font-medium text-muted-foreground">{dayNum}</div>
-                    <div className="w-10 text-xs text-muted-foreground">{dayName}</div>
-                    <Badge variant="outline" className={`text-xs ${cfg.color}`}>{cfg.label}</Badge>
-                    {day.status === 'worked' && day.records.length > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {day.records?.map((r: any) => r.time).join(' → ')}
-                        {day.workedMinutes > 0 && ` (${formatMinutes(day.workedMinutes)})`}
-                        {day.overtimeMinutes > 0 && ` FM: ${day.overtimeMinutes}dk`}
-                      </span>
+                  <div key={day.date} data-testid={`row-day-${dayNum}`}>
+                    <button
+                      onClick={() => hasDetail && setExpandedDay(isExpanded ? null : day.date)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${hasDetail ? 'hover:bg-muted/50 cursor-pointer' : 'cursor-default'}`}
+                      data-testid={`button-day-${dayNum}`}
+                    >
+                      <div className="w-8 text-sm font-medium text-muted-foreground">{dayNum}</div>
+                      <div className="w-10 text-xs text-muted-foreground">{dayName}</div>
+                      <Badge variant="outline" className={`text-xs ${cfg.color}`}>{cfg.label}</Badge>
+                      {day.status === 'worked' && day.records.length > 0 && (
+                        <span className="text-xs text-muted-foreground flex-1 truncate">
+                          {day.records?.map((r: any) => r.time).join(' → ')}
+                          {day.workedMinutes > 0 && ` (${formatMinutes(day.workedMinutes)})`}
+                          {day.overtimeMinutes > 0 && ` • FM: ${day.overtimeMinutes}dk`}
+                        </span>
+                      )}
+                      {hasDetail && (
+                        <ChevronLeft className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? '-rotate-90' : 'rotate-180'}`} />
+                      )}
+                    </button>
+                    {isExpanded && (
+                      <div className="px-4 pb-3 pt-1 bg-muted/30 border-t">
+                        <div className="text-xs text-muted-foreground mb-2 italic">{cfg.description}</div>
+                        {day.status === 'worked' && (
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Giriş-çıkış:</span>{' '}
+                              <span className="font-medium">{day.records?.map((r: any) => `${r.time} (${r.type})`).join(' • ') || '—'}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Net çalışma:</span>{' '}
+                              <span className="font-medium">{formatMinutes(day.workedMinutes || 0)}</span>
+                            </div>
+                            {day.overtimeMinutes > 0 && (
+                              <div>
+                                <span className="text-muted-foreground">Fazla mesai:</span>{' '}
+                                <span className="font-medium text-orange-600">{day.overtimeMinutes} dk</span>
+                              </div>
+                            )}
+                            {day.isHoliday && (
+                              <div>
+                                <span className="text-muted-foreground">Tatil:</span>{' '}
+                                <span className="font-medium text-purple-600">{day.holidayName || 'Evet'}</span>
+                              </div>
+                            )}
+                            <div className="col-span-2 mt-1 text-xs text-muted-foreground">
+                              💡 Compliance, geç giriş, erken çıkış, mola detayı için sağ üst "Personel Detayı" butonu
+                            </div>
+                          </div>
+                        )}
+                        {day.status === 'absent' && (
+                          <div className="text-sm">
+                            <p className="text-red-600 dark:text-red-400 font-medium">⚠️ Devamsızlık tespit edildi</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Bu gün için vardiya planlanmıştı ancak personel hiç giriş yapmadı.
+                              İK tutanak prosedürü uygulanmalı.
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
@@ -451,12 +548,13 @@ export default function PdksPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium">Personel</th>
-                    <th className="text-center p-3 font-medium">Çalışılan</th>
-                    <th className="text-center p-3 font-medium">Off</th>
-                    <th className="text-center p-3 font-medium">Eksik</th>
-                    <th className="text-center p-3 font-medium">FM (dk)</th>
-                    <th className="text-center p-3 font-medium">Rapor</th>
+                    <th className="text-left p-2.5 font-medium">Personel</th>
+                    <th className="text-center p-2.5 font-medium" title="Bu ay vardiyaya gelip mesaisini tamamladığı gün sayısı">Çalıştı</th>
+                    <th className="text-center p-2.5 font-medium" title="İzin günleri (program off + kapanış off)">İzin</th>
+                    <th className="text-center p-2.5 font-medium" title="Vardiya planlanmıştı, kişi gelmedi (yazılı tutanak gerekir)">Devamsız</th>
+                    <th className="text-center p-2.5 font-medium" title="Fazla mesai dakikası (45h üstü)">FM (dk)</th>
+                    <th className="text-center p-2.5 font-medium" title="Sağlık raporu günleri">Rapor</th>
+                    <th className="text-center p-2.5 font-medium text-xs text-muted-foreground" title="Detay için tıklayın">→</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -467,14 +565,35 @@ export default function PdksPage() {
                       onClick={() => setSelectedUser(s.userId)}
                       data-testid={`row-user-${s.userId}`}
                     >
-                      <td className="p-3 font-medium">{s.userName}</td>
-                      <td className="text-center p-3">{s.workedDays}</td>
-                      <td className="text-center p-3">{s.offDays}</td>
-                      <td className="text-center p-3">
-                        {s.absentDays > 0 ? <span className="text-destructive font-medium">{s.absentDays}</span> : "0"}
+                      <td className="p-2.5 font-medium">{s.userName}</td>
+                      <td className="text-center p-2.5">
+                        <span className={s.workedDays > 0 ? "text-green-700 dark:text-green-400 font-medium" : "text-muted-foreground"}>
+                          {s.workedDays}
+                        </span>
                       </td>
-                      <td className="text-center p-3">{s.overtimeMinutes}</td>
-                      <td className="text-center p-3">{s.sickLeaveDays}</td>
+                      <td className="text-center p-2.5 text-muted-foreground">{s.offDays}</td>
+                      <td className="text-center p-2.5">
+                        {s.absentDays > 0 ? (
+                          <span className="text-destructive font-bold">{s.absentDays} ⚠️</span>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </td>
+                      <td className="text-center p-2.5">
+                        {s.overtimeMinutes > 0 ? (
+                          <span className="text-orange-600 font-medium">{s.overtimeMinutes}</span>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </td>
+                      <td className="text-center p-2.5">
+                        {s.sickLeaveDays > 0 ? (
+                          <span className="text-orange-600">{s.sickLeaveDays}</span>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </td>
+                      <td className="text-center p-2.5 text-muted-foreground text-xs">→</td>
                     </tr>
                   ))}
                 </tbody>
