@@ -3378,6 +3378,24 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskOrAuthenticated, a
 
     // DECISIONS madde 15 fix: branch_shift_sessions kapanışı ve bağlı
     // shift_attendance.check_out_time aynı transaction içinde atomik yazılır.
+    //
+    // Sprint 15 (11 May 2026) KRİTİK BUG FIX:
+    // Replit Agent 11 May ön-kontrol raporu: "compliance_score otomatik düşüş ÇALIŞMIYOR
+    // — 4 kişi 749-867 dk geç, hepsinin skoru 100. total_worked_minutes hep 0."
+    // Sebep: bu endpoint shift_attendance'a sadece checkOutTime + status yazıyordu.
+    // Şimdi tüm hesaplama field'ları (totalWorked/compliance/lateness/earlyLeave) buradan güncelleniyor.
+    //
+    // COMPLIANCE FORMÜLÜ:
+    //   100 puan başlangıç
+    //   - 5+ dk geç giriş    → her dk × 2 (max -30)
+    //   - 5+ dk erken çıkış  → her dk × 2 (max -30)
+    //   - Mola overage zaten break-management.ts'te düşüyor (breakOverageMinutes alanı)
+    //   - Minimum 0
+    const latenessImpact = Math.min(30, Math.max(0, ((session as any).latenessMinutes || 0) - 5) * 2);
+    const earlyLeaveImpact = Math.min(30, Math.max(0, earlyLeaveMinutes - 5) * 2);
+    const breakOverageImpact = Math.min(20, ((session as any).breakOverageMinutes || 0) * 2);
+    const calculatedComplianceScore = Math.max(0, 100 - latenessImpact - earlyLeaveImpact - breakOverageImpact);
+
     const [updatedSession] = await db.transaction(async (tx) => {
       const [s] = await tx.update(branchShiftSessions)
         .set({
@@ -3394,8 +3412,17 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskOrAuthenticated, a
         .where(eq(branchShiftSessions.id, sessionId))
         .returning();
       if (session.shiftAttendanceId) {
+        // Sprint 15 KRİTİK FIX: Tüm aggregate'leri shift_attendance'a yansıt
         await tx.update(shiftAttendance)
-          .set({ checkOutTime: now, status: 'completed' })
+          .set({
+            checkOutTime: now,
+            status: 'completed',
+            totalWorkedMinutes: totalWorkMinutes,
+            effectiveWorkMinutes: netWorkMinutes,
+            earlyLeaveMinutes: earlyLeaveMinutes,
+            complianceScore: calculatedComplianceScore,
+            updatedAt: now,
+          } as any)
           .where(and(
             eq(shiftAttendance.id, session.shiftAttendanceId),
             isNull(shiftAttendance.checkOutTime),
@@ -3405,6 +3432,42 @@ router.post('/api/branches/:branchId/kiosk/shift-end', isKioskOrAuthenticated, a
       }
       return [s];
     });
+
+    // Sprint 15 (S15.4): Otomatik tutanak — geç giriş / erken çıkış için
+    // (break-management.ts'teki mola overage tutanak mantığının paraleli)
+    const totalLateness = (session as any).latenessMinutes || 0;
+    let autoWarningCreated = null;
+    if (totalLateness > 5 || earlyLeaveMinutes > 5) {
+      try {
+        const violations: string[] = [];
+        if (totalLateness > 5) violations.push(`${totalLateness} dk geç giriş`);
+        if (earlyLeaveMinutes > 5) violations.push(`${earlyLeaveMinutes} dk erken çıkış`);
+
+        const maxOffense = Math.max(totalLateness, earlyLeaveMinutes);
+        const warningType = maxOffense >= 15 ? 'written' : 'verbal';
+
+        const systemIssuer = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.role, 'admin'))
+          .limit(1);
+        const issuedBy = systemIssuer[0]?.id || session.userId;
+
+        const [warning] = await db
+          .insert(employeeWarnings)
+          .values({
+            userId: session.userId,
+            warningType,
+            description: `[OTOMATIK SİSTEM — Sprint 15] Vardiya uyumsuzluğu: ${violations.join(', ')}. Vardiya: ${checkInTime.toLocaleString('tr-TR')} → ${now.toLocaleString('tr-TR')}. Compliance Score: ${calculatedComplianceScore}/100. Şube müdürü onaylar.`,
+            issuedBy,
+            notes: `Tip: shift_compliance; Lateness: ${totalLateness} dk; EarlyLeave: ${earlyLeaveMinutes} dk; BreakOverage: ${(session as any).breakOverageMinutes || 0} dk; ComplianceScore: ${calculatedComplianceScore}`,
+          } as any)
+          .returning();
+        autoWarningCreated = warning;
+      } catch (warnErr: any) {
+        console.warn('[BRANCH-KIOSK] Auto warning creation failed (non-blocking):', warnErr.message);
+      }
+    }
 
     await db.insert(branchShiftEvents).values({
       sessionId,

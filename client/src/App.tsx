@@ -304,6 +304,7 @@ const BordroMerkezi = lazyWithRetry(() => import("@/pages/bordro-merkezi"));  //
 const ManagerRating = lazyWithRetry(() => import("@/pages/manager-rating"));  // Sprint 12 (5 May 2026): Yönetici puanlama
 const IKMerkezi = lazyWithRetry(() => import("@/pages/ik-merkezi"));  // Sprint 13 (5 May 2026): İK Hub
 const PdksManuelGiris = lazyWithRetry(() => import("@/pages/pdks-manuel-giris"));  // Sprint 13 (5 May 2026): PDKS hızlı giriş
+const PdksMerkezi = lazyWithRetry(() => import("@/pages/pdks-merkezi"));  // Sprint 15 (11 May 2026): PDKS Hub (D-44)
 const MaliRaporGiris = lazyWithRetry(() => import("@/pages/mali-rapor-giris"));  // Sprint 14 (5 May 2026): Mali rapor giriş
 const PilotLaunch = lazyWithRetry(() => import("@/pages/pilot-launch"));
 // ── Orphan → Linked (Sistem Atölyesi kararı) ──
@@ -728,6 +729,7 @@ function Router() {
           <Route path="/kocluk-paneli">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/coach-kontrol-merkezi"); }, []); return null; }}</Route>
           <Route path="/franchise-ozet">{() => { const { user } = useAuth(); const [,nav] = useLocation(); useEffect(() => { const target = ROLE_CONTROL_PATH[user?.role || ''] || '/'; if (target !== '/franchise-ozet') nav(target); }, [user?.role]); return null; }}</Route>
           <Route path="/pdks">{() => <ModuleGuard moduleKey="pdks"><PdksPage /></ModuleGuard>}</Route>
+          <Route path="/pdks-merkezi">{() => <ModuleGuard moduleKey="pdks"><PdksMerkezi /></ModuleGuard>}</Route>
           <Route path="/pdks-izin-gunleri">{() => <ModuleGuard moduleKey="pdks"><PdksIzinGunleri /></ModuleGuard>}</Route>
           <Route path="/pdks-excel-import">{() => <ProtectedRoute allowedRoles={["admin","muhasebe","muhasebe_ik"]}><PdksExcelImport /></ProtectedRoute>}</Route>
           <Route path="/maas" component={MaasPage} />
