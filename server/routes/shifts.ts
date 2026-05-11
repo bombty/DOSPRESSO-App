@@ -1601,7 +1601,7 @@ router.post('/api/shifts/bulk-create', isAuthenticated, async (req, res) => {
 });
 
 // PATCH /api/shifts/:id - Update a shift
-router.patch('/api/shifts/:id', isAuthenticated, requireManifestAccess('vardiya', 'edit'), async (req, res) => {
+router.patch('/api/shifts/:id', kioskOrAuth, requireManifestAccess('vardiya', 'edit'), async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
