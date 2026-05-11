@@ -3252,6 +3252,16 @@ router.post('/api/branches/:branchId/kiosk/break-end', isKioskOrAuthenticated, a
       eventTime: now,
     });
 
+    // Aslan 11 May 2026 HOTFIX: break-end response — güncel kümülatif bilgiyi dön
+    // BUG: Frontend "60 dk (henüz kullanılmadı)" gösteriyordu çünkü endpoint
+    // güncel dailyRemainingMinutes/breakMinutes döndürmüyordu.
+    const breakDurationFinal = activeBreak 
+      ? Math.floor((now.getTime() - new Date(activeBreak.breakStartTime).getTime()) / 60000)
+      : 0;
+    const DAILY_BREAK_LIMIT = 60;
+    const newTotalUsedToday = (session.breakMinutes || 0) + breakDurationFinal;
+    const newDailyRemaining = Math.max(0, DAILY_BREAK_LIMIT - newTotalUsedToday);
+
     // P3.1: Uzun mola uyarısı → supervisor bildirim
     if (activeBreak) {
       const breakDuration = Math.floor((now.getTime() - new Date(activeBreak.breakStartTime).getTime()) / 60000);
@@ -3289,7 +3299,15 @@ router.post('/api/branches/:branchId/kiosk/break-end', isKioskOrAuthenticated, a
       }
     }
 
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      // Aslan 11 May 2026 HOTFIX: Mola sonrası güncel kümülatif bilgi
+      breakDurationMinutes: breakDurationFinal,
+      cumulativeBreakMinutes: newTotalUsedToday,
+      dailyPlannedMinutes: DAILY_BREAK_LIMIT,
+      dailyUsedMinutes: newTotalUsedToday,
+      dailyRemainingMinutes: newDailyRemaining,
+    });
   } catch (error: unknown) {
     console.error("Error ending break:", error);
     res.status(500).json({ message: "Mola bitirilemedi" });
@@ -3597,6 +3615,48 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
       return res.json({ activeSession: null });
     }
 
+    // Aslan 11 May 2026 HOTFIX: Kümülatif mola hesaplaması
+    // BUG: Tek-kullanıcı endpoint dailyRemainingMinutes vermiyordu → frontend her zaman 60 fallback gösteriyordu
+    // FIX: team-status endpoint ile aynı hesabı yap
+    const now = new Date();
+    const DAILY_BREAK_LIMIT = 60;
+    let breakStartTime: Date | null = null;
+    let currentBreakMinutes = 0;
+
+    // Eğer molada ise → aktif mola log'unu bul
+    if (session.status === 'on_break') {
+      const [activeBreak] = await db.select({
+        breakStartTime: branchBreakLogs.breakStartTime,
+      }).from(branchBreakLogs)
+        .where(and(
+          eq(branchBreakLogs.sessionId, session.id),
+          isNull(branchBreakLogs.breakEndTime)
+        ))
+        .orderBy(desc(branchBreakLogs.breakStartTime))
+        .limit(1);
+
+      if (activeBreak?.breakStartTime) {
+        breakStartTime = new Date(activeBreak.breakStartTime);
+        currentBreakMinutes = Math.floor((now.getTime() - breakStartTime.getTime()) / 60000);
+      }
+    }
+
+    const usedBeforeCurrentBreak = session.breakMinutes || 0;
+    const totalUsedToday = usedBeforeCurrentBreak + currentBreakMinutes;
+    const dailyRemainingMinutes = Math.max(0, DAILY_BREAK_LIMIT - totalUsedToday);
+
+    // Enriched session object — frontend BreakCountdown bunu kullanır
+    const enrichedSession = {
+      ...session,
+      breakStartTime,  // CRITICAL: countdown için
+      breakMinutes: currentBreakMinutes,  // Şu anki mola süresi (real-time)
+      dailyPlannedMinutes: DAILY_BREAK_LIMIT,
+      dailyUsedMinutes: totalUsedToday,
+      dailyRemainingMinutes,  // CRITICAL: "X dk hakkın kaldı" gösterimi için
+      cumulativeBreakMinutes: usedBeforeCurrentBreak,  // Önceki molalar toplamı
+      isBreakAnomaly: session.status === 'on_break' && totalUsedToday > DAILY_BREAK_LIMIT,
+    };
+
     const userTasks = await db.select().from(tasks)
       .where(and(
         eq(tasks.assignedToId, userId),
@@ -3646,7 +3706,7 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
       .limit(5);
 
     res.json({
-      activeSession: session,
+      activeSession: enrichedSession,  // Aslan 11 May HOTFIX: enriched with break info
       tasks: userTasks,
       checklists: userChecklists,
       branchTasks: branchOpenTasks,
