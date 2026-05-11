@@ -658,3 +658,91 @@ Bu gözlem D-44 prensibinin temelini oluşturdu.
 - Çözüm: Bu MEGA PR'da hepsi güncellendi
 - Post-pilot kural: Her PR sonrası tracker update zorunlu (pre-commit hook?)
 
+
+---
+
+## 📅 11 MAY 2026 — PILOT FİNAL HAZIRLIK KARARLARI (v6.0)
+
+> **Son güncelleme:** 11 May 2026 (PR #72 + PR #73 merge, Sprint 14a tamam)
+
+### D-55: Long-Shift Auto-Close PILOT KAPSAMI DIŞI — Sprint 14+ Ertelendi
+**Tarih:** 11 May 2026, 03:30 | **Sebep:** Aslan kararı
+
+**Karar:** Long-shift auto-close (10h soft warn / 12h auto-close → scheduledEndTime) özelliği pilot kapsamından **çıkarıldı**. Post-pilot Sprint 14+ kapsamında implementasyon.
+
+**Geçici çözüm:** Mevcut `cleanupStaleShiftSessions` (saatlik scheduler) + gece müdür manuel kontrolü yeterli. Migration `2026-05-11-long-shift-auto-close.sql` tek-seferlik temizlik için çalıştırıldı (idempotent, pilot sabahı tekrar çalıştırılabilir).
+
+**Gerekçe:**
+- Pilot 36 saat kala yeni feature ekleme = yüksek risk (Senior QA perspektifi)
+- Manuel müdahale + cleanupStaleShiftSessions kombinasyonu pilot süresince işliyor
+- Önceki Claude'un dökümanında "yapıldı" diye işaretlenen kod git'te yoktu — yanlış varsayım temizlendi
+
+**Operasyonel etki:** Pilot süresince personel "çıkış yapmayı unutursa" gece bekleyebilir, müdür sabah manuel kapatır. Sprint 14+ otomatik versiyon yazılacak.
+
+**İlgili migration:** `migrations/2026-05-11-long-shift-auto-close.sql` (tek-seferlik temizlik, 0/0/0 sonuç = DB temizdi)
+
+---
+
+### D-56: Sprint 14a — Mola Sayaç Tüm 3 Kiosk Türünde Aktif (Fabrika + HQ Genişletme)
+**Tarih:** 11 May 2026 | **Sebep:** Aslan talebi (mola sayaç sadece şubede vardı)
+
+**Karar:** Mola sayaç sistemi (kümülatif 45+15 mantığı, BreakCountdown + BreakReturnSummary) tüm 3 kiosk türünde aktif:
+- **Şube** (`/sube/kiosk`): zaten vardı (PR #72'de kümülatif fix)
+- **HQ** (`/hq/kiosk`): YENİ — Sprint 14a ile entegre edildi
+- **Fabrika** (`/fabrika/kiosk`): YENİ — Sprint 14a ile entegre edildi
+
+**Schema değişiklikleri:**
+- YENİ tablo: `hq_break_logs` (`branch_break_logs` benzeri)
+- YENİ kolon: `factory_shift_sessions.break_minutes` (kümülatif tracking)
+- Migration: `2026-05-11-hq-factory-break-tracking.sql` (idempotent, 7 kayıt backfilled)
+
+**Backend:**
+- YENİ: `server/routes/hq-kiosk-break.ts` (POST `/api/hq/kiosk/break-start` + `/break-end`)
+- GÜNCEL: `server/routes/factory.ts` (log-break + end-break response'ları artık `dailyPlannedMinutes/dailyUsedMinutes/dailyRemainingMinutes` döner)
+
+**Frontend:**
+- HQ ve Fabrika kiosk'larında `BreakCountdown` (context="hq" / "fabrika") + `BreakReturnSummary` modal
+- 90 dk üstü mola → supervisor bildirim (HQ için ceo/cgo/mudur/admin rolleri)
+
+**Compliance:** İş Kanunu m.68 uyumu fabrika + HQ için sağlandı (4h üstü 15 dk + 7.5h üstü 30 dk yasal mola).
+
+**6 Perspektif Review (D-39):**
+- Principal Eng ✅ izole değişiklikler, mevcut akışlar bozulmadı
+- F&B Ops ✅ Fabrika personel mola hakkını net görür
+- Senior QA ⚠️ Aslan manuel test edecek (45+15 senaryosu)
+- Product ✅ Aslan onaylı
+- Compliance ✅ İş K. m.68 tüm kioska yayıldı
+- End User ✅ Berkan/Eren/Mahmut hep aynı UX
+
+**PR:** #73 (8 dosya, +656/-25 satır, commit `ac205cb75`)
+
+---
+
+### D-57: Sema Skill Set — Replit'ten Replit'e Geçiş (B Plan, opsiyonel)
+**Tarih:** 11 May 2026 | **Not:** Aslan'ın geleceğe yönelik notu, henüz aktif değil
+
+**Plan:** Pilot sonrası Sema'ya hammadde + reçete + besin değer veri girişi için kendine ait dashboard hazırlanabilir. Şu an mevcut `/girdi-yonetimi` + reçete sayfaları yeterli.
+
+**Aktivasyon:** Post-pilot Sprint 15+ kapsamında düşünülebilir.
+
+---
+
+### D-58: Replit Publish DB Verilerini KORUR (Aslan sorusu — 11 May)
+**Tarih:** 11 May 2026 | **Sebep:** Aslan'ın endişesi netleştirildi
+
+**Cevap:** Replit publish DB'yi sıfırlamaz. Veriler güvende.
+
+**Sebep:** DB **Neon serverless PostgreSQL** üzerinde (Replit dışında). `DATABASE_URL` env variable ile bağlanılıyor. Replit publish sadece kodu günceller, DB Neon'da olduğu için dokunulmaz.
+
+**Pilot stratejisi:** Pilot Day-1'de Işıklar açılır → kayıtlar Neon'da birikir → ertesi gün publish edilse → kayıtlar duruyor → Lara, Fabrika, Ofis sırayla açılır, hep birikir.
+
+**3 İSTİSNA:**
+1. Migration `DROP TABLE/COLUMN` yaparsa veri kaybı (D-08 Plan Mode + `pg_dump` backup zorunlu)
+2. Development DB ile Production DB karıştırılırsa
+3. Schema değişikliği eski veriyi bozarsa (genelde olmaz; nullable kolon ekleme veri kaybetmez)
+
+---
+
+**Bu dosya değişmez kararları içerir.** Yeni karar eklenirse yeni satır olarak ekle, eski karar silinmez.
+
+**Son güncelleme:** 11 May 2026 (D-55, D-56, D-57, D-58 eklendi — pilot final hazırlık kararları)

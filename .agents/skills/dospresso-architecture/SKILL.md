@@ -5,6 +5,40 @@ description: Complete architecture reference for DOSPRESSO franchise management 
 
 # DOSPRESSO Architecture Map
 
+## 🆕 Son Değişiklik Özeti (11 May 2026 — Sprint 14a Pilot Final)
+
+> **Yeni Claude için:** 11 May 2026'da iki PR merge edildi (#72 + #73). Mola yönetimi tüm 3 kiosk türünde aktif. Önceki 6 May notu altında durmaktadır.
+
+**Sprint 14a — Mola Sayaç Tüm Kiosk'larda (PR #73, 11 May):**
+
+YENİ TABLOLAR/KOLONLAR:
+- `hq_break_logs` — YENİ tablo (branch_break_logs benzeri, hqShiftSessions'a referans)
+- `factory_shift_sessions.break_minutes` — YENİ kolon (kümülatif günlük mola hakkı için)
+
+YENİ DOSYA: `server/routes/hq-kiosk-break.ts` (292 satır)
+- POST `/api/hq/kiosk/break-start` — HQ mola başlat
+- POST `/api/hq/kiosk/break-end` — HQ mola bitir + supervisor uyarısı (>90 dk)
+
+GÜNCELLENMİŞ ENDPOINT'LER (factory.ts):
+- POST `/api/factory/kiosk/log-break` — Response artık `dailyPlannedMinutes/dailyUsedMinutes/dailyRemainingMinutes` + `breakStartTime` döner
+- POST `/api/factory/kiosk/end-break` — `factory_shift_sessions.break_minutes` kümülatif update + response field'ları
+
+FRONTEND ENTEGRASYONLARI:
+- `client/src/pages/hq/kiosk.tsx`: BreakCountdown + BreakReturnSummary + breakStart/End mutations, exit/return akışıyla bağlı
+- `client/src/pages/fabrika/kiosk.tsx`: Basit timer yerine BreakCountdown, BreakReturnSummary modal eklendi
+
+PR #72 — Hotfix (11 May 00:43):
+- `server/routes/pin-reset.ts` YENİ — POST `/api/kiosk/pin-reset/request` (8 deneme limit + bcrypt + sendEmail)
+- `client/src/pages/sube/kiosk.tsx`: Mola kümülatif fix (45+15 senaryosu, satır 730-770)
+- `migrations/2026-05-11-long-shift-auto-close.sql` (Replit Agent eklemiş, tek-seferlik temizlik)
+
+KARARLAR:
+- **D-55:** Long-shift auto-close (10h soft warn / 12h auto-close → scheduledEndTime) pilot kapsamı DIŞI, Sprint 14+ post-pilot
+- **D-56:** Mola sayaç tüm 3 kiosk türünde aktif (Sprint 14a)
+- **D-58:** Replit publish ↔ DB ayrı dünyalar (Neon serverless, veri korunur)
+
+---
+
 ## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
 > **Yeni Claude için hızlı bağlam:** Bu skill 5 May'den 6 May'e Sprint 17 (İK Redesign) ile güncellendi. Branch: `claude/ik-redesign-2026-05-06`, 9 commit, 14 dosya, +2880/-220.
