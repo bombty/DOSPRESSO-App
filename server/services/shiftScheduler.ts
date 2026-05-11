@@ -264,18 +264,21 @@ export class ShiftScheduler {
       dateObj.setDate(dateObj.getDate() + dayOffset);
       const dateStr = dateObj.toISOString().split('T')[0];
       const dayOfWeek = dateObj.getDay();
-      const isBusyDay = [0, 5, 6].includes(dayOfWeek);
-      const isQuietDay = [1, 2].includes(dayOfWeek);
+      // Sprint 19.2 (Aslan 12 May): Cuma, Cmt, Paz cafe için EN YOĞUN günler.
+      // Hafta sonu OFF verilmemeli (yoğun gün → herkes çalışsın).
+      const isBusyDay = [0, 5, 6].includes(dayOfWeek); // 0=Paz, 5=Cuma, 6=Cmt
+      const isQuietDay = [1, 2].includes(dayOfWeek);   // 1=Pzt, 2=Sal
 
       const availableToday = staff.filter(s => {
         const key = `${s.id}_${dateStr}`;
         return !leaveUserDates.has(key);
       });
 
-      const needOff = isQuietDay
-        ? Math.ceil(staffCount * 0.3)
-        : isBusyDay
-          ? Math.max(1, Math.floor(staffCount * 0.15))
+      // Sprint 19.2: Busy day (Fri/Sat/Sun) → SIFIR off verilir, herkes çalışır
+      const needOff = isBusyDay
+        ? 0
+        : isQuietDay
+          ? Math.ceil(staffCount * 0.3)
           : Math.ceil(staffCount * 0.2);
 
       const offCandidates = availableToday
@@ -293,7 +296,10 @@ export class ShiftScheduler {
       for (let i = 0; i < workingToday.length; i++) {
         const person = workingToday[i];
         const isFT = person.employmentType === 'fulltime' || person.employmentType === 'tam_zamanli' || !person.employmentType;
-        const targetDailyHours = isFT ? 9 : 6;
+        // Sprint 19.2 (Aslan kuralı): FT = 8.5h gross = 7.5h work + 1h break
+        // 6 gün × 7.5h = 45h work (İş K. m.63 uyumlu)
+        // PT = 6h gross = 5h work + 1h break
+        const targetDailyHours = isFT ? 8.5 : 6;
 
         let startTime: string;
         let endTime: string;

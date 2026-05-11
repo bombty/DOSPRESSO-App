@@ -120,6 +120,8 @@ export default function KioskSupervisorShift() {
   const [activeDragData, setActiveDragData] = useState<DragData | null>(null);
   const [pendingDrop, setPendingDrop] = useState<{ staffId: string; date: string; staffName: string } | null>(null);
   const [shiftToDelete, setShiftToDelete] = useState<any | null>(null);
+  // Sprint 19.2: Aktif hafta tab (0=Hafta 1, 1=Hafta 2) — weekAnalysis için
+  const [currentWeekTab, setCurrentWeekTab] = useState<0 | 1>(0);
   const [aiPreview, setAiPreview] = useState<any | null>(null);
 
   const sensors = useSensors(
@@ -395,6 +397,90 @@ export default function KioskSupervisorShift() {
 
   const totalShifts = (shiftsQuery.data?.shifts || []).length;
 
+  // Sprint 19.2 (Aslan 12 May): Haftalık saat ve off analizi
+  // Aktif hafta (Hafta 1 veya Hafta 2) içinde her personel için:
+  //   - kaç saat planlandı
+  //   - hangi günler off
+  //   - 45h altında mı (FT için)
+  const weekAnalysis = useMemo(() => {
+    const activeWeekDays = currentWeekTab === 0 ? week1Days : week2Days;
+    const activeWeekStr = activeWeekDays.map((d) => format(d, "yyyy-MM-dd"));
+    const dayLabels = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+    const perStaff: Record<string, { hours: number; daysWorked: string[]; offDays: string[] }> = {};
+    (staffQuery.data || []).forEach((s: any) => {
+      perStaff[s.id] = { hours: 0, daysWorked: [], offDays: [] };
+    });
+
+    activeWeekStr.forEach((dateStr, idx) => {
+      const dayShifts = shiftsByDate[dateStr] || [];
+      const workingIds = new Set(dayShifts.map((sh: any) => sh.assignedToId).filter(Boolean));
+      dayShifts.forEach((sh: any) => {
+        if (!sh.assignedToId || !perStaff[sh.assignedToId]) return;
+        const startMin = parseInt((sh.startTime || "0").split(":")[0]) * 60 + parseInt((sh.startTime || "0").split(":")[1] || "0");
+        const endMin = parseInt((sh.endTime || "0").split(":")[0]) * 60 + parseInt((sh.endTime || "0").split(":")[1] || "0");
+        const grossMin = endMin - startMin;
+        // Net work = gross - 60dk mola (İş K. m.68)
+        const netHours = Math.max(0, (grossMin - 60) / 60);
+        perStaff[sh.assignedToId].hours += netHours;
+        perStaff[sh.assignedToId].daysWorked.push(dayLabels[idx]);
+      });
+      // Çalışmayan kişiler bu gün için off
+      (staffQuery.data || []).forEach((s: any) => {
+        if (!workingIds.has(s.id) && perStaff[s.id]) {
+          perStaff[s.id].offDays.push(dayLabels[idx]);
+        }
+      });
+    });
+
+    // Uyarılar
+    const warnings: string[] = [];
+    (staffQuery.data || []).forEach((s: any) => {
+      const isFT = s.employmentType !== "parttime" && s.employmentType !== "yari_zamanli";
+      const target = isFT ? 45 : 30;
+      const data = perStaff[s.id];
+      if (!data) return;
+      const name = `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.username;
+      if (isFT && data.hours > 0 && data.hours < target - 0.5) {
+        warnings.push(`⚠️ ${name} (FT): ${data.hours.toFixed(1)}h planlandı (hedef 45h)`);
+      }
+      if (data.hours > target + 7) {
+        warnings.push(`🔴 ${name}: ${data.hours.toFixed(1)}h planlandı — mesai onayı gerekli`);
+      }
+    });
+
+    return { perStaff, warnings };
+  }, [shiftsByDate, staffQuery.data, week1Days, week2Days, currentWeekTab]);
+
+  // Sprint 19.2: Tüm haftayı silme mutation (test için, yeniden tasarlamak)
+  const deleteAllMutation = useMutation({
+    mutationFn: async () => {
+      const ids = (shiftsQuery.data?.shifts || []).map((s: any) => s.id);
+      const results = await Promise.allSettled(
+        ids.map((id: number) =>
+          fetch(`/api/shifts/${id}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: kioskHeaders(),
+          })
+        )
+      );
+      const failed = results.filter((r) => r.status === "rejected").length;
+      return { deleted: ids.length - failed, failed, total: ids.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      toast({
+        title: "🗑️ Tüm vardiyalar silindi",
+        description: `${data.deleted}/${data.total} vardiya silindi${data.failed ? ` (${data.failed} hata)` : ""}`,
+      });
+    },
+    onError: () => {
+      toast({ title: "❌ Silme hatası", variant: "destructive" });
+    },
+  });
+  const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-background p-4 lg:p-6">
       {/* Header */}
@@ -441,7 +527,36 @@ export default function KioskSupervisorShift() {
       </div>
 
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <Tabs defaultValue="week1" className="w-full">
+        {/* Sprint 19.2 (Aslan 12 May): Haftalık saat uyarıları + tümünü sil */}
+        {totalShifts > 0 && (
+          <div className="mb-4 space-y-2">
+            {weekAnalysis.warnings.length > 0 && (
+              <div className="rounded-lg border border-amber-500/50 bg-amber-50 dark:bg-amber-950/30 p-3">
+                <div className="text-sm font-medium mb-1 text-amber-700 dark:text-amber-300">
+                  ⚠️ Planlama Uyarıları ({weekAnalysis.warnings.length})
+                </div>
+                <ul className="text-xs space-y-1 text-amber-700 dark:text-amber-200">
+                  {weekAnalysis.warnings.slice(0, 8).map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button
+                onClick={() => setDeleteAllConfirmOpen(true)}
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950/30"
+                data-testid="btn-delete-all-shifts"
+              >
+                🗑️ Tüm Vardiyaları Sil ({totalShifts})
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Tabs defaultValue="week1" className="w-full" onValueChange={(v) => setCurrentWeekTab(v === "week1" ? 0 : 1)}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="week1" className="text-base py-3">
               Hafta 1 ({format(week1Start, "d MMM", { locale: tr })})
@@ -474,7 +589,7 @@ export default function KioskSupervisorShift() {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {staffQuery.data?.map((s: any) => (
-                <DraggableStaff key={s.id} staff={s} />
+                <DraggableStaff key={s.id} staff={s} analysis={weekAnalysis.perStaff[s.id]} />
               ))}
               {(!staffQuery.data || staffQuery.data.length === 0) && (
                 <p className="text-sm text-muted-foreground">Personel listesi yükleniyor...</p>
@@ -629,6 +744,39 @@ export default function KioskSupervisorShift() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sprint 19.2: Tümünü Sil Confirm Dialog */}
+      <Dialog open={deleteAllConfirmOpen} onOpenChange={setDeleteAllConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">🗑️ Tüm Vardiyaları Sil</DialogTitle>
+            <DialogDescription>
+              <strong>{totalShifts} vardiya</strong> kalıcı olarak silinecek. Bu işlem geri alınamaz.
+              <br /><br />
+              Vardiyaları yeniden planlamak için bu butonu kullanın. AI Öneri ile yeni bir hafta planı oluşturabilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteAllConfirmOpen(false)}>
+              İptal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                deleteAllMutation.mutate();
+                setDeleteAllConfirmOpen(false);
+              }}
+              disabled={deleteAllMutation.isPending}
+              data-testid="btn-confirm-delete-all"
+            >
+              {deleteAllMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Evet, Tümünü Sil
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -752,11 +900,20 @@ function DroppableDay({
 // ═══════════════════════════════════════════════════════════════════
 // Draggable Personel Kartı
 // ═══════════════════════════════════════════════════════════════════
-function DraggableStaff({ staff }: { staff: any }) {
+function DraggableStaff({ staff, analysis }: { staff: any; analysis?: { hours: number; daysWorked: string[]; offDays: string[] } }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `staff-${staff.id}`,
     data: { type: "staff", staff } as DragData,
   });
+
+  // Sprint 19.2: Haftalık saat + off gösterimi
+  const isFT = staff.employmentType !== "parttime" && staff.employmentType !== "yari_zamanli";
+  const target = isFT ? 45 : 30;
+  const hours = analysis?.hours || 0;
+  const offDays = analysis?.offDays || [];
+  const isUnderTarget = hours > 0 && hours < target - 0.5;
+  const isOverTarget = hours > target + 7;
+  const hoursColor = isOverTarget ? "text-red-600 font-bold" : isUnderTarget ? "text-amber-600 font-semibold" : hours > 0 ? "text-green-600 font-semibold" : "text-muted-foreground";
 
   return (
     <button
@@ -765,13 +922,20 @@ function DraggableStaff({ staff }: { staff: any }) {
       {...attributes}
       className={`px-4 py-2.5 rounded-lg border bg-card hover:bg-accent transition-colors cursor-grab active:cursor-grabbing touch-none ${
         isDragging ? "opacity-50" : ""
-      }`}
+      } ${isUnderTarget ? "border-amber-400" : isOverTarget ? "border-red-400" : ""}`}
       style={{ minHeight: 56 }} // Touch-optimize (Apple HIG 44+px)
     >
       <div className="text-sm font-medium">
         👤 {staff.firstName} {staff.lastName}
       </div>
-      <div className="text-xs text-muted-foreground">{staff.role}</div>
+      <div className="text-xs text-muted-foreground">
+        {staff.role} · {isFT ? "FT" : "PT"}
+      </div>
+      {analysis && hours > 0 && (
+        <div className={`text-xs mt-1 ${hoursColor}`}>
+          {hours.toFixed(1)}h / {target}h{offDays.length > 0 && ` · Off: ${offDays.join(", ")}`}
+        </div>
+      )}
     </button>
   );
 }
