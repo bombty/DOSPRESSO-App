@@ -64,6 +64,8 @@ Excel'deki 5 pozisyon BRÜT rakamlarını al, Replit `PAYROLL_DRY_RUN=false` yap
 | PP-6 | 3 kiosk endpoint → 1 standart | API consistency | 1 sprint |
 | PP-7 | 36 açık branch temizlik | Git hijyeni | 30 dk |
 | **PP-NEW** | **Long-shift auto-close + monitor scheduler** | D-55 — pilot için ertelendi | 1 sprint |
+| **PP-S15.1** | **Kiosk Vardiya Planlama** (supervisor PIN ile 1-2 hafta plan) | Aslan 11 May istedi — pilot test buffer'ına sığmadı | 2 gün | [Plan: `docs/SPRINT-15-1-PLAN-KIOSK-VARDIYA.md`](./SPRINT-15-1-PLAN-KIOSK-VARDIYA.md) |
+| **PP-S16-2** | **Aylık compliance trend grafiği** (recharts line chart) | Sprint 16 V2 — gauge yapıldı, trend için time-series endpoint gerek | 1 hafta |
 
 ---
 
