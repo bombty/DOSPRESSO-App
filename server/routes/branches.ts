@@ -3722,6 +3722,55 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 19.4 (Aslan 12 May 2026): Vardiya kartından görev/mesaj bırakma
+// "isme tıklayınca o kişiye görev checklist veya mesaj bırakma imkanı olmalı"
+// Kiosk kullanıcısı (supervisor/supervisor_buddy/mudur) başka bir personele
+// not/görev oluşturabilir. Hedef kişi kioska girdiğinde 'Görevlerim' altında görür.
+// ═══════════════════════════════════════════════════════════════════
+router.post('/api/branches/:branchId/kiosk/shift-task', isKioskOrAuthenticated, async (req: any, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const issuerId = req.kioskUserId;
+    const { assignedToId, description, priority, dueDate, shiftId } = req.body;
+
+    if (!assignedToId || !description || description.trim().length === 0) {
+      return res.status(400).json({ message: "Atanan kişi ve açıklama gerekli" });
+    }
+
+    // Yetki kontrolü: issuer'ın role'u supervisor / supervisor_buddy / mudur olmalı
+    const issuer = await storage.getUser(issuerId);
+    if (!issuer) return res.status(401).json({ message: "Yetkilendirme hatası" });
+    const allowedRoles = ['supervisor', 'supervisor_buddy', 'mudur', 'admin', 'coach', 'trainer', 'ceo'];
+    if (!allowedRoles.includes(issuer.role || '')) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    // Assignee aynı şubede mi (branch isolation)
+    const assignee = await storage.getUser(assignedToId);
+    if (!assignee) return res.status(404).json({ message: "Atanan kişi bulunamadı" });
+    if (assignee.branchId !== branchId && !['admin', 'ceo', 'coach', 'trainer'].includes(issuer.role || '')) {
+      return res.status(403).json({ message: "Sadece kendi şubenizdeki personele görev atayabilirsiniz" });
+    }
+
+    const task = await storage.createTask({
+      branchId,
+      assignedToId,
+      assignedById: issuerId,
+      description: description.trim(),
+      priority: priority || 'orta',
+      status: 'beklemede',
+      dueDate: dueDate ? new Date(dueDate) : null,
+      sourceType: 'shift_bound',
+    } as any);
+
+    res.json({ success: true, task });
+  } catch (error: unknown) {
+    console.error("Error creating shift task:", error);
+    res.status(500).json({ message: "Görev oluşturulamadı" });
+  }
+});
+
 router.post('/api/branches/:branchId/kiosk/set-pin', isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;
