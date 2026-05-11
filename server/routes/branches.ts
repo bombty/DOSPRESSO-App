@@ -161,7 +161,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const kioskLoginAttempts = new Map<string, { count: number; lastAttempt: number; blockedUntil?: number }>();
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 8;
 const BLOCK_DURATION = 30 * 60 * 1000;
 
 function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter?: number; remainingAttempts?: number } {
@@ -3136,6 +3136,12 @@ router.post('/api/branches/:branchId/kiosk/break-start', isKioskOrAuthenticated,
       return res.status(400).json({ message: "Vardiya aktif değil" });
     }
 
+    // Aslan 11 May 2026: Bugünkü kümülatif mola hakkı
+    // Gün içinde 60 dk hak — önceki molalar düşülür
+    const DAILY_BREAK_LIMIT = 60;
+    const usedToday = session.breakMinutes || 0;
+    const remainingToday = Math.max(0, DAILY_BREAK_LIMIT - usedToday);
+
     const now = new Date();
 
     await db.update(branchShiftSessions)
@@ -3161,6 +3167,11 @@ router.post('/api/branches/:branchId/kiosk/break-start', isKioskOrAuthenticated,
     res.json({
       success: true,
       breakLog,
+      breakStartTime: now,
+      dailyPlannedMinutes: DAILY_BREAK_LIMIT,
+      dailyUsedMinutes: usedToday,
+      dailyRemainingMinutes: remainingToday,
+      warning: remainingToday === 0 ? 'Mola hakkın bugün doldu — yine de mola alabilirsin ama tutanak gerektirir' : null,
     });
   } catch (error: unknown) {
     console.error("Error starting break:", error);
@@ -3525,7 +3536,7 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
 
     const userTasks = await db.select().from(tasks)
       .where(and(
-        eq(tasks.assignedTo, userId),
+        eq(tasks.assignedToId, userId),
         or(
           eq(tasks.status, 'pending'),
           eq(tasks.status, 'in_progress')
@@ -3961,9 +3972,15 @@ router.get('/api/branches/:branchId/kiosk/team-status', isKioskOrAuthenticated, 
 
     const team = activeSessions.map(s => {
       const breakStart = s.status === 'on_break' ? breakMap.get(s.sessionId) : null;
-      const breakMinutes = breakStart
+      const currentBreakMinutes = breakStart
         ? Math.floor((now.getTime() - new Date(breakStart).getTime()) / 60000)
         : 0;
+      // Aslan 11 May 2026: Bugünkü kümülatif mola
+      const DAILY_BREAK_LIMIT = 60;
+      const usedBeforeCurrentBreak = (s as any).breakMinutes || 0;
+      const totalUsedToday = usedBeforeCurrentBreak + currentBreakMinutes;
+      const dailyRemainingMinutes = Math.max(0, DAILY_BREAK_LIMIT - totalUsedToday);
+
       return {
         userId: s.userId,
         firstName: s.firstName,
@@ -3973,8 +3990,12 @@ router.get('/api/branches/:branchId/kiosk/team-status', isKioskOrAuthenticated, 
         status: s.status,
         checkInTime: s.checkInTime,
         breakStartTime: breakStart, // Aslan 10 May 2026: Frontend realtime hesap için
-        breakMinutes,
-        isBreakAnomaly: s.status === 'on_break' && breakMinutes > maxBreakMinutes,
+        breakMinutes: currentBreakMinutes,
+        // Aslan 11 May 2026: Günlük kümülatif
+        dailyPlannedMinutes: DAILY_BREAK_LIMIT,
+        dailyUsedMinutes: totalUsedToday,
+        dailyRemainingMinutes,
+        isBreakAnomaly: s.status === 'on_break' && totalUsedToday > DAILY_BREAK_LIMIT,
         maxBreakMinutes,
       };
     });

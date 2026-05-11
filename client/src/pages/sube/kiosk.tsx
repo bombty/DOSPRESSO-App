@@ -114,6 +114,11 @@ export default function BranchKiosk() {
   const [kioskUsername, setKioskUsername] = useState('');
   const [selectedUser, setSelectedUser] = useState<StaffMember | null>(null);
   const [pinInput, setPinInput] = useState('');
+  // Aslan 11 May 2026: PIN Sıfırlama (8 hatalı deneme sonra)
+  const [showPinResetModal, setShowPinResetModal] = useState(false);
+  const [pinResetEmail, setPinResetEmail] = useState('');
+  const [pinResetLoading, setPinResetLoading] = useState(false);
+  const [pinFailedAttempts, setPinFailedAttempts] = useState(0);
   const [currentSession, setCurrentSession] = useState<Session | null>(null);
   const [userTasks, setUserTasks] = useState<Task[]>([]);
   const [userChecklists, setUserChecklists] = useState<Checklist[]>([]);
@@ -135,6 +140,12 @@ export default function BranchKiosk() {
   const [sessionLoading, setSessionLoading] = useState(false);
   // Aslan 10 May 2026: KVKK per-user + mola sayaç state
   const [showKvkkModal, setShowKvkkModal] = useState(false);
+  // Aslan 11 May 2026: Her saniye render için tick (mola countdown)
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
   const [pendingPostLoginAction, setPendingPostLoginAction] = useState<(() => void) | null>(null);
   const [breakReturnSummary, setBreakReturnSummary] = useState<{
     userName: string;
@@ -601,7 +612,25 @@ export default function BranchKiosk() {
       await continueAfterKvkk();
     },
     onError: (error: any) => {
-      toast({ title: "Giriş başarısız", description: error.message, variant: "destructive" });
+      // Aslan 11 May 2026: Hatalı PIN sayacını artır
+      const newCount = pinFailedAttempts + 1;
+      setPinFailedAttempts(newCount);
+      const errMsg = error.message || 'Giriş başarısız';
+      const isLocked = errMsg.toLowerCase().includes('kilitlend') || errMsg.toLowerCase().includes('too many');
+      // 8+ hatalı deneme veya kilit mesajı → PIN sıfırla seçeneğini öner
+      if (newCount >= 8 || isLocked) {
+        toast({
+          title: "🔒 Çok fazla hatalı deneme",
+          description: "PIN'inizi unuttuysanız 'PIN'imi Unuttum' butonu ile sıfırlayabilirsiniz",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Giriş başarısız",
+          description: `${errMsg} (${newCount}/8 deneme)`,
+          variant: "destructive"
+        });
+      }
       setPinInput('');
     },
   });
@@ -667,11 +696,22 @@ export default function BranchKiosk() {
       const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/break-start`, { sessionId });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Aslan 11 May 2026: Backend response'tan breakStartTime + dailyRemaining
       if (currentSession) {
-        setCurrentSession({ ...currentSession, status: 'on_break' });
+        setCurrentSession({
+          ...currentSession,
+          status: 'on_break',
+          breakStartTime: data?.breakStartTime || new Date().toISOString(),
+          dailyPlannedMinutes: data?.dailyPlannedMinutes ?? 60,
+          dailyUsedMinutes: data?.dailyUsedMinutes ?? 0,
+          dailyRemainingMinutes: data?.dailyRemainingMinutes ?? 60,
+        } as any);
       }
-      toast({ title: "Mola başladı", description: "İyi dinlenmeler!" });
+      const remainText = data?.dailyRemainingMinutes !== undefined
+        ? ` (${data.dailyRemainingMinutes} dk hakkın var)`
+        : '';
+      toast({ title: "Mola başladı", description: `İyi dinlenmeler!${remainText}` });
     },
     onError: (error: any) => {
       toast({ title: "Mola başlatılamadı", description: error.message, variant: "destructive" });
@@ -687,17 +727,19 @@ export default function BranchKiosk() {
       return res.json();
     },
     onSuccess: (data) => {
-      // Aslan 10 May 2026: Mola dönüş özeti göster
-      if (currentSession?.breakStartTime) {
-        const breakStart = new Date(currentSession.breakStartTime);
+      // Aslan 11 May 2026: Mola bitince breakMinutes TOPLA — sonraki molada doğru kalan dakika için kritik!
+      const breakStartTime = (currentSession as any)?.breakStartTime;
+      let breakDuration = 0;
+      if (breakStartTime) {
+        const breakStart = new Date(breakStartTime);
         const breakEnd = new Date();
-        const actualMin = Math.floor((breakEnd.getTime() - breakStart.getTime()) / 60000);
-        const plannedMin = 60;
-        const overtime = Math.max(0, actualMin - plannedMin);
+        breakDuration = Math.floor((breakEnd.getTime() - breakStart.getTime()) / 60000);
 
+        const plannedMin = 60;
+        const overtime = Math.max(0, breakDuration - plannedMin);
         setBreakReturnSummary({
           userName: selectedUser?.firstName || "Kullanıcı",
-          breakStartTime: currentSession.breakStartTime,
+          breakStartTime: breakStartTime,
           breakEndTime: breakEnd.toISOString(),
           plannedMinutes: plannedMin,
           overtimeMinutes: overtime,
@@ -706,9 +748,24 @@ export default function BranchKiosk() {
       }
 
       if (currentSession) {
-        setCurrentSession({ ...currentSession, status: 'active' });
+        const oldBreakMinutes = (currentSession as any).breakMinutes || 0;
+        const newBreakMinutes = oldBreakMinutes + breakDuration;
+        const dailyRemaining = Math.max(0, 60 - newBreakMinutes);
+
+        setCurrentSession({
+          ...currentSession,
+          status: 'active',
+          breakMinutes: newBreakMinutes,  // KÜMÜLATİF — bu kritik!
+          breakStartTime: null,
+          dailyUsedMinutes: newBreakMinutes,
+          dailyRemainingMinutes: dailyRemaining,
+        } as any);
       }
-      toast({ title: "Mola bitti", description: "Çalışmaya devam" });
+
+      const remainText = breakDuration > 0
+        ? ` (${breakDuration} dk mola yapıldı, ${Math.max(0, 60 - ((currentSession as any)?.breakMinutes || 0) - breakDuration)} dk hakkın kaldı)`
+        : '';
+      toast({ title: "Mola bitti", description: `Çalışmaya devam${remainText}` });
     },
     onError: (error: any) => {
       toast({ title: "Mola bitirilemedi", description: error.message, variant: "destructive" });
@@ -1204,23 +1261,9 @@ export default function BranchKiosk() {
         return 'Çalışıyor';
       }
       if (s === 'on_break') {
-        // Aslan 10 May 2026: Realtime mola süresi (60sn API yerine her render'da hesapla)
-        let breakMin = staff.breakMinutes || 0;
-        if (staff.breakStartTime) {
-          // Backend'den breakStartTime geliyorsa kesin hesap (saniyelik doğru)
-          breakMin = Math.floor(
-            (now.getTime() - new Date(staff.breakStartTime).getTime()) / 60000
-          );
-        }
-        const remaining = Math.max(0, 60 - breakMin);
-        if (remaining > 0) {
-          return `Molada · ${breakMin}dk yapıldı · ${remaining}dk kaldı`;
-        }
-        if (breakMin > 60) {
-          const overtime = breakMin - 60;
-          return `🚨 İHLAL · ${breakMin}dk (+${overtime}dk geç!)`;
-        }
-        return `Molada · ${breakMin}dk · ⚠️ süre doldu`;
+        // Aslan 11 May 2026: Kart sade — sadece "Molada"
+        // Detaylar (countdown, kalan dakika) time line'da gösterilir
+        return 'Molada';
       }
       if (s === 'late') return `${staff.lateMinutes}dk geç — ${staff.shiftStartTime?.slice(0,5)||''}`;
       if (s === 'missing') return `Gelmedi — ${staff.shiftStartTime?.slice(0,5)||''}`;
@@ -1239,15 +1282,19 @@ export default function BranchKiosk() {
       }
       return 'İzinli';
     };
-    const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => (
+    const PersonRow = ({ staff, bar }: { staff: any; bar: React.ReactNode }) => {
+      // Tick referansı (her saniye re-render için — countdown animasyonu)
+      void tick;
+
+      return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 48, marginBottom: 4 }}>
         <button style={pbStyle(staff.shiftStatus || 'off', staff)} onClick={() => handlePerson(staff)} data-testid={`staff-btn-${staff.id}`}>
-          <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 500, flexShrink: 0 }}>
+          <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, flexShrink: 0 }}>
             {staff.firstName?.[0]}{staff.lastName?.[0]}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 500, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 94 }}>{staff.firstName} {staff.lastName?.[0]}.</div>
-            <div style={{ fontSize: 8, color: statusColor(staff.shiftStatus || 'off'), whiteSpace: 'nowrap' }}>{statusTxt(staff)}</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{staff.firstName} {staff.lastName?.[0]}.</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap', fontWeight: 500 }}>{statusTxt(staff)}</div>
           </div>
         </button>
         <div style={{ flex: 1, height: 48, background: 'rgba(255,255,255,0.04)', borderRadius: 5, position: 'relative', overflow: 'hidden' }}>
@@ -1255,11 +1302,12 @@ export default function BranchKiosk() {
         </div>
       </div>
     );
+    };
     const SecHead = ({ label, count, color, bg }: any) => (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '10px 0 5px' }}>
         <div style={{ flex: 1, height: 0.5, background: 'rgba(255,255,255,0.1)' }} />
-        <span style={{ fontSize: 11, fontWeight: 500, color, whiteSpace: 'nowrap' }}>{label}</span>
-        <span style={{ fontSize: 9, padding: '1px 7px', borderRadius: 10, fontWeight: 500, background: bg, color }}>{count}</span>
+        <span style={{ fontSize: 14, fontWeight: 500, color, whiteSpace: 'nowrap' }}>{label}</span>
+        <span style={{ fontSize: 14, padding: '1px 7px', borderRadius: 10, fontWeight: 500, background: bg, color }}>{count}</span>
         <div style={{ flex: 1, height: 0.5, background: 'rgba(255,255,255,0.1)' }} />
       </div>
     );
@@ -1268,9 +1316,9 @@ export default function BranchKiosk() {
         <div style={{ background: '#ef4444', padding: '9px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <div style={{ color: '#fff', fontSize: 15, fontWeight: 500 }}>{branchAuth?.name || 'Şube Kiosk'}</div>
-            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{dateStr2} - {timeStr2}</div>
+            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14 }}>{dateStr2} - {timeStr2}</div>
           </div>
-          <div style={{ display: 'flex', gap: 12, fontSize: 11 }}>
+          <div style={{ display: 'flex', gap: 12, fontSize: 14 }}>
             {activeAndBreak.length > 0 && <span style={{ color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} />{active.length} aktif{onBreak.length > 0 ? ` - ${onBreak.length} mola` : ''}</span>}
             {late.length > 0 && <span style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f87171', display: 'inline-block' }} />{late.length} gecikmeli</span>}
             {scheduled.length > 0 && <span style={{ color: '#93c5fd', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#93c5fd', display: 'inline-block' }} />{scheduled.length} bekliyor</span>}
@@ -1278,7 +1326,7 @@ export default function BranchKiosk() {
             {noShift.length > 0 && <span style={{ color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'inline-block' }} />{noShift.length} plansız</span>}
             <button
               onClick={() => { setShowExitConfirm(true); setExitPasswordInput(''); }}
-              style={{ marginLeft: 8, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, color: 'rgba(255,255,255,0.7)', padding: '5px 10px', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
+              style={{ marginLeft: 8, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, color: 'rgba(255,255,255,0.7)', padding: '5px 10px', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}
               data-testid="btn-kiosk-exit-header"
             >
               🔒 Çık
@@ -1293,7 +1341,7 @@ export default function BranchKiosk() {
                   {['07','09','11','13','15','17','19','21','23','01','03'].map(t => (
                     <div key={t} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                       <div style={{ width: 1, height: 6, background: 'rgba(255,255,255,0.2)' }} />
-                      <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>{t}</span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.55)' }}>{t}</span>
                     </div>
                   ))}
                 </div>
@@ -1303,12 +1351,54 @@ export default function BranchKiosk() {
                 {activeAndBreak.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
                   {staff.checkInTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(new Date(staff.checkInTime).toTimeString().slice(0,5))}%`, width: `${Math.max(1, nowPct - pct(new Date(staff.checkInTime).toTimeString().slice(0,5)))}%`, background: 'rgba(34,197,94,0.6)', borderRadius: 3, display:'flex', alignItems:'center', paddingLeft:4 }}>
-                    <span style={{fontSize:8,color:'rgba(255,255,255,0.8)',whiteSpace:'nowrap'}}>{new Date(staff.checkInTime).toTimeString().slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(255,255,255,0.8)',whiteSpace:'nowrap'}}>{new Date(staff.checkInTime).toTimeString().slice(0,5)}</span>
                   </div>}
                   {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.2)', border: '0.5px dashed rgba(147,197,253,0.5)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 4px' }}>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftStartTime.slice(0,5)}</span>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.8)'}}>{staff.shiftStartTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
                   </div>}
+                  {/* Aslan 11 May 2026: Mola BAR — time line üzerinde renkli bar + countdown */}
+                  {staff.shiftStatus === 'on_break' && staff.breakStartTime && (() => {
+                    const breakStart = new Date(staff.breakStartTime);
+                    const breakStartTimeStr = breakStart.toTimeString().slice(0,5);
+                    const elapsedMin = Math.floor((Date.now() - breakStart.getTime()) / 60000);
+                    // Günlük kalan hak (kümülatif) - mevcut mola süresi düşülmüş
+                    const dailyRemaining = staff.dailyRemainingMinutes !== undefined
+                      ? Math.max(0, staff.dailyRemainingMinutes - elapsedMin)
+                      : Math.max(0, 60 - elapsedMin);
+                    const totalUsed = (staff.dailyUsedMinutes || 0) + elapsedMin;
+                    const isViolation = totalUsed > 60;
+                    // Bar genişliği: 60 dk'lık dilim (time line üzerinde)
+                    // bitiş saati = breakStart + 60 dk
+                    const breakEndExpected = new Date(breakStart.getTime() + 60 * 60000);
+                    const breakStartPct = pct(breakStart.toTimeString().slice(0,5));
+                    const breakEndPct = pct(breakEndExpected.toTimeString().slice(0,5));
+                    const barWidth = Math.max(2, breakEndPct - breakStartPct);
+                    return (
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        height: '100%',
+                        left: `${breakStartPct}%`,
+                        width: `${barWidth}%`,
+                        background: isViolation ? 'rgba(220,38,38,0.7)' : 'rgba(245,158,11,0.65)',
+                        border: isViolation ? '2px solid #fff' : '1.5px solid rgba(245,158,11,0.9)',
+                        boxShadow: isViolation ? '0 0 12px rgba(220,38,38,0.8)' : 'none',
+                        animation: isViolation ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                        borderRadius: 3,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0 6px',
+                        zIndex: 2,
+                      }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', whiteSpace: 'nowrap' }}>{breakStartTimeStr}</span>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: '#fff', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                          {isViolation ? `+${totalUsed - 60}dk` : `${dailyRemaining} dk`}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </>} />))}
               </>)}
               {late.length > 0 && (<>
@@ -1316,10 +1406,10 @@ export default function BranchKiosk() {
                 {late.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
                   {staff.shiftStartTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, nowPct - pct(staff.shiftStartTime))}%`, background: 'rgba(239,68,68,0.55)', borderRadius: 3, display:'flex', alignItems:'center', paddingLeft:4 }}>
-                    <span style={{fontSize:8,color:'rgba(255,255,255,0.8)'}}>gelmedi</span>
+                    <span style={{fontSize:14,color:'rgba(255,255,255,0.8)'}}>gelmedi</span>
                   </div>}
                   {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${nowPct}%`, width: `${Math.max(0, pct(staff.shiftEndTime) - nowPct)}%`, background: 'rgba(59,130,246,0.2)', border: '0.5px dashed rgba(147,197,253,0.5)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'flex-end', paddingRight:4 }}>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.8)'}}>{staff.shiftEndTime.slice(0,5)}</span>
                   </div>}
                 </>} />))}
               </>)}
@@ -1328,8 +1418,8 @@ export default function BranchKiosk() {
                 {scheduled.map(staff => (<PersonRow key={staff.id} staff={staff} bar={<>
                   <NowLine />
                   {staff.shiftStartTime && staff.shiftEndTime && <div style={{ position: 'absolute', top: 0, height: '100%', left: `${pct(staff.shiftStartTime)}%`, width: `${Math.max(1, pct(staff.shiftEndTime) - pct(staff.shiftStartTime))}%`, background: 'rgba(59,130,246,0.28)', border: '0.5px dashed rgba(147,197,253,0.55)', borderRadius: 3, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 4px' }}>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.9)'}}>{staff.shiftStartTime.slice(0,5)}</span>
-                    <span style={{fontSize:8,color:'rgba(147,197,253,0.9)'}}>{staff.shiftEndTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.9)'}}>{staff.shiftStartTime.slice(0,5)}</span>
+                    <span style={{fontSize:14,color:'rgba(147,197,253,0.9)'}}>{staff.shiftEndTime.slice(0,5)}</span>
                   </div>}
                 </>} />))}
               </>)}
@@ -1345,19 +1435,19 @@ export default function BranchKiosk() {
                 {[{c:'rgba(34,197,94,0.4)',l:'Çalışıldı'},{c:'rgba(245,158,11,0.45)',l:'Mola'},{c:'rgba(59,130,246,0.18)',l:'Planlı',d:true},{c:'rgba(239,68,68,0.4)',l:'Gecikmeli'}].map(x=>(
                   <div key={x.l} style={{ display:'flex',alignItems:'center',gap:3 }}>
                     <div style={{ width:9,height:6,borderRadius:2,background:x.c,...(x.d?{border:'0.5px dashed rgba(147,197,253,0.5)'}:{}) }} />
-                    <span style={{ fontSize:8,color:'rgba(255,255,255,0.3)' }}>{x.l}</span>
+                    <span style={{ fontSize:14,color:'rgba(255,255,255,0.3)' }}>{x.l}</span>
                   </div>
                 ))}
-                <div style={{ display:'flex',alignItems:'center',gap:3 }}><div style={{ width:2,height:10,background:'#ef4444' }}/><span style={{ fontSize:8,color:'rgba(255,255,255,0.3)' }}>Su an</span></div>
+                <div style={{ display:'flex',alignItems:'center',gap:3 }}><div style={{ width:2,height:10,background:'#ef4444' }}/><span style={{ fontSize:14,color:'rgba(255,255,255,0.3)' }}>Su an</span></div>
               </div>
             </div>
             <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.07)', padding: '6px 14px', textAlign: 'right', flexShrink: 0 }}>
-              <button onClick={() => { setShowExitConfirm(true); setExitPasswordInput(''); }} style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan çık</button>
+              <button onClick={() => { setShowExitConfirm(true); setExitPasswordInput(''); }} style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', background: 'none', border: 'none', cursor: 'pointer' }}>Kiosk'tan çık</button>
             </div>
           </div>
           <div style={{ borderLeft: '0.5px solid rgba(255,255,255,0.07)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ borderBottom: '0.5px solid rgba(255,255,255,0.07)', padding: '10px 12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>Telefonunla tara</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>Telefonunla tara</div>
               {displayQr ? (
                 <div style={{ background: '#fff', borderRadius: 8, padding: 7, width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <QRCodeSVG value={JSON.stringify(displayQr)} size={74} level="M" />
@@ -1367,32 +1457,32 @@ export default function BranchKiosk() {
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
               )}
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.5 }}>Vardiya - Mola - Cikis<br/>45sn yenilenir</div>
-              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>veya ismine tikla PIN</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 1.5 }}>Vardiya - Mola - Cikis<br/>45sn yenilenir</div>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>veya ismine tikla PIN</div>
             </div>
             <div style={{ flex: 1, padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto' }}>
               {lobbyData?.announcements?.length > 0 && (<>
-                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Duyurular</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Duyurular</p>
                 {lobbyData.announcements.slice(0,3).map((ann: any) => (
                   <div key={`ann-${ann.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(59,130,246,0.1)', borderLeft: '2px solid #3b82f6' }}>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{ann.title}</div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{ann.title}</div>
                   </div>
                 ))}
               </>)}
               {late.length > 0 && (<>
-                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Uyarilar</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Uyarilar</p>
                 {late.map((s: any) => (
                   <div key={`late-${s.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(239,68,68,0.12)', borderLeft: '2px solid #ef4444' }}>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{s.firstName} {s.lastName}</div>
-                    <div style={{ fontSize: 9, color: '#fca5a5', marginTop: 1 }}>{s.shiftStatus === 'missing' ? 'Gelmedi' : `${s.lateMinutes}dk gec`}</div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{s.firstName} {s.lastName}</div>
+                    <div style={{ fontSize: 14, color: '#fca5a5', marginTop: 1 }}>{s.shiftStatus === 'missing' ? 'Gelmedi' : `${s.lateMinutes}dk gec`}</div>
                   </div>
                 ))}
               </>)}
               {lobbyData?.notifications?.length > 0 && (<>
-                <p style={{ fontSize: 9, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Bildirimler</p>
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 4 }}>Bildirimler</p>
                 {lobbyData.notifications.slice(0,3).map((n: any) => (
                   <div key={`notif-${n.id}`} style={{ borderRadius: 6, padding: '6px 8px', background: 'rgba(245,158,11,0.1)', borderLeft: '2px solid #f59e0b' }}>
-                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{n.title}</div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{n.title}</div>
                   </div>
                 ))}
               </>)}
@@ -1473,6 +1563,35 @@ export default function BranchKiosk() {
                 </Button>
               ))}
             </div>
+            {/* Aslan 11 May 2026: PIN'imi unuttum - 3+ hatalı denemeden sonra göster */}
+            {pinFailedAttempts >= 3 && (
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <button
+                  onClick={() => {
+                    setShowPinResetModal(true);
+                    setPinResetEmail(selectedUser?.email || '');
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: '1.5px solid rgba(192,57,43,0.6)',
+                    color: '#C0392B',
+                    padding: '10px 20px',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  data-testid="button-forgot-pin"
+                >
+                  🔑 PIN'imi Unuttum
+                </button>
+                {pinFailedAttempts >= 6 && (
+                  <p style={{ color: '#dc2626', fontSize: 13, marginTop: 8, fontWeight: 500 }}>
+                    ⚠️ {pinFailedAttempts}/8 hatalı deneme — 8'de hesabınız kilitlenir
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1492,8 +1611,8 @@ export default function BranchKiosk() {
           <div key={n.id} style={{ margin: '8px 12px 0', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(127,119,221,0.18)', borderLeft: '3px solid #7F77DD' }}>
             <span style={{ color: '#a5a0f0', fontSize: 14 }}>◈</span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#a5a0f0' }}>{n.title}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{n.message}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#a5a0f0' }}>{n.title}</div>
+              <div style={{ fontSize: 14, color: '#94a3b8' }}>{n.message}</div>
             </div>
           </div>
         ))}
@@ -1506,7 +1625,7 @@ export default function BranchKiosk() {
             </div>
             <div>
               <p style={{ color: '#fff', fontWeight: 600, fontSize: 14, margin: 0 }}>{selectedUser?.firstName} {selectedUser?.lastName}</p>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: 0 }}>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>
                 {isOnBreak ? 'Molada' : hasSession ? 'Çalışıyor' : 'Vardiya bekleniyor'}
               </p>
             </div>
@@ -1536,7 +1655,7 @@ export default function BranchKiosk() {
 
           {/* Vardiya Durumu */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>⏱ Vardiya Durumu</p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }}>⏱ Vardiya Durumu</p>
 
             {sessionLoading ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
@@ -1545,7 +1664,7 @@ export default function BranchKiosk() {
               </div>
             ) : !hasSession ? (
               <div style={{ padding: '12px 0' }}>
-                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', marginBottom: 14 }}>Vardiya başlatılmadı</p>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', marginBottom: 14 }}>Vardiya başlatılmadı</p>
                 <button
                   onClick={handleStartShift}
                   disabled={startShiftMutation.isPending}
@@ -1557,20 +1676,78 @@ export default function BranchKiosk() {
               </div>
             ) : isOnBreak ? (
               <div>
-                {/* Aslan 10 May 2026: Yeni BreakCountdown — geri sayım + alarm */}
+                {/* Aslan 11 May 2026: BreakCountdown — günlük KÜMÜLATİF kalan dakika ile */}
                 {currentSession?.breakStartTime ? (
                   <div className="mb-3">
                     <BreakCountdown
                       breakStartTime={currentSession.breakStartTime}
-                      plannedMinutes={60}
+                      plannedMinutes={
+                        (currentSession as any)?.dailyRemainingMinutes !== undefined
+                          ? (currentSession as any).dailyRemainingMinutes
+                          : 60
+                      }
                       context="sube"
                     />
+                    {(currentSession as any)?.dailyUsedMinutes > 0 && (
+                      <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', marginTop: 8 }}>
+                        Bugün önceki molalar: {(currentSession as any).dailyUsedMinutes} dk
+                      </p>
+                    )}
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', marginBottom: 16 }}>
-                    <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#f59e0b', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
-                    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Mola Süresi (eski sayaç)</p>
-                  </div>
+                  // Fallback: breakStartTime backend'den gelmemişse local hesap
+                  // Kişinin sayfasında mola başlangıcı şu an (isOnBreak true olduğu an)
+                  (() => {
+                    void tick; // her saniye re-render için
+                    // currentSession.breakStartTime fallback olarak yoksa
+                    // statusUpdate'ten beri geçen süreyi hesapla — ama bu yok
+                    // En basit yaklaşım: breakStartTime yoksa, current session'ın breakStartTime'ını
+                    // state'te tutuyoruz (breakStartMutation.onSuccess ekledi)
+                    // Yine de bir nedenden gelmezse: usedBefore'dan başla statik
+                    const usedBefore = currentSession?.breakMinutes || 0;
+                    const localBreakStart = (currentSession as any)?.breakStartTime;
+                    let dailyRemaining = Math.max(0, 60 - usedBefore);
+                    if (localBreakStart) {
+                      const elapsedSec = Math.floor((Date.now() - new Date(localBreakStart).getTime()) / 1000);
+                      const elapsedMin = Math.floor(elapsedSec / 60);
+                      dailyRemaining = Math.max(0, 60 - usedBefore - elapsedMin);
+                    }
+                    const isExpired = dailyRemaining === 0;
+                    const isWarning = dailyRemaining > 0 && dailyRemaining <= 10;
+                    const borderColor = isExpired ? '#dc2626' : isWarning ? '#f59e0b' : '#22c55e';
+                    const textColor = isExpired ? '#ef4444' : isWarning ? '#f59e0b' : '#22c55e';
+                    return (
+                      <div style={{
+                        textAlign: 'center',
+                        marginBottom: 16,
+                        padding: 20,
+                        background: isExpired ? 'rgba(220,38,38,0.15)' : 'rgba(245,158,11,0.1)',
+                        border: `3px solid ${borderColor}`,
+                        borderRadius: 12,
+                        animation: isExpired ? 'pulse 1.5s ease-in-out infinite' : 'none'
+                      }}>
+                        <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 15, marginBottom: 8, fontWeight: 600 }}>
+                          ☕ Mola Hakkın Kalan
+                        </div>
+                        <div style={{ fontSize: 64, fontWeight: 800, fontFamily: 'monospace', color: textColor, letterSpacing: 2, lineHeight: 1 }}>
+                          {dailyRemaining}
+                        </div>
+                        <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 16, marginTop: 6, fontWeight: 500 }}>
+                          dk hakkın kaldı
+                        </div>
+                        {usedBefore > 0 && (
+                          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginTop: 10 }}>
+                            (Bugün önceden {usedBefore} dk kullanıldı)
+                          </div>
+                        )}
+                        {isExpired && (
+                          <div style={{ color: '#ef4444', fontSize: 14, marginTop: 10, fontWeight: 700 }}>
+                            🚨 SÜRE DOLDU — Hemen dön
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <button
@@ -1591,17 +1768,17 @@ export default function BranchKiosk() {
                   </button>
                 </div>
                 {currentSession.breakMinutes > 0 && (
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 10 }}>Toplam mola bugün: {formatMinutes(currentSession.breakMinutes)}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', marginTop: 10 }}>Toplam mola bugün: {formatMinutes(currentSession.breakMinutes)}</p>
                 )}
               </div>
             ) : (
               <div>
                 <div style={{ textAlign: 'center', marginBottom: 16 }}>
                   <div style={{ fontSize: 44, fontWeight: 700, fontFamily: 'monospace', color: '#fbbf24', letterSpacing: 2 }}>{formatTime(elapsedTime)}</div>
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>Çalışma Süresi</p>
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 4 }}>Çalışma Süresi</p>
                   {/* Aslan 10 May 2026: Vardiya başlama zamanı + kalan mola hakkı */}
                   {currentSession?.checkInTime && (
-                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 8 }}>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 8 }}>
                       ⏱ Başlangıç: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
                         {new Date(currentSession.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
@@ -1611,16 +1788,47 @@ export default function BranchKiosk() {
                     const usedBreak = currentSession?.breakMinutes || 0;
                     const remaining = Math.max(0, 60 - usedBreak);
                     if (usedBreak > 0) {
+                      const color = remaining > 10 ? '#22c55e' : remaining > 0 ? '#fbbf24' : '#ef4444';
                       return (
-                        <p style={{ color: remaining > 10 ? 'rgba(34,197,94,0.7)' : remaining > 0 ? 'rgba(251,191,36,0.7)' : 'rgba(239,68,68,0.7)', fontSize: 11, marginTop: 4 }}>
-                          ☕ Mola hakkın: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{remaining} dk kaldı</span> ({usedBreak}/{60} dk yapıldı)
-                        </p>
+                        <div style={{
+                          marginTop: 10,
+                          padding: '10px 14px',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: `1.5px solid ${color}`,
+                          borderRadius: 10,
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 4 }}>
+                            ☕ Mola Hakkın
+                          </div>
+                          <div style={{ color, fontSize: 24, fontWeight: 700, fontFamily: 'monospace' }}>
+                            {remaining} dk kaldı
+                          </div>
+                          <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 2 }}>
+                            ({usedBreak}/{60} dk yapıldı)
+                          </div>
+                        </div>
                       );
                     }
                     return (
-                      <p style={{ color: 'rgba(34,197,94,0.7)', fontSize: 11, marginTop: 4 }}>
-                        ☕ Mola hakkın: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>60 dk</span> (henüz kullanılmadı)
-                      </p>
+                      <div style={{
+                        marginTop: 10,
+                        padding: '10px 14px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1.5px solid #22c55e',
+                        borderRadius: 10,
+                        textAlign: 'center'
+                      }}>
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 4 }}>
+                          ☕ Mola Hakkın
+                        </div>
+                        <div style={{ color: '#22c55e', fontSize: 24, fontWeight: 700, fontFamily: 'monospace' }}>
+                          60 dk
+                        </div>
+                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 2 }}>
+                          (henüz kullanılmadı)
+                        </div>
+                      </div>
                     );
                   })()}
                 </div>
@@ -1648,7 +1856,7 @@ export default function BranchKiosk() {
 
           {/* Görevlerim */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📋 Görevlerim</p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>📋 Görevlerim</p>
             {userTasks.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
@@ -1659,7 +1867,7 @@ export default function BranchKiosk() {
                 {userTasks.slice(0, 5).map((task: any) => (
                   <div key={task.id} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 7, fontSize: 13 }}>
                     <p style={{ fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{task.title}</p>
-                    {task.dueDate && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: '2px 0 0' }}>{new Date(task.dueDate).toLocaleDateString('tr-TR')}</p>}
+                    {task.dueDate && <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '2px 0 0' }}>{new Date(task.dueDate).toLocaleDateString('tr-TR')}</p>}
                   </div>
                 ))}
               </div>
@@ -1683,15 +1891,15 @@ export default function BranchKiosk() {
           {/* Şube Görev Havuzu — isteyen üstlenir, skor kazanır */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto', gridColumn: 'span 2' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
                 📌 Şube Görev Havuzu
                 {kioskBranchTasks.length > 0 && (
-                  <span style={{ marginLeft: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>
+                  <span style={{ marginLeft: 8, background: 'rgba(239,68,68,0.15)', color: '#ef4444', borderRadius: 20, padding: '2px 8px', fontSize: 14, fontWeight: 600 }}>
                     {kioskBranchTasks.filter((t: any) => !t.assignedTo && !t.claimedBy).length} açık
                   </span>
                 )}
               </p>
-              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>
                 💡 Sahiplenen kişiye puan eklenir
               </span>
             </div>
@@ -1717,16 +1925,16 @@ export default function BranchKiosk() {
                       <div>
                         <p style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)', fontSize: 13, margin: 0, lineHeight: 1.3 }}>{task.title}</p>
                         <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>
+                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4 }}>
                             {task.category}
                           </span>
                           {task.photoRequired && (
-                            <span style={{ color: '#fbbf24', fontSize: 10, background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4 }}>
+                            <span style={{ color: '#fbbf24', fontSize: 13, background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4 }}>
                               📷 Foto
                             </span>
                           )}
                           {isMine && (
-                            <span style={{ color: '#22c55e', fontSize: 10, background: 'rgba(34,197,94,0.1)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
+                            <span style={{ color: '#22c55e', fontSize: 13, background: 'rgba(34,197,94,0.1)', padding: '2px 6px', borderRadius: 4, fontWeight: 600 }}>
                               ✓ Sende
                             </span>
                           )}
@@ -1749,7 +1957,7 @@ export default function BranchKiosk() {
                           ✅ Tamamla
                         </button>
                       ) : (
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: 0, textAlign: 'center', fontStyle: 'italic' }}>
+                        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: 0, textAlign: 'center', fontStyle: 'italic' }}>
                           {task.claimedByName || task.assignedToName || 'Birisi'} üstlendi
                         </p>
                       )}
@@ -1762,7 +1970,7 @@ export default function BranchKiosk() {
 
           {/* Bugünkü Skorum — kullanıcı motivasyonu için */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
               ⭐ Bugünkü Skorum
             </p>
             {/* S-UX Pilot Day-1 Banner (21 Nis 2026) - demotivasyon önleme */}
@@ -1780,10 +1988,10 @@ export default function BranchKiosk() {
                     padding: '8px 10px',
                     marginBottom: 12
                   }}>
-                    <p style={{ color: '#fbbf24', fontSize: 11, fontWeight: 600, margin: 0 }}>
+                    <p style={{ color: '#fbbf24', fontSize: 14, fontWeight: 600, margin: 0 }}>
                       🎯 Pilot İlk Hafta
                     </p>
-                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10, margin: '2px 0 0', lineHeight: 1.4 }}>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, margin: '2px 0 0', lineHeight: 1.4 }}>
                       Skor toplama dönemi. Değerler stabil değil, 7 gün sonra normalleşir.
                     </p>
                   </div>
@@ -1799,52 +2007,52 @@ export default function BranchKiosk() {
                   </span>
                   <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>/ 100</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 14 }}>
                   <div style={{ padding: '8px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: 6 }}>
                     <p style={{ color: '#22c55e', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.completed || 0}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: 0 }}>Tamamlanan</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Tamamlanan</p>
                   </div>
                   <div style={{ padding: '8px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6 }}>
                     <p style={{ color: '#ef4444', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.overdue || 0}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10, margin: 0 }}>Gecikmiş</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Gecikmiş</p>
                   </div>
                 </div>
-                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, marginTop: 8, textAlign: 'center' }}>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>
                   Son 30 gün
                 </p>
               </div>
             ) : (
               <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
                 Henüz görev üstlenmediniz<br/>
-                <span style={{ fontSize: 11 }}>Üstte "Üstlen" butonu ile başlayın</span>
+                <span style={{ fontSize: 14 }}>Üstte "Üstlen" butonu ile başlayın</span>
               </p>
             )}
           </div>
 
           {/* Telefonundan Aç bilgi kutusu */}
           <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: '#3b82f6', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+            <p style={{ color: '#3b82f6', fontSize: 14, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
               📱 Telefonundan Aç
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: '0 0 8px', lineHeight: 1.4 }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: '0 0 8px', lineHeight: 1.4 }}>
               Quiz, eğitim ve detaylı görevlerin için <strong style={{ color: '#fff' }}>Benim Günüm</strong> sayfasını kullan.
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, margin: 0 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>
               Mola sırasında veya vardiya bitiminde aç.
             </p>
           </div>
 
           {/* Ekip Durumu */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
               👥 Ekip Durumu
-              {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '2px 8px', fontSize: 12 }}>{teamStatus.length} kişi</span>}
+              {teamStatus.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: '2px 8px', fontSize: 14 }}>{teamStatus.length} kişi</span>}
             </p>
             {pdksAnomalyUsers.length > 0 && (
               <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: '8px 12px', marginBottom: 10 }}>
                 <p style={{ color: '#ef4444', fontWeight: 600, fontSize: 13, margin: '0 0 4px' }}>⚠ Mola Süresi Aşıldı</p>
                 {pdksAnomalyUsers.map((m: any) => (
-                  <p key={m.userId} style={{ color: '#fca5a5', fontSize: 12, margin: 0 }}>{m.name} — {m.breakMinutes} dk molada (limit: 90 dk)</p>
+                  <p key={m.userId} style={{ color: '#fca5a5', fontSize: 14, margin: 0 }}>{m.name} — {m.breakMinutes} dk molada (limit: 90 dk)</p>
                 ))}
               </div>
             )}
@@ -1853,8 +2061,8 @@ export default function BranchKiosk() {
                 <div key={member.userId} style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: member.status === 'active' ? '#22c55e' : member.status === 'on_break' ? '#f59e0b' : '#6b7280', flexShrink: 0 }} />
                   <div>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{member.firstName} {member.lastName}</p>
-                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{member.firstName} {member.lastName}</p>
+                    <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: 0 }}>{member.status === 'active' ? 'Çalışıyor' : member.status === 'on_break' ? `Molada (${member.breakMinutes || 0} dk)` : ''}</p>
                   </div>
                 </div>
               ))}
@@ -1865,20 +2073,20 @@ export default function BranchKiosk() {
           {/* Bildirimler & Duyurular */}
           {(kioskNotifications.length > 0 || kioskAnnouncements.length > 0) && (
             <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
                 🔔 Bildirimler & Duyurular
-                {kioskNotifications.length > 0 && <span style={{ marginLeft: 8, background: '#ef4444', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 11 }}>{kioskNotifications.length}</span>}
+                {kioskNotifications.length > 0 && <span style={{ marginLeft: 8, background: '#ef4444', color: '#fff', borderRadius: 20, padding: '2px 8px', fontSize: 14 }}>{kioskNotifications.length}</span>}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {kioskAnnouncements.slice(0,2).map((ann: any) => (
                   <div key={`ann-${ann.id}`} style={{ padding: '8px 10px', background: 'rgba(59,130,246,0.08)', borderLeft: '3px solid #3b82f6', borderRadius: '0 8px 8px 0' }}>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{ann.title}</p>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{ann.title}</p>
                   </div>
                 ))}
                 {kioskNotifications.slice(0,3).map((n: any) => (
                   <div key={`notif-${n.id}`} style={{ padding: '8px 10px', background: 'rgba(245,158,11,0.08)', borderLeft: '3px solid #f59e0b', borderRadius: '0 8px 8px 0' }}>
-                    <p style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{n.title}</p>
-                    {n.message && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.message}</p>}
+                    <p style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{n.title}</p>
+                    {n.message && <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.message}</p>}
                   </div>
                 ))}
               </div>
@@ -1888,15 +2096,15 @@ export default function BranchKiosk() {
           {/* Checklistlerim */}
           {userChecklists.length > 0 && (
             <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>✅ Checklistlerim</p>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>✅ Checklistlerim</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {userChecklists.map((cl: any) => {
                   const pct = cl.totalTasks > 0 ? Math.round((cl.completedTasks / cl.totalTasks) * 100) : 0;
                   return (
                     <div key={cl.id}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{cl.name}</p>
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{cl.completedTasks}/{cl.totalTasks}</span>
+                        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', margin: 0 }}>{cl.name}</p>
+                        <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>{cl.completedTasks}/{cl.totalTasks}</span>
                       </div>
                       <div style={{ height: 6, background: 'rgba(255,255,255,0.05)', borderRadius: 3 }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#22c55e' : '#ef4444', borderRadius: 3, transition: 'width 0.3s' }} />
@@ -2588,6 +2796,153 @@ export default function BranchKiosk() {
             newWarningsToday={breakReturnSummary.newWarningsToday}
             onReturnToShift={() => setBreakReturnSummary(null)}
           />
+        </div>
+      )}
+
+      {/* Aslan 11 May 2026: PIN Sıfırlama Modal */}
+      {showPinResetModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+          }}
+          onClick={() => !pinResetLoading && setShowPinResetModal(false)}
+        >
+          <div
+            style={{
+              background: '#141820',
+              borderRadius: 16,
+              padding: 28,
+              maxWidth: 500,
+              width: '100%',
+              border: '2px solid #C0392B',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 48, marginBottom: 8 }}>🔑</div>
+              <h2 style={{ fontSize: 22, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+                PIN'imi Unuttum
+              </h2>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}>
+                Yeni PIN'iniz kayıtlı e-posta adresinize gönderilecek
+              </p>
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ display: 'block', color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                E-posta adresiniz <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="email"
+                value={pinResetEmail}
+                onChange={(e) => setPinResetEmail(e.target.value)}
+                placeholder="ornek@dospresso.com"
+                disabled={pinResetLoading}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1.5px solid rgba(255,255,255,0.15)',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 16,
+                  outline: 'none',
+                }}
+                data-testid="input-pin-reset-email"
+              />
+              {selectedUser && (
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 6 }}>
+                  Seçili kullanıcı: <strong>{selectedUser.firstName} {selectedUser.lastName}</strong>
+                </p>
+              )}
+            </div>
+
+            <div style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 8, padding: 12, marginBottom: 20 }}>
+              <p style={{ color: '#fbbf24', fontSize: 13, lineHeight: 1.5 }}>
+                ⚠️ <strong>Güvenlik:</strong> Yeni PIN sadece kayıtlı e-postanıza gönderilir. E-postanıza erişiminiz yoksa şube müdürünüze başvurun.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setShowPinResetModal(false)}
+                disabled={pinResetLoading}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: 'transparent',
+                  border: '1.5px solid rgba(255,255,255,0.2)',
+                  borderRadius: 8,
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+                data-testid="button-pin-reset-cancel"
+              >
+                İptal
+              </button>
+              <button
+                onClick={async () => {
+                  if (!pinResetEmail || !pinResetEmail.includes('@')) {
+                    toast({ title: 'Geçerli e-posta girin', variant: 'destructive' });
+                    return;
+                  }
+                  setPinResetLoading(true);
+                  try {
+                    const res = await fetch('/api/kiosk/pin-reset/request', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        email: pinResetEmail,
+                        branchId: branchId,
+                        firstName: selectedUser?.firstName,
+                        lastName: selectedUser?.lastName,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                      toast({
+                        title: '✅ Mail gönderildi',
+                        description: data.message || 'E-postanızı kontrol edin (1-2 dakika)',
+                      });
+                      setShowPinResetModal(false);
+                      setPinResetEmail('');
+                      setPinFailedAttempts(0);
+                      setPinInput('');
+                    } else {
+                      toast({
+                        title: 'Sıfırlama başarısız',
+                        description: data.error || data.message || 'Bir hata oluştu',
+                        variant: 'destructive',
+                      });
+                    }
+                  } catch (e: any) {
+                    toast({ title: 'Bağlantı hatası', description: e.message, variant: 'destructive' });
+                  } finally {
+                    setPinResetLoading(false);
+                  }
+                }}
+                disabled={pinResetLoading || !pinResetEmail}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: pinResetLoading ? 'rgba(192,57,43,0.5)' : '#C0392B',
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: pinResetLoading ? 'not-allowed' : 'pointer',
+                }}
+                data-testid="button-pin-reset-submit"
+              >
+                {pinResetLoading ? 'Gönderiliyor...' : '📧 Mail Gönder'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
