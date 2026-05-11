@@ -371,6 +371,79 @@ export default function PdksPage() {
           </CardContent></Card>
         </div>
 
+        {/* Sprint 16 Part 2 (11 May 2026): Compliance Gauge + Aylık Trend Bar */}
+        {(() => {
+          const workedDays = detail.workedDays || 0;
+          const absentDays = detail.absentDays || 0;
+          const offDays = detail.offDays || 0;
+          const totalDays = workedDays + absentDays + offDays + (detail.sickLeaveDays || 0) + (detail.unpaidLeaveDays || 0) + (detail.annualLeaveDays || 0);
+          if (totalDays === 0) return null;
+
+          // Compliance gauge — backend'in days field'ından compliance hesap
+          // (henüz API'de yok, basit gösterge: devamsızlık oranı)
+          const attendanceRate = totalDays > 0 ? Math.round((workedDays / Math.max(1, totalDays - offDays)) * 100) : 100;
+          const attendanceColor =
+            attendanceRate >= 95 ? "bg-green-500" :
+            attendanceRate >= 85 ? "bg-yellow-500" :
+            attendanceRate >= 70 ? "bg-orange-500" : "bg-red-500";
+
+          return (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-medium">Devam Oranı</span>
+                    <span className={`text-sm font-bold ${attendanceRate >= 95 ? 'text-green-600' : attendanceRate >= 85 ? 'text-yellow-600' : attendanceRate >= 70 ? 'text-orange-600' : 'text-red-600'}`}>
+                      %{attendanceRate}
+                    </span>
+                  </div>
+                  <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div className={`h-full ${attendanceColor} transition-all`} style={{ width: `${attendanceRate}%` }} />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Vardiya planlanan günlerden {workedDays}/{Math.max(1, totalDays - offDays)} günü çalıştı
+                  </div>
+                </div>
+
+                {/* Aylık günlük durum bar — her gün için renkli kare */}
+                <div>
+                  <div className="text-sm font-medium mb-1.5">Aylık Görünüm</div>
+                  <div className="flex gap-0.5 flex-wrap">
+                    {detail.days?.map((day: any) => {
+                      const dayColor =
+                        day.status === 'worked' ? "bg-green-500" :
+                        day.status === 'absent' ? "bg-red-500" :
+                        day.status === 'program_off' || day.status === 'kapanish_off' ? "bg-blue-300" :
+                        day.status === 'sick_leave' ? "bg-orange-400" :
+                        day.status === 'annual_leave' ? "bg-cyan-400" :
+                        day.status === 'unpaid_leave' ? "bg-yellow-400" :
+                        "bg-gray-200 dark:bg-gray-700";
+                      const dayLabel = STATUS_CONFIG[day.status]?.label || 'Bilinmiyor';
+                      const dayDate = new Date(day.date).getDate();
+                      return (
+                        <div
+                          key={day.date}
+                          className={`w-6 h-6 ${dayColor} rounded text-[10px] text-white font-medium flex items-center justify-center cursor-help`}
+                          title={`${dayDate} - ${dayLabel}${day.workedMinutes > 0 ? ` (${formatMinutes(day.workedMinutes)})` : ''}`}
+                        >
+                          {dayDate}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-3 text-xs text-muted-foreground mt-2 flex-wrap">
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-500 rounded" /> Çalıştı</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-500 rounded" /> Devamsız</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-blue-300 rounded" /> İzin</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-orange-400 rounded" /> Rapor</span>
+                    <span className="flex items-center gap-1"><span className="w-3 h-3 bg-gray-200 dark:bg-gray-700 rounded" /> Vardiya Yok</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         <Card>
           <CardContent className="p-0">
             <div className="divide-y">
@@ -552,50 +625,78 @@ export default function PdksPage() {
                     <th className="text-center p-2.5 font-medium" title="Bu ay vardiyaya gelip mesaisini tamamladığı gün sayısı">Çalıştı</th>
                     <th className="text-center p-2.5 font-medium" title="İzin günleri (program off + kapanış off)">İzin</th>
                     <th className="text-center p-2.5 font-medium" title="Vardiya planlanmıştı, kişi gelmedi (yazılı tutanak gerekir)">Devamsız</th>
+                    <th className="text-center p-2.5 font-medium" title="Toplam geç giriş dakikası (5 dk üstü compliance düşürür)">Geç (dk)</th>
+                    <th className="text-center p-2.5 font-medium" title="Toplam mola aşımı dakikası (planlanan moladan fazla)">Mola Aşımı</th>
                     <th className="text-center p-2.5 font-medium" title="Fazla mesai dakikası (45h üstü)">FM (dk)</th>
-                    <th className="text-center p-2.5 font-medium" title="Sağlık raporu günleri">Rapor</th>
+                    <th className="text-center p-2.5 font-medium" title="Sprint 15.4 ile otomatik hesaplanan 0-100 uyumluluk skoru">Compliance</th>
                     <th className="text-center p-2.5 font-medium text-xs text-muted-foreground" title="Detay için tıklayın">→</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {summaryQuery.data?.map((s: any) => (
-                    <tr
-                      key={s.userId}
-                      className="border-b hover-elevate cursor-pointer"
-                      onClick={() => setSelectedUser(s.userId)}
-                      data-testid={`row-user-${s.userId}`}
-                    >
-                      <td className="p-2.5 font-medium">{s.userName}</td>
-                      <td className="text-center p-2.5">
-                        <span className={s.workedDays > 0 ? "text-green-700 dark:text-green-400 font-medium" : "text-muted-foreground"}>
-                          {s.workedDays}
-                        </span>
-                      </td>
-                      <td className="text-center p-2.5 text-muted-foreground">{s.offDays}</td>
-                      <td className="text-center p-2.5">
-                        {s.absentDays > 0 ? (
-                          <span className="text-destructive font-bold">{s.absentDays} ⚠️</span>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
-                      </td>
-                      <td className="text-center p-2.5">
-                        {s.overtimeMinutes > 0 ? (
-                          <span className="text-orange-600 font-medium">{s.overtimeMinutes}</span>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
-                      </td>
-                      <td className="text-center p-2.5">
-                        {s.sickLeaveDays > 0 ? (
-                          <span className="text-orange-600">{s.sickLeaveDays}</span>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
-                      </td>
-                      <td className="text-center p-2.5 text-muted-foreground text-xs">→</td>
-                    </tr>
-                  ))}
+                  {summaryQuery.data?.map((s: any) => {
+                    const compliance = s.avgComplianceScore ?? 100;
+                    const complianceColor =
+                      compliance >= 90 ? "bg-green-500" :
+                      compliance >= 70 ? "bg-yellow-500" :
+                      compliance >= 50 ? "bg-orange-500" : "bg-red-500";
+                    const complianceTextColor =
+                      compliance >= 90 ? "text-green-700 dark:text-green-400" :
+                      compliance >= 70 ? "text-yellow-700 dark:text-yellow-400" :
+                      compliance >= 50 ? "text-orange-700 dark:text-orange-400" : "text-red-700 dark:text-red-400";
+                    return (
+                      <tr
+                        key={s.userId}
+                        className="border-b hover-elevate cursor-pointer"
+                        onClick={() => setSelectedUser(s.userId)}
+                        data-testid={`row-user-${s.userId}`}
+                      >
+                        <td className="p-2.5 font-medium">{s.userName}</td>
+                        <td className="text-center p-2.5">
+                          <span className={s.workedDays > 0 ? "text-green-700 dark:text-green-400 font-medium" : "text-muted-foreground"}>
+                            {s.workedDays}
+                          </span>
+                        </td>
+                        <td className="text-center p-2.5 text-muted-foreground">{s.offDays}</td>
+                        <td className="text-center p-2.5">
+                          {s.absentDays > 0 ? (
+                            <span className="text-destructive font-bold">{s.absentDays} ⚠️</span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </td>
+                        <td className="text-center p-2.5">
+                          {s.totalLatenessMinutes > 5 ? (
+                            <span className="text-red-600 font-medium">{s.totalLatenessMinutes}</span>
+                          ) : (
+                            <span className="text-muted-foreground">{s.totalLatenessMinutes || 0}</span>
+                          )}
+                        </td>
+                        <td className="text-center p-2.5">
+                          {s.totalBreakOverageMinutes > 0 ? (
+                            <span className="text-orange-600 font-medium">{s.totalBreakOverageMinutes}</span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </td>
+                        <td className="text-center p-2.5">
+                          {s.overtimeMinutes > 0 ? (
+                            <span className="text-orange-600 font-medium">{s.overtimeMinutes}</span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </td>
+                        <td className="text-center p-2.5">
+                          <div className="inline-flex items-center gap-2">
+                            <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                              <div className={`h-full ${complianceColor} transition-all`} style={{ width: `${compliance}%` }} />
+                            </div>
+                            <span className={`text-xs font-medium ${complianceTextColor}`}>{compliance}</span>
+                          </div>
+                        </td>
+                        <td className="text-center p-2.5 text-muted-foreground text-xs">→</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

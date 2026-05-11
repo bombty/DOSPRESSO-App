@@ -520,9 +520,47 @@ router.get('/api/pdks/branch-summary', isAuthenticated, async (req: any, res: Re
         sql`${users.role} IN ('stajyer', 'bar_buddy', 'barista', 'supervisor_buddy', 'supervisor', 'mudur')`
       ));
 
+    // Sprint 16 Part 2 (11 May 2026): Mahmut için compliance/lateness/mola aşımı aggregates
+    // shift_attendance tablosundan kullanıcının bu ayki ortalama compliance + toplam geç + toplam mola aşımı
+    const monthStart = new Date(Number(year), Number(month) - 1, 1);
+    const monthEnd = new Date(Number(year), Number(month), 0, 23, 59, 59);
+
     const summaries = [];
     for (const u of branchUsers) {
       const classification = await getMonthClassification(u.id, Number(year), Number(month));
+
+      // shift_attendance aggregates (Sprint 16 Part 2)
+      let avgCompliance = 100;
+      let totalLateness = 0;
+      let totalBreakOverage = 0;
+      let totalEarlyLeave = 0;
+      let attendanceCount = 0;
+      try {
+        const aggResult = await db
+          .select({
+            avgCompliance: sql<number>`AVG(${shiftAttendance.complianceScore})`,
+            sumLateness: sql<number>`SUM(${shiftAttendance.latenessMinutes})`,
+            sumBreakOverage: sql<number>`SUM(${shiftAttendance.breakOverageMinutes})`,
+            sumEarlyLeave: sql<number>`SUM(${shiftAttendance.earlyLeaveMinutes})`,
+            count: sql<number>`COUNT(*)`,
+          })
+          .from(shiftAttendance)
+          .where(and(
+            eq(shiftAttendance.userId, u.id),
+            gte(shiftAttendance.checkInTime, monthStart),
+            lte(shiftAttendance.checkInTime, monthEnd),
+          ));
+        if (aggResult[0]) {
+          avgCompliance = Number(aggResult[0].avgCompliance) || 100;
+          totalLateness = Number(aggResult[0].sumLateness) || 0;
+          totalBreakOverage = Number(aggResult[0].sumBreakOverage) || 0;
+          totalEarlyLeave = Number(aggResult[0].sumEarlyLeave) || 0;
+          attendanceCount = Number(aggResult[0].count) || 0;
+        }
+      } catch (aggErr: any) {
+        console.warn(`[branch-summary] aggregate failed for ${u.id}:`, aggErr.message);
+      }
+
       summaries.push({
         userId: u.id,
         userName: [u.firstName, u.lastName].filter(Boolean).join(' ') || 'Bilinmiyor',
@@ -533,6 +571,12 @@ router.get('/api/pdks/branch-summary', isAuthenticated, async (req: any, res: Re
         unpaidLeaveDays: classification.unpaidLeaveDays,
         sickLeaveDays: classification.sickLeaveDays,
         overtimeMinutes: classification.totalOvertimeMinutes,
+        // Sprint 16 Part 2 — Mahmut Analytics
+        avgComplianceScore: Math.round(avgCompliance),
+        totalLatenessMinutes: totalLateness,
+        totalBreakOverageMinutes: totalBreakOverage,
+        totalEarlyLeaveMinutes: totalEarlyLeave,
+        attendanceCount,
       });
     }
 
