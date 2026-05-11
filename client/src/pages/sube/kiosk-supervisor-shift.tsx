@@ -120,6 +120,9 @@ export default function KioskSupervisorShift() {
   const [activeDragData, setActiveDragData] = useState<DragData | null>(null);
   const [pendingDrop, setPendingDrop] = useState<{ staffId: string; date: string; staffName: string } | null>(null);
   const [shiftToDelete, setShiftToDelete] = useState<any | null>(null);
+  // Sprint 19.4: Vardiya kartından görev/mesaj bırakma
+  const [shiftTaskText, setShiftTaskText] = useState("");
+  const [shiftTaskPriority, setShiftTaskPriority] = useState("orta");
   // Sprint 19.2: Aktif hafta tab (0=Hafta 1, 1=Hafta 2) — weekAnalysis için
   const [currentWeekTab, setCurrentWeekTab] = useState<0 | 1>(0);
   const [aiPreview, setAiPreview] = useState<any | null>(null);
@@ -246,6 +249,39 @@ export default function KioskSupervisorShift() {
     onError: () => {
       toast({ title: "Silme hatası", variant: "destructive" });
       setShiftToDelete(null);
+    },
+  });
+
+  // Sprint 19.4 (Aslan 12 May): Vardiya kartından görev/mesaj oluştur
+  const shiftTaskMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await fetch(`/api/branches/${kioskUser.branchId}/kiosk/shift-task`, {
+        method: "POST",
+        credentials: "include",
+        headers: kioskHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Görev oluşturulamadı");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "📩 Görev/Mesaj gönderildi",
+        description: "Personel kioska giriş yaptığında görür.",
+      });
+      setShiftTaskText("");
+      setShiftTaskPriority("orta");
+      setShiftToDelete(null);
+    },
+    onError: (err: any) => {
+      toast({
+        title: "❌ Hata",
+        description: err.message || "Bir sorun oluştu",
+        variant: "destructive",
+      });
     },
   });
 
@@ -642,37 +678,93 @@ export default function KioskSupervisorShift() {
         </DialogContent>
       </Dialog>
 
-      {/* Vardiya Sil Modal */}
-      <Dialog open={!!shiftToDelete} onOpenChange={(open) => !open && setShiftToDelete(null)}>
-        <DialogContent>
+      {/* Vardiya Detay Modal — sil + görev/mesaj bırak (Sprint 19.4) */}
+      <Dialog open={!!shiftToDelete} onOpenChange={(open) => {
+        if (!open) { setShiftToDelete(null); setShiftTaskText(""); }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-red-600" />
-              Vardiya Sil
+              <Clock className="h-5 w-5 text-blue-600" />
+              Vardiya Detayı
             </DialogTitle>
             <DialogDescription>
               {shiftToDelete && (
                 <>
                   <strong>
-                    {shiftToDelete.assignedToName || shiftToDelete.assignedToFirstName + " " + shiftToDelete.assignedToLastName || "Personel"}
+                    {(() => {
+                      const s = shiftToDelete.assignedToId ? staffLookup[shiftToDelete.assignedToId] : null;
+                      return s
+                        ? `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.username
+                        : "Personel";
+                    })()}
                   </strong>
                   {" "}— {shiftToDelete.shiftDate} ({shiftToDelete.startTime?.slice(0, 5)}-
                   {shiftToDelete.endTime?.slice(0, 5)})
-                  <br />
-                  Bu vardiyayı silmek istediğinize emin misiniz?
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+
+          {/* Sprint 19.4: Görev/Mesaj Bırak */}
+          <div className="border-t pt-4 space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              📝 Bu Vardiya İçin Görev/Mesaj Bırak
+            </label>
+            <textarea
+              value={shiftTaskText}
+              onChange={(e) => setShiftTaskText(e.target.value)}
+              placeholder="Örn: Vitrini sabah açılışta düzenle. Espresso makinesini temizle. Yeni menü kartlarını koy..."
+              className="w-full min-h-[80px] rounded-md border bg-background px-3 py-2 text-sm"
+              data-testid="shift-task-textarea"
+            />
+            <div className="flex items-center gap-2">
+              <select
+                value={shiftTaskPriority}
+                onChange={(e) => setShiftTaskPriority(e.target.value)}
+                className="rounded-md border bg-background px-2 py-1.5 text-xs"
+              >
+                <option value="düşük">Düşük Öncelik</option>
+                <option value="orta">Orta Öncelik</option>
+                <option value="yüksek">Yüksek Öncelik</option>
+              </select>
+              <Button
+                onClick={() => {
+                  if (!shiftToDelete || !shiftTaskText.trim()) return;
+                  shiftTaskMutation.mutate({
+                    assignedToId: shiftToDelete.assignedToId,
+                    description: shiftTaskText.trim(),
+                    priority: shiftTaskPriority,
+                    shiftId: shiftToDelete.id,
+                    dueDate: shiftToDelete.shiftDate ? `${shiftToDelete.shiftDate}T23:59:59` : null,
+                  });
+                }}
+                disabled={shiftTaskMutation.isPending || !shiftTaskText.trim()}
+                size="sm"
+                className="ml-auto bg-blue-600 hover:bg-blue-700"
+                data-testid="btn-create-shift-task"
+              >
+                {shiftTaskMutation.isPending ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : "📩 Gönder"}
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Personel kioska giriş yaptığında "Görevlerim" altında görür.
+            </p>
+          </div>
+
+          <DialogFooter className="border-t pt-4">
             <Button variant="outline" onClick={() => setShiftToDelete(null)}>
-              İptal
+              Kapat
             </Button>
             <Button
               variant="destructive"
               onClick={() => shiftToDelete && deleteMutation.mutate(shiftToDelete.id)}
               disabled={deleteMutation.isPending}
             >
+              <Trash2 className="mr-1 h-4 w-4" />
+              Vardiyayı Sil
               {deleteMutation.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
