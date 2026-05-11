@@ -205,6 +205,36 @@ export const insertHqShiftSessionSchema = createInsertSchema(hqShiftSessions).om
 export type InsertHqShiftSession = z.infer<typeof insertHqShiftSessionSchema>;
 export type HqShiftSession = typeof hqShiftSessions.$inferSelect;
 
+// ─────────────────────────────────────────────────────────
+// HQ Mola Loglari (Sprint 14a — 11 May 2026)
+// branch_break_logs'a benzer yapida, HQ kiosk mola takibi icin
+// ─────────────────────────────────────────────────────────
+export const hqBreakLogs = pgTable("hq_break_logs", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").notNull().references(() => hqShiftSessions.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  breakStartTime: timestamp("break_start_time").notNull(),
+  breakEndTime: timestamp("break_end_time"),
+  breakDurationMinutes: integer("break_duration_minutes").default(0),
+
+  breakType: varchar("break_type", { length: 30 }).default("regular"), // regular, lunch, prayer, personal
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("hq_break_logs_session_idx").on(table.sessionId),
+  index("hq_break_logs_user_idx").on(table.userId),
+  index("hq_break_logs_date_idx").on(table.breakStartTime),
+]);
+
+export const insertHqBreakLogSchema = createInsertSchema(hqBreakLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertHqBreakLog = z.infer<typeof insertHqBreakLogSchema>;
+export type HqBreakLog = typeof hqBreakLogs.$inferSelect;
+
 // HQ Cikis Olaylari (mola, dis gorev, kisisel izin)
 export const hqShiftEvents = pgTable("hq_shift_events", {
   id: serial("id").primaryKey(),

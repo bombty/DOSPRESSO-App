@@ -3535,6 +3535,11 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         success: true, 
         event,
         breakLogId: breakLog.id,
+        breakStartTime: breakLog.startedAt,
+        // Sprint 14a (11 May 2026): Kümülatif günlük mola tracking
+        dailyPlannedMinutes: 60,
+        dailyUsedMinutes: session.breakMinutes || 0,
+        dailyRemainingMinutes: Math.max(0, 60 - (session.breakMinutes || 0)),
         message: breakReason === 'gorev_bitis' ? 'Görev tamamlandı' : 'Mola kaydedildi'
       });
     } catch (error: unknown) {
@@ -3579,6 +3584,22 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         })
         .where(eq(factoryBreakLogs.id, breakLogId));
 
+      // Sprint 14a (11 May 2026): factoryShiftSessions.break_minutes kümülatif update
+      // 45+15 senaryosu: önceki molalar + bu mola = toplam günlük mola
+      let newTotalBreakMinutes = 0;
+      if (breakLog.sessionId) {
+        const [session] = await db.select().from(factoryShiftSessions)
+          .where(eq(factoryShiftSessions.id, breakLog.sessionId))
+          .limit(1);
+
+        if (session) {
+          newTotalBreakMinutes = (session.breakMinutes || 0) + durationMinutes;
+          await db.update(factoryShiftSessions)
+            .set({ breakMinutes: newTotalBreakMinutes })
+            .where(eq(factoryShiftSessions.id, breakLog.sessionId));
+        }
+      }
+
       if (breakLog.sessionId) {
         await db.insert(factorySessionEvents).values({
           sessionId: breakLog.sessionId,
@@ -3590,7 +3611,17 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
         });
       }
 
-      res.json({ success: true, durationMinutes, message: "Mola sonlandırıldı" });
+      res.json({
+        success: true,
+        durationMinutes,
+        breakStartTime: breakLog.startedAt,
+        breakEndTime: now,
+        // Sprint 14a: Kümülatif günlük mola tracking
+        dailyPlannedMinutes: 60,
+        dailyUsedMinutes: newTotalBreakMinutes,
+        dailyRemainingMinutes: Math.max(0, 60 - newTotalBreakMinutes),
+        message: "Mola sonlandırıldı",
+      });
     } catch (error: unknown) {
       console.error("Error ending break:", error);
       res.status(500).json({ message: "Mola sonlandırılamadı" });

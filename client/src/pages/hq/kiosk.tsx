@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { KvkkAydinlatma, KvkkFooterLink } from "@/components/kvkk-aydinlatma";  // Sprint 12 P-22: KVKK 6698
+import { BreakCountdown } from "@/components/break-countdown";  // Sprint 14a (11 May 2026): Mola sayaç
+import { BreakReturnSummary } from "@/components/break-return-summary";  // Sprint 14a (11 May 2026): Mola dönüş özeti
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -87,6 +89,19 @@ export default function HqKiosk() {
   const [autoLogoutCountdown, setAutoLogoutCountdown] = useState(15);
   const [showEndDayConfirm, setShowEndDayConfirm] = useState(false);
 
+  // Sprint 14a (11 May 2026): Mola sayaç + kümülatif günlük hak tracking
+  const [breakStartTime, setBreakStartTime] = useState<string | null>(null);
+  const [dailyPlannedMinutes, setDailyPlannedMinutes] = useState(60);
+  const [dailyUsedMinutes, setDailyUsedMinutes] = useState(0);
+  const [dailyRemainingMinutes, setDailyRemainingMinutes] = useState(60);
+  const [breakReturnSummary, setBreakReturnSummary] = useState<{
+    userName: string;
+    breakStartTime: string;
+    breakEndTime: string;
+    plannedMinutes: number;
+    newWarningsToday: number;
+  } | null>(null);
+
   useEffect(() => {
     fetchStaff();
   }, []);
@@ -154,6 +169,10 @@ export default function HqKiosk() {
       } else {
         setCurrentSession(data.session);
         setStep("working");
+        // Sprint 14a (11 May 2026): exitReason='break' ise break-start API'sini de çağır (sayaç + kümülatif)
+        if (exitReason === "break" && data.session?.id) {
+          breakStartMutation.mutate(data.session.id);
+        }
         toast({
           title: exitReason === "break" ? "Mola başladı" : "Dış görev kaydedildi",
           description: exitReason === "break" ? "İyi dinlenmeler!" : "Başarılar!",
@@ -175,13 +194,74 @@ export default function HqKiosk() {
     },
     onSuccess: (data) => {
       setCurrentSession(data.session);
-      toast({
-        title: "Dönüş kaydedildi",
-        description: `${data.exitDuration} dakika dışarıda kalındı`,
-      });
+      // Sprint 14a: Eğer kullanıcı moladan dönüyorsa break-end API'sini de çağır + özet göster
+      const wasOnBreak = !!breakStartTime;
+      if (wasOnBreak && data.session?.id) {
+        breakEndMutation.mutate(data.session.id);
+      } else {
+        toast({
+          title: "Dönüş kaydedildi",
+          description: `${data.exitDuration} dakika dışarıda kalındı`,
+        });
+      }
     },
     onError: (error: any) => {
       toast({ title: "Dönüş kaydedilemedi", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Sprint 14a (11 May 2026): Mola başlat endpoint'i (hqBreakLogs + hqShiftSessions.breakMinutes)
+  const breakStartMutation = useMutation({
+    mutationFn: async (sessionId: number) => {
+      const res = await apiRequest("POST", "/api/hq/kiosk/break-start", { sessionId });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setBreakStartTime(data?.breakStartTime || new Date().toISOString());
+      setDailyPlannedMinutes(data?.dailyPlannedMinutes ?? 60);
+      setDailyUsedMinutes(data?.dailyUsedMinutes ?? 0);
+      setDailyRemainingMinutes(data?.dailyRemainingMinutes ?? 60);
+    },
+    onError: (error: any) => {
+      // Sessizce log — exit flow zaten başarılı, sadece sayaç eksik kalır
+      console.warn("[hq/break-start] failed:", error.message);
+    },
+  });
+
+  // Sprint 14a: Mola bitir endpoint'i (kümülatif update + supervisor uyarısı)
+  const breakEndMutation = useMutation({
+    mutationFn: async (sessionId: number) => {
+      const res = await apiRequest("POST", "/api/hq/kiosk/break-end", { sessionId });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      const startedAt = breakStartTime;
+      const endedAt = new Date().toISOString();
+      setDailyUsedMinutes(data?.dailyUsedMinutes ?? dailyUsedMinutes);
+      setDailyRemainingMinutes(data?.dailyRemainingMinutes ?? 0);
+
+      // BreakReturnSummary modal — kullanıcıya net özet ver
+      if (startedAt && selectedUser) {
+        setBreakReturnSummary({
+          userName: selectedUser.firstName,
+          breakStartTime: startedAt,
+          breakEndTime: data?.breakEndTime || endedAt,
+          plannedMinutes: data?.dailyPlannedMinutes ?? 60,
+          newWarningsToday: data?.longBreakWarning ? 1 : 0,
+        });
+      }
+
+      setBreakStartTime(null);
+      const remainText = data?.dailyRemainingMinutes !== undefined
+        ? ` (${data.dailyRemainingMinutes} dk hakkın kaldı)`
+        : "";
+      toast({
+        title: "Mola bitti",
+        description: `Çalışmaya devam${remainText}`,
+      });
+    },
+    onError: (error: any) => {
+      console.warn("[hq/break-end] failed:", error.message);
     },
   });
 
@@ -528,15 +608,32 @@ export default function HqKiosk() {
                   )}
 
                   {(currentSession.status === "on_break" || currentSession.status === "outside") && (
-                    <Button
-                      className="w-full"
-                      onClick={() => returnMutation.mutate(currentSession.id)}
-                      disabled={returnMutation.isPending}
-                      data-testid="button-hq-return"
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      {returnMutation.isPending ? "Kaydediliyor..." : "Ofise Dön"}
-                    </Button>
+                    <>
+                      {/* Sprint 14a (11 May 2026): Mola sayaç — sadece mola durumunda */}
+                      {currentSession.status === "on_break" && breakStartTime && (
+                        <div className="mb-4">
+                          <BreakCountdown
+                            breakStartTime={breakStartTime}
+                            plannedMinutes={dailyRemainingMinutes > 0 ? dailyRemainingMinutes : 60}
+                            context="hq"
+                          />
+                          {dailyUsedMinutes > 0 && (
+                            <p className="text-xs text-muted-foreground text-center mt-2">
+                              Bugün önceki molalar: {dailyUsedMinutes} dk
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <Button
+                        className="w-full"
+                        onClick={() => returnMutation.mutate(currentSession.id)}
+                        disabled={returnMutation.isPending}
+                        data-testid="button-hq-return"
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        {returnMutation.isPending ? "Kaydediliyor..." : (currentSession.status === "on_break" ? "Moladan Dön" : "Ofise Dön")}
+                      </Button>
+                    </>
                   )}
                 </div>
               </>
@@ -764,9 +861,24 @@ export default function HqKiosk() {
     </>
   );
 
-  if (!step || step === "select-user") return <>{renderSelectUser()}{exitButton}{kvkkOverlay}</>;
-  if (step === "enter-pin") return <>{renderEnterPin()}{exitButton}{kvkkOverlay}</>;
-  if (step === "exit-dialog") return <>{renderExitDialog()}{exitButton}{kvkkOverlay}</>;
-  if (step === "end-summary") return <>{renderEndSummary()}{exitButton}{kvkkOverlay}</>;
-  return <>{renderWorking()}{exitButton}{kvkkOverlay}</>;
+  // Sprint 14a (11 May 2026): Mola dönüş özet modalı — moladan dönüşte 1 kere gösterilir
+  const breakReturnModal = breakReturnSummary && (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+      <BreakReturnSummary
+        userName={breakReturnSummary.userName}
+        breakStartTime={breakReturnSummary.breakStartTime}
+        breakEndTime={breakReturnSummary.breakEndTime}
+        plannedMinutes={breakReturnSummary.plannedMinutes}
+        totalDailyBreakMinutes={dailyUsedMinutes}
+        newWarningsToday={breakReturnSummary.newWarningsToday}
+        onReturnToShift={() => setBreakReturnSummary(null)}
+      />
+    </div>
+  );
+
+  if (!step || step === "select-user") return <>{renderSelectUser()}{exitButton}{kvkkOverlay}{breakReturnModal}</>;
+  if (step === "enter-pin") return <>{renderEnterPin()}{exitButton}{kvkkOverlay}{breakReturnModal}</>;
+  if (step === "exit-dialog") return <>{renderExitDialog()}{exitButton}{kvkkOverlay}{breakReturnModal}</>;
+  if (step === "end-summary") return <>{renderEndSummary()}{exitButton}{kvkkOverlay}{breakReturnModal}</>;
+  return <>{renderWorking()}{exitButton}{kvkkOverlay}{breakReturnModal}</>;
 }
