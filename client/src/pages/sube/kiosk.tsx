@@ -1673,6 +1673,29 @@ export default function BranchKiosk() {
                 >
                   {startShiftMutation.isPending ? 'Başlatılıyor...' : 'Vardiya Başlat'}
                 </button>
+
+                {/* Sprint 15.1 (11 May 2026): Vardiya Planla butonu — sadece supervisor/mudur */}
+                {selectedUser && ['supervisor', 'supervisor_buddy', 'mudur'].includes(selectedUser.role || '') && (
+                  <button
+                    onClick={() => {
+                      // Kiosk-user'ı localStorage'a yaz (supervisor-shift sayfası okuyacak)
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('kiosk-user', JSON.stringify({
+                          id: selectedUser.id,
+                          firstName: selectedUser.firstName,
+                          lastName: selectedUser.lastName,
+                          role: selectedUser.role,
+                          branchId: branchId,
+                        }));
+                      }
+                      setLocation('/sube/kiosk-supervisor-shift');
+                    }}
+                    data-testid="button-vardiya-planla"
+                    style={{ background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 10, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%', marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  >
+                    📅 Vardiya Planla
+                  </button>
+                )}
               </div>
             ) : isOnBreak ? (
               <div>
