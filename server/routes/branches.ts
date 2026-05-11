@@ -3599,114 +3599,108 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
   try {
     const branchId = parseInt(req.params.branchId);
     const userId = req.params.userId;
-    
-    const [session] = await db.select().from(branchShiftSessions)
-      .where(and(
-        eq(branchShiftSessions.userId, userId),
-        eq(branchShiftSessions.branchId, branchId),
-        or(
-          eq(branchShiftSessions.status, 'active'),
-          eq(branchShiftSessions.status, 'on_break')
-        )
-      ))
-      .limit(1);
+
+    // RAW SQL — Drizzle ORM orderSelectedFields bug'ını atla
+    const sessionRows = await db.execute(sql`
+      SELECT * FROM branch_shift_sessions
+      WHERE user_id = ${userId}
+        AND branch_id = ${branchId}
+        AND status IN ('active', 'on_break')
+      LIMIT 1
+    `);
+    const session = sessionRows.rows?.[0] as Record<string, any> | undefined;
 
     if (!session) {
       return res.json({ activeSession: null });
     }
 
     // Aslan 11 May 2026 HOTFIX: Kümülatif mola hesaplaması
-    // BUG: Tek-kullanıcı endpoint dailyRemainingMinutes vermiyordu → frontend her zaman 60 fallback gösteriyordu
-    // FIX: team-status endpoint ile aynı hesabı yap
     const now = new Date();
     const DAILY_BREAK_LIMIT = 60;
     let breakStartTime: Date | null = null;
     let currentBreakMinutes = 0;
 
-    // Eğer molada ise → aktif mola log'unu bul
     if (session.status === 'on_break') {
-      const [activeBreak] = await db.select({
-        breakStartTime: branchBreakLogs.breakStartTime,
-      }).from(branchBreakLogs)
-        .where(and(
-          eq(branchBreakLogs.sessionId, session.id),
-          isNull(branchBreakLogs.breakEndTime)
-        ))
-        .orderBy(desc(branchBreakLogs.breakStartTime))
-        .limit(1);
-
-      if (activeBreak?.breakStartTime) {
-        breakStartTime = new Date(activeBreak.breakStartTime);
+      const activeBreakRows = await db.execute(sql`
+        SELECT break_start_time FROM branch_break_logs
+        WHERE session_id = ${session.id}
+          AND break_end_time IS NULL
+        ORDER BY break_start_time DESC
+        LIMIT 1
+      `);
+      const activeBreak = activeBreakRows.rows?.[0] as { break_start_time: string } | undefined;
+      if (activeBreak?.break_start_time) {
+        breakStartTime = new Date(activeBreak.break_start_time);
         currentBreakMinutes = Math.floor((now.getTime() - breakStartTime.getTime()) / 60000);
       }
     }
 
-    const usedBeforeCurrentBreak = session.breakMinutes || 0;
+    const usedBeforeCurrentBreak = Number(session.break_minutes) || 0;
     const totalUsedToday = usedBeforeCurrentBreak + currentBreakMinutes;
     const dailyRemainingMinutes = Math.max(0, DAILY_BREAK_LIMIT - totalUsedToday);
 
-    // Enriched session object — frontend BreakCountdown bunu kullanır
     const enrichedSession = {
       ...session,
-      breakStartTime,  // CRITICAL: countdown için
-      breakMinutes: currentBreakMinutes,  // Şu anki mola süresi (real-time)
+      breakStartTime,
+      breakMinutes: currentBreakMinutes,
       dailyPlannedMinutes: DAILY_BREAK_LIMIT,
       dailyUsedMinutes: totalUsedToday,
-      dailyRemainingMinutes,  // CRITICAL: "X dk hakkın kaldı" gösterimi için
-      cumulativeBreakMinutes: usedBeforeCurrentBreak,  // Önceki molalar toplamı
+      dailyRemainingMinutes,
+      cumulativeBreakMinutes: usedBeforeCurrentBreak,
       isBreakAnomaly: session.status === 'on_break' && totalUsedToday > DAILY_BREAK_LIMIT,
     };
 
-    const userTasks = await db.select().from(tasks)
-      .where(and(
-        eq(tasks.assignedToId, userId),
-        or(
-          eq(tasks.status, 'pending'),
-          eq(tasks.status, 'in_progress')
-        )
-      ))
-      .orderBy(tasks.dueDate);
+    let userTasks: any[] = [];
+    let userChecklists: any[] = [];
+    let branchOpenTasks: any[] = [];
 
-    const userProfile = await storage.getUser(userId);
-    const myAssignments = await storage.getMyChecklistAssignments(
-      userId,
-      userProfile?.branchId || undefined,
-      userProfile?.role || undefined
-    );
-    
-    const today = new Date().toISOString().split('T')[0];
-    const todayCompletions = await storage.getUserChecklistCompletions(userId, today);
-    
-    const userChecklists = myAssignments.map(item => {
-      const todayCompletion = todayCompletions.find(c => c.checklistId === item.id);
-      const completedTasks = todayCompletion?.completedTasks || 0;
-      const totalTasks = item.tasks.length;
-      return {
-        id: item.id,
-        name: item.title,
-        assignmentId: item.assignment.id,
-        pendingTasks: totalTasks - completedTasks,
-        completedTasks,
-        totalTasks,
-      };
-    })
+    try {
+      const utRows = await db.execute(sql`
+        SELECT * FROM tasks
+        WHERE assigned_to_id = ${userId}
+          AND status IN ('pending', 'in_progress', 'beklemede', 'devam_ediyor')
+        ORDER BY due_date ASC NULLS LAST
+      `);
+      userTasks = utRows.rows as any[];
+    } catch (e) { console.error("kiosk/session userTasks err:", e); }
 
-    // Şube açık görevleri
-    const branchOpenTasks = await db.select({
-      id: tasks.id,
-      title: tasks.title,
-      category: tasks.category,
-      status: tasks.status,
-      assignedTo: tasks.assignedTo,
-    }).from(tasks)
-      .where(and(
-        eq(tasks.branchId, branchId),
-        or(eq(tasks.status, 'pending'), eq(tasks.status, 'in_progress'))
-      ))
-      .limit(5);
+    try {
+      const userProfile = await storage.getUser(userId);
+      const myAssignments = await storage.getMyChecklistAssignments(
+        userId,
+        userProfile?.branchId || undefined,
+        userProfile?.role || undefined
+      );
+      const today = new Date().toISOString().split('T')[0];
+      const todayCompletions = await storage.getUserChecklistCompletions(userId, today);
+      userChecklists = myAssignments.map(item => {
+        const todayCompletion = todayCompletions.find(c => c.checklistId === item.id);
+        const completedTasks = todayCompletion?.completedTasks || 0;
+        const totalTasks = item.tasks.length;
+        return {
+          id: item.id,
+          name: item.title,
+          assignmentId: item.assignment.id,
+          pendingTasks: totalTasks - completedTasks,
+          completedTasks,
+          totalTasks,
+        };
+      });
+    } catch (e) { console.error("kiosk/session checklists err:", e); }
+
+    try {
+      const btRows = await db.execute(sql`
+        SELECT id, description, status, priority, assigned_to_id
+        FROM tasks
+        WHERE branch_id = ${branchId}
+          AND status IN ('pending', 'in_progress', 'beklemede', 'devam_ediyor')
+        LIMIT 5
+      `);
+      branchOpenTasks = btRows.rows as any[];
+    } catch (e) { console.error("kiosk/session branchTasks err:", e); }
 
     res.json({
-      activeSession: enrichedSession,  // Aslan 11 May HOTFIX: enriched with break info
+      activeSession: enrichedSession,
       tasks: userTasks,
       checklists: userChecklists,
       branchTasks: branchOpenTasks,
