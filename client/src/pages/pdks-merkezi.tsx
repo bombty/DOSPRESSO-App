@@ -17,10 +17,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, FileSpreadsheet, Calendar, Activity, AlertTriangle, Download } from "lucide-react";
+import { Clock, Users, FileSpreadsheet, Calendar, Activity, AlertTriangle, Download, TrendingUp } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from "recharts";
 
 const TAB_KEY = "pdks-merkezi-tab";
 
@@ -143,6 +144,9 @@ export default function PdksMerkeziPage() {
         </Card>
       )}
 
+      {/* Sprint 16 V2 (11 May 2026): Aylık Compliance Trend Grafiği */}
+      <ComplianceTrendCard branchId={user?.branchId} />
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
           <TabsTrigger value="genel" className="gap-2">
@@ -236,5 +240,132 @@ export default function PdksMerkeziPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 16 V2 — Aylık Compliance Trend Grafiği
+// ═══════════════════════════════════════════════════════════════════
+function ComplianceTrendCard({ branchId }: { branchId?: number | null }) {
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/pdks/compliance-trend", branchId],
+    queryFn: async () => {
+      if (!branchId) return null;
+      const res = await fetch(`/api/pdks/compliance-trend?branchId=${branchId}&months=6`, {
+        credentials: "include",
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!branchId,
+  });
+
+  if (!branchId) return null;
+  if (isLoading || !data?.data?.length) return null;
+
+  const hasData = data.data.some((d: any) => d.attendanceCount > 0);
+  if (!hasData) return null;
+
+  // Compliance ortalaması son ay vs önceki ay → trend
+  const last = data.data[data.data.length - 1];
+  const prev = data.data.length > 1 ? data.data[data.data.length - 2] : null;
+  const trendDelta = prev ? last.avgCompliance - prev.avgCompliance : 0;
+  const trendDirection = trendDelta > 2 ? "↑" : trendDelta < -2 ? "↓" : "→";
+  const trendColor = trendDelta > 2 ? "text-green-600" : trendDelta < -2 ? "text-red-600" : "text-muted-foreground";
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-blue-600" />
+            <div>
+              <CardTitle className="text-base">Aylık Compliance Trend</CardTitle>
+              <CardDescription className="text-xs">
+                Son 6 ayda şubenin ortalama uyumluluk skoru
+              </CardDescription>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold">{last.avgCompliance}</div>
+            <div className={`text-xs ${trendColor} font-medium`}>
+              {trendDirection} {Math.abs(trendDelta)} puan
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <div style={{ width: "100%", height: 240 }}>
+          <ResponsiveContainer>
+            <LineChart data={data.data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis
+                dataKey="monthLabel"
+                tick={{ fontSize: 12 }}
+                className="text-muted-foreground"
+              />
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 12 }}
+                className="text-muted-foreground"
+              />
+              <RechartsTooltip
+                contentStyle={{ background: "rgba(0,0,0,0.85)", border: "none", borderRadius: 6, color: "white", fontSize: 12 }}
+                labelStyle={{ color: "white", fontWeight: 600 }}
+                formatter={(value: any, name: any) => {
+                  const labels: any = {
+                    avgCompliance: "Compliance Skor",
+                    totalLateness: "Geç (dk)",
+                    totalBreakOverage: "Mola Aşımı (dk)",
+                    absentCount: "Devamsızlık",
+                  };
+                  return [value, labels[name] || name];
+                }}
+              />
+              <Legend
+                wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
+                formatter={(value: any) => {
+                  const labels: any = {
+                    avgCompliance: "Compliance Skor",
+                    totalLateness: "Geç (dk)",
+                    absentCount: "Devamsızlık",
+                  };
+                  return labels[value] || value;
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="avgCompliance"
+                stroke="#10b981"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="absentCount"
+                stroke="#ef4444"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
+          <div className="text-center p-2 bg-muted/30 rounded">
+            <div className="text-muted-foreground">Bu ay toplam geç</div>
+            <div className="font-bold text-red-600">{last.totalLateness} dk</div>
+          </div>
+          <div className="text-center p-2 bg-muted/30 rounded">
+            <div className="text-muted-foreground">Mola aşımı</div>
+            <div className="font-bold text-orange-600">{last.totalBreakOverage} dk</div>
+          </div>
+          <div className="text-center p-2 bg-muted/30 rounded">
+            <div className="text-muted-foreground">Devamsızlık</div>
+            <div className="font-bold text-destructive">{last.absentCount}</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
