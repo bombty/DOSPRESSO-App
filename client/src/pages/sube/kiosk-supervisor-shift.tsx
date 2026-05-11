@@ -140,15 +140,21 @@ export default function KioskSupervisorShift() {
   const endStr = format(addDays(week2Start, 6), "yyyy-MM-dd");
 
   // Veri çekme
+  // Aslan 11 May 2026 HOTFIX-4: Query param + response shape mismatch
+  // Bug 1: Backend `dateFrom/dateTo` bekliyor, frontend `startDate/endDate` gönderiyordu
+  // Bug 2: Backend direkt array dönüyor, frontend `data.shifts` arıyordu
   const shiftsQuery = useQuery<any>({
     queryKey: ["/api/shifts", kioskUser.branchId, startStr, endStr],
     queryFn: async () => {
       const res = await fetch(
-        `/api/shifts?branchId=${kioskUser.branchId}&startDate=${startStr}&endDate=${endStr}`,
+        `/api/shifts?branchId=${kioskUser.branchId}&dateFrom=${startStr}&dateTo=${endStr}`,
         { credentials: "include", headers: kioskHeaders() }
       );
       if (!res.ok) return { shifts: [] };
-      return res.json();
+      const data = await res.json();
+      // Backend ya {shifts:[...]} (paginated) ya direkt [...] (default) dönüyor → her ikisini de kabul et
+      const arr = Array.isArray(data) ? data : (data?.data || data?.shifts || []);
+      return { shifts: arr };
     },
     enabled: !!kioskUser.branchId,
   });
