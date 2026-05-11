@@ -1,0 +1,68 @@
+Pilot 13 May 15:00 öncesi 3 kritik kontrol. Sırayla çalıştır, çıktıları topla:
+
+═══════════════════════════════════════════════════
+KONTROL 1 — Mahmut'un erişim doğrulaması
+═══════════════════════════════════════════════════
+Test: muhasebe_ik veya muhasebe rolüne sahip bir kullanıcı pilot 4 şubenin (5/8/23/24) verilerine erişebilmeli.
+
+a) SQL: Mahmut benzeri user var mı?
+SELECT id, username, first_name, last_name, role, is_active FROM users WHERE role IN ('muhasebe', 'muhasebe_ik') AND is_active = true;
+
+b) Endpoint test (Mahmut user_id ile):
+- /api/branches → 4 pilot şubeyi dönüyor mu?
+- /api/pdks/branch-summary?branchId=5&month=2026-05 → boş değil mi?
+- /api/personnel/{userId}/attendance-detail?startDate=2026-05-01&endDate=2026-05-11 → bir test personel için döndü mü?
+- /api/sube-bordro-ozet?branchId=5&month=2026-05 → response var mı?
+
+c) Sonuç: Mahmut bu 4 endpoint'i 200 ile çağırabilirse ✅
+
+═══════════════════════════════════════════════════
+KONTROL 2 — Test vardiya akışı (DB tarafından doğrula)
+═══════════════════════════════════════════════════
+Test: Bir test personel kioska giriş yaparsa veritabanına doğru kayıt atılıyor mu?
+
+a) Mevcut açık vardiya var mı? (gerçek personel etkilenmemeli)
+SELECT bs.id, bs.user_id, u.first_name, bs.branch_id, bs.status, bs.check_in_time, bs.break_minutes 
+FROM branch_shift_sessions bs 
+JOIN users u ON u.id = bs.user_id 
+WHERE bs.status IN ('active', 'on_break') 
+  AND bs.check_in_time::date = CURRENT_DATE
+ORDER BY bs.check_in_time DESC LIMIT 10;
+
+b) shift_attendance global tablodaki bugünkü kayıt sayısı:
+SELECT COUNT(*) as toplam, 
+       COUNT(CASE WHEN check_in_time IS NOT NULL THEN 1 END) as girisliler,
+       COUNT(CASE WHEN check_out_time IS NOT NULL THEN 1 END) as cikisliler,
+       AVG(total_worked_minutes) as ort_calisma_dk,
+       AVG(total_break_minutes) as ort_mola_dk
+FROM shift_attendance WHERE DATE(check_in_time) = CURRENT_DATE;
+
+c) Tablo bağlantıları çalışıyor mu?
+SELECT bs.id, bs.user_id, bs.branch_id, b.name as branch_name, sa.id as shift_attendance_id, sa.total_worked_minutes
+FROM branch_shift_sessions bs
+LEFT JOIN branches b ON b.id = bs.branch_id
+LEFT JOIN shift_attendance sa ON sa.user_id = bs.user_id AND DATE(sa.check_in_time) = DATE(bs.check_in_time)
+WHERE bs.check_in_time::date >= CURRENT_DATE - INTERVAL '7 days'
+LIMIT 10;
+
+d) Sonuç: shift_attendance + branch_shift_sessions çiftli yazıyorsa ✅
+
+═══════════════════════════════════════════════════
+KONTROL 3 — Compliance score + latenessMinutes otomatik düşüyor mu?
+═══════════════════════════════════════════════════
+Test: Geç gelen / mola süresi aşan personel için compliance_score düştü mü?
+
+SELECT u.first_name, u.last_name, sa.lateness_minutes, sa.break_overage_minutes, sa.compliance_score, sa.status
+FROM shift_attendance sa
+JOIN users u ON u.id = sa.user_id
+WHERE DATE(sa.check_in_time) >= CURRENT_DATE - INTERVAL '7 days'
+  AND (sa.lateness_minutes > 0 OR sa.break_overage_minutes > 0)
+ORDER BY sa.compliance_score ASC
+LIMIT 15;
+
+Beklenen: compliance_score < 100 olan kayıtlar var. lateness_minutes veya break_overage_minutes > 0 olmalı.
+
+Eğer hiç < 100 kayıt yoksa: ya çok temiz veri (iyi), ya da otomatik düşüş ÇALIŞMIYOR (kritik!) → araştır.
+
+═══════════════════════════════════════════════════
+Tüm sonuçları sırayla bana göster. Anomali varsa kırmızı işaretle.
