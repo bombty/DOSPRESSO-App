@@ -693,8 +693,8 @@ router.use((req: any, res, next) => {
       const { role } = user;
       const employeeId = req.params.id;
 
-      // Permission check (admin/coach only can reset passwords)
-      if (role !== 'admin' && role !== 'coach') {
+      // Permission check: admin, coach, muhasebe_ik şifre sıfırlayabilir
+      if (role !== 'admin' && role !== 'coach' && role !== 'muhasebe_ik') {
         return res.status(403).json({ message: "Şifre sıfırlama yetkiniz yok" });
       }
 
@@ -706,11 +706,7 @@ router.use((req: any, res, next) => {
 
       const resetPasswordSchema = z.object({
         newPassword: z.string()
-          .min(8, "Şifre en az 8 karakter olmalıdır")
-          .regex(/[a-z]/, "Şifre en az bir küçük harf içermelidir")
-          .regex(/[A-Z]/, "Şifre en az bir büyük harf içermelidir")
-          .regex(/[0-9]/, "Şifre en az bir rakam içermelidir")
-          .regex(/[!@#$%^&*._-]/, "Şifre en az bir özel karakter içermelidir (!@#$%^&*._-)"),
+          .min(4, "Şifre en az 4 karakter olmalıdır"),
       });
 
       const parsed = resetPasswordSchema.safeParse(req.body);

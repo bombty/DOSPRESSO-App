@@ -1041,26 +1041,10 @@ export function ResetPasswordDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 8) {
+    if (newPassword.length < 4) {
       toast({
         title: "Hata",
-        description: "Şifre en az 8 karakter olmalıdır",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!/[A-Za-z]/.test(newPassword)) {
-      toast({
-        title: "Hata",
-        description: "Şifre en az bir harf içermelidir",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      toast({
-        title: "Hata",
-        description: "Şifre en az bir rakam içermelidir",
+        description: "Şifre en az 4 karakter olmalıdır",
         variant: "destructive",
       });
       return;
@@ -1085,12 +1069,12 @@ export function ResetPasswordDialog({
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="En az 8 karakter (harf ve rakam)"
+              placeholder="En az 4 karakter"
               data-testid="input-new-password"
               autoComplete="new-password"
             />
             <p className="text-xs text-muted-foreground">
-              Şifre en az 8 karakter olmalı, en az bir harf ve bir rakam içermelidir
+              Şifre en az 4 karakter olmalıdır
             </p>
           </div>
 
@@ -1100,7 +1084,7 @@ export function ResetPasswordDialog({
             </Button>
             <Button 
               type="submit" 
-              disabled={resetPasswordMutation.isPending || newPassword.length < 8}
+              disabled={resetPasswordMutation.isPending || newPassword.length < 4}
               data-testid="button-submit-reset-password"
             >
               {resetPasswordMutation.isPending ? "Sıfırlanıyor..." : "Şifreyi Sıfırla"}

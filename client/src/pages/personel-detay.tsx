@@ -321,10 +321,10 @@ export default function PersonelDetay() {
   const canManage = currentUser && (isHQRole(currentUser.role as any) || currentUser.role === "admin");
 
   const handleResetPassword = () => {
-    if (!newPassword || newPassword.length < 6) {
+    if (!newPassword || newPassword.length < 4) {
       toast({
         title: "Hata",
-        description: "Şifre en az 6 karakter olmalıdır",
+        description: "Şifre en az 4 karakter olmalıdır",
         variant: "destructive",
       });
       return;
