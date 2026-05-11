@@ -374,7 +374,9 @@ export const factoryShiftSessions = pgTable("factory_shift_sessions", {
   
   // Çalışma süresi (dakika)
   workMinutes: integer("work_minutes").default(0),
-  
+  // Sprint 14a (11 May 2026): Kümülatif günlük mola hakkı (45+15 senaryosu için)
+  breakMinutes: integer("break_minutes").default(0),
+
   status: varchar("status", { length: 20 }).default("active").notNull(), // active, completed, abandoned
   
   phase: varchar("phase", { length: 20 }).default("hazirlik"), // hazirlik, uretim, temizlik, tamamlandi

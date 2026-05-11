@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { KvkkAydinlatma, KvkkFooterLink } from "@/components/kvkk-aydinlatma";  // Sprint 12 P-22: KVKK 6698 yasal zorunluluk
+import { BreakCountdown } from "@/components/break-countdown";  // Sprint 14a (11 May 2026): Mola sayaç
+import { BreakReturnSummary } from "@/components/break-return-summary";  // Sprint 14a (11 May 2026): Mola dönüş özeti
 
 function kioskFetch(url: string, method: string = 'GET', data?: unknown): Promise<Response> {
   const token = localStorage.getItem("factory-kiosk-token");
@@ -231,6 +233,17 @@ export default function FactoryKiosk() {
   const [breakStartTime, setBreakStartTime] = useState<Date | null>(null);
   const [breakElapsed, setBreakElapsed] = useState(0);
   const [currentBreakLogId, setCurrentBreakLogId] = useState<number | null>(null);
+
+  // Sprint 14a (11 May 2026): Kümülatif günlük mola hakkı (45+15 senaryosu için)
+  const [dailyPlannedMinutes, setDailyPlannedMinutes] = useState(60);
+  const [dailyUsedMinutes, setDailyUsedMinutes] = useState(0);
+  const [dailyRemainingMinutes, setDailyRemainingMinutes] = useState(60);
+  const [breakReturnSummary, setBreakReturnSummary] = useState<{
+    userName: string;
+    breakStartTime: string;
+    breakEndTime: string;
+    plannedMinutes: number;
+  } | null>(null);
   const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
 
   const [qcMode, setQcMode] = useState(false);
@@ -549,8 +562,12 @@ export default function FactoryKiosk() {
     onSuccess: (data, variables) => {
       toast({ title: "Mola başladı", description: "İyi dinlenmeler!" });
       setCurrentBreakLogId(data.breakLogId || null);
-      setBreakStartTime(new Date());
+      setBreakStartTime(new Date(data.breakStartTime || Date.now()));
       setBreakElapsed(0);
+      // Sprint 14a (11 May 2026): Backend response'tan kümülatif değerler
+      setDailyPlannedMinutes(data?.dailyPlannedMinutes ?? 60);
+      setDailyUsedMinutes(data?.dailyUsedMinutes ?? 0);
+      setDailyRemainingMinutes(data?.dailyRemainingMinutes ?? 60);
       setStep('on-break');
     },
     onError: (error: any) => {
@@ -649,8 +666,27 @@ export default function FactoryKiosk() {
       if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Mola sonlandırılamadı'); }
       return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "Mola bitti", description: "İyi çalışmalar!" });
+    onSuccess: (data) => {
+      const startedAt = breakStartTime?.toISOString() || null;
+      const endedAt = data?.breakEndTime || new Date().toISOString();
+      // Sprint 14a (11 May 2026): Backend response'tan kümülatif değerler
+      setDailyUsedMinutes(data?.dailyUsedMinutes ?? dailyUsedMinutes);
+      setDailyRemainingMinutes(data?.dailyRemainingMinutes ?? 0);
+
+      // BreakReturnSummary modal — kullanıcıya net özet ver
+      if (startedAt && selectedUser) {
+        setBreakReturnSummary({
+          userName: selectedUser.firstName || "Çalışan",
+          breakStartTime: startedAt,
+          breakEndTime: endedAt,
+          plannedMinutes: data?.dailyPlannedMinutes ?? 60,
+        });
+      }
+
+      const remainText = data?.dailyRemainingMinutes !== undefined
+        ? ` (${data.dailyRemainingMinutes} dk hakkın kaldı)`
+        : "";
+      toast({ title: "Mola bitti", description: `İyi çalışmalar!${remainText}` });
       setBreakStartTime(null);
       setBreakElapsed(0);
       setCurrentBreakLogId(null);
@@ -2702,9 +2738,21 @@ export default function FactoryKiosk() {
                 {selectedBreakReason === 'ozel_ihtiyac' ? 'Özel İhtiyaç Molası' : 'Mola'}
               </h3>
 
-              <div className="text-5xl font-mono font-bold text-blue-400" data-testid="text-break-timer">
-                {formatTime(breakElapsed)}
-              </div>
+              {/* Sprint 14a (11 May 2026): BreakCountdown + kümülatif günlük hak */}
+              {breakStartTime && (
+                <div className="mb-2">
+                  <BreakCountdown
+                    breakStartTime={breakStartTime.toISOString()}
+                    plannedMinutes={dailyRemainingMinutes > 0 ? dailyRemainingMinutes : 60}
+                    context="fabrika"
+                  />
+                  {dailyUsedMinutes > 0 && (
+                    <p className="text-sm text-slate-500 mt-2">
+                      Bugün önceki molalar: {dailyUsedMinutes} dk
+                    </p>
+                  )}
+                </div>
+              )}
 
               <p className="text-slate-400">
                 {selectedUser?.firstName}, moladan döndüğünde aşağıdaki butona bas
@@ -3034,6 +3082,21 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
       <div className="fixed bottom-2 right-2 z-10 px-2 py-1 rounded-md bg-background/80 backdrop-blur-sm border border-border shadow-sm">
         <KvkkFooterLink context="fabrika" />
       </div>
+
+      {/* Sprint 14a (11 May 2026): Mola dönüş özet modalı */}
+      {breakReturnSummary && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <BreakReturnSummary
+            userName={breakReturnSummary.userName}
+            breakStartTime={breakReturnSummary.breakStartTime}
+            breakEndTime={breakReturnSummary.breakEndTime}
+            plannedMinutes={breakReturnSummary.plannedMinutes}
+            totalDailyBreakMinutes={dailyUsedMinutes}
+            newWarningsToday={0}
+            onReturnToShift={() => setBreakReturnSummary(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }
