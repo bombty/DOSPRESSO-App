@@ -3,7 +3,7 @@ import { db } from '../db';
 import { pdksRecords, scheduledOffs, users, branchKioskSettings, branches, shiftAttendance, shifts, branchShiftSessions, attendanceSettingsAudit } from '@shared/schema';
 import { eq, and, gte, lte, sql, desc, isNull } from 'drizzle-orm';
 import { isAuthenticated } from '../localAuth';
-import { getMonthClassification } from '../lib/pdks-engine';
+import { getMonthClassification, getWeeklyHourCheck, getWeeklyHourCheckBulk } from '../lib/pdks-engine';
 
 const router = Router();
 
@@ -1116,6 +1116,218 @@ router.get('/api/pdks/consistency-check', isAuthenticated, async (req: any, res:
   } catch (error: any) {
     console.error('[PDKS-B1] Consistency check error:', error);
     res.status(500).json({ error: error?.message || 'Tutarlılık analizi başarısız' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 15 (11 May 2026) — S15.3: Haftalık 45h Kontrol Endpoint
+// ═══════════════════════════════════════════════════════════════════
+// İş Kanunu m.63: Fulltime 45h/hafta üst sınırı
+// Single user veya bulk (branch için)
+
+router.get('/api/pdks/weekly-check', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const reqUser = req.user;
+    if (!reqUser?.role || !PDKS_ROLES.includes(reqUser.role)) {
+      return res.status(403).json({ error: 'Yetki yok' });
+    }
+
+    const { userId, branchId, weekStart } = req.query as any;
+    if (!weekStart) {
+      return res.status(400).json({ error: 'weekStart parametresi gerekli (YYYY-MM-DD)' });
+    }
+
+    if (userId) {
+      const result = await getWeeklyHourCheck(userId as string, weekStart as string);
+      return res.json(result);
+    }
+
+    if (branchId) {
+      // Branch'in aktif kullanıcıları
+      const branchUsers = await db
+        .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(and(
+          eq(users.branchId, parseInt(branchId as string)),
+          eq(users.isActive, true)
+        ));
+
+      const userIds = branchUsers.map(u => u.id);
+      const checks = await getWeeklyHourCheckBulk(userIds, weekStart as string);
+
+      const enriched = checks.map(c => {
+        const u = branchUsers.find(bu => bu.id === c.userId);
+        return {
+          ...c,
+          firstName: u?.firstName || null,
+          lastName: u?.lastName || null,
+          actualWorkedHours: (c.actualWorkedMinutes / 60).toFixed(1),
+          weeklyHourLimitHours: (c.weeklyHourLimit / 60).toFixed(0),
+        };
+      });
+
+      const violations = enriched.filter(e => e.violation);
+
+      return res.json({
+        branchId: parseInt(branchId as string),
+        weekStart,
+        totalUsers: enriched.length,
+        violationCount: violations.length,
+        results: enriched,
+        violations,
+        legalReference: 'İş Kanunu m.63',
+      });
+    }
+
+    return res.status(400).json({ error: 'userId veya branchId gerekli' });
+  } catch (error: any) {
+    console.error('[PDKS-WEEKLY-CHECK]', error);
+    res.status(500).json({ error: error?.message || 'Haftalık kontrol başarısız' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 15 (11 May 2026) — S15.5: PDKS Excel Export
+// ═══════════════════════════════════════════════════════════════════
+// Mahmut için Excel raporu. 3 sayfa:
+//   Sheet 1: Günlük detay (1 satır/personel/gün)
+//   Sheet 2: Haftalık özet (haftalık 45h kontrolü)
+//   Sheet 3: Aylık özet (puantaj)
+
+router.get('/api/pdks/export.xlsx', isAuthenticated, async (req: any, res: Response) => {
+  try {
+    const reqUser = req.user;
+    if (!reqUser?.role || !PDKS_ROLES.includes(reqUser.role)) {
+      return res.status(403).json({ error: 'Yetki yok' });
+    }
+
+    const { branchId, startDate, endDate } = req.query as any;
+    if (!branchId || !startDate || !endDate) {
+      return res.status(400).json({ error: 'branchId, startDate, endDate gerekli' });
+    }
+
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'DOSPRESSO';
+    workbook.created = new Date();
+
+    const branchIdInt = parseInt(branchId as string);
+    const [branch] = await db.select().from(branches).where(eq(branches.id, branchIdInt)).limit(1);
+    if (!branch) {
+      return res.status(404).json({ error: 'Şube bulunamadı' });
+    }
+
+    // ─── Sheet 1: Günlük Detay ───
+    const sheet1 = workbook.addWorksheet('Günlük Detay');
+    sheet1.columns = [
+      { header: 'Ad Soyad',           key: 'name',             width: 25 },
+      { header: 'Tarih',              key: 'date',             width: 12 },
+      { header: 'Giriş',              key: 'checkIn',          width: 10 },
+      { header: 'Çıkış',              key: 'checkOut',         width: 10 },
+      { header: 'Net Çalışma (dk)',   key: 'workedMinutes',    width: 18 },
+      { header: 'Mola (dk)',          key: 'breakMinutes',     width: 12 },
+      { header: 'Geç Giriş (dk)',     key: 'lateness',         width: 15 },
+      { header: 'Erken Çıkış (dk)',   key: 'earlyLeave',       width: 16 },
+      { header: 'Mola Aşımı (dk)',    key: 'breakOverage',     width: 16 },
+      { header: 'Compliance Score',   key: 'complianceScore',  width: 18 },
+      { header: 'Durum',              key: 'status',           width: 12 },
+    ];
+    sheet1.getRow(1).font = { bold: true };
+    sheet1.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF192838' } };
+    sheet1.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+    const records = await db
+      .select({
+        sa: shiftAttendance,
+        userFirst: users.firstName,
+        userLast: users.lastName,
+      })
+      .from(shiftAttendance)
+      .innerJoin(users, eq(users.id, shiftAttendance.userId))
+      .where(and(
+        eq(users.branchId, branchIdInt),
+        gte(shiftAttendance.checkInTime, new Date(startDate as string)),
+        lte(shiftAttendance.checkInTime, new Date(endDate as string + 'T23:59:59')),
+      ))
+      .orderBy(desc(shiftAttendance.checkInTime));
+
+    records.forEach(r => {
+      sheet1.addRow({
+        name: `${r.userFirst || ''} ${r.userLast || ''}`.trim(),
+        date: r.sa.checkInTime ? new Date(r.sa.checkInTime).toLocaleDateString('tr-TR') : '',
+        checkIn: r.sa.checkInTime ? new Date(r.sa.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '',
+        checkOut: r.sa.checkOutTime ? new Date(r.sa.checkOutTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '',
+        workedMinutes: r.sa.totalWorkedMinutes || 0,
+        breakMinutes: r.sa.totalBreakMinutes || 0,
+        lateness: r.sa.latenessMinutes || 0,
+        earlyLeave: r.sa.earlyLeaveMinutes || 0,
+        breakOverage: r.sa.breakOverageMinutes || 0,
+        complianceScore: r.sa.complianceScore ?? 100,
+        status: r.sa.status || '',
+      });
+    });
+
+    // ─── Sheet 2: Haftalık Özet (45h Check) ───
+    const sheet2 = workbook.addWorksheet('Haftalık 45h Kontrol');
+    sheet2.columns = [
+      { header: 'Ad Soyad',          key: 'name',             width: 25 },
+      { header: 'Hafta Başı',        key: 'weekStart',        width: 12 },
+      { header: 'Çalışma Tipi',      key: 'empType',          width: 14 },
+      { header: 'Sınır (saat)',      key: 'limitHours',       width: 14 },
+      { header: 'Gerçek (saat)',     key: 'actualHours',      width: 14 },
+      { header: 'Aşım (dk)',         key: 'overLimit',        width: 12 },
+      { header: 'İhlal',             key: 'violation',        width: 10 },
+      { header: 'Yasal Referans',    key: 'legal',            width: 30 },
+    ];
+    sheet2.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    sheet2.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF192838' } };
+
+    // Range içindeki haftaları topla
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+    const branchUsers = await db
+      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(and(eq(users.branchId, branchIdInt), eq(users.isActive, true)));
+
+    const weekStartCursor = new Date(start);
+    // Pazartesi'ye al
+    const dow = weekStartCursor.getDay();
+    const daysToMonday = dow === 0 ? -6 : 1 - dow;
+    weekStartCursor.setDate(weekStartCursor.getDate() + daysToMonday);
+
+    while (weekStartCursor <= end) {
+      const weekStr = weekStartCursor.toISOString().split('T')[0];
+      const checks = await getWeeklyHourCheckBulk(branchUsers.map(u => u.id), weekStr);
+
+      checks.forEach(c => {
+        const u = branchUsers.find(bu => bu.id === c.userId);
+        sheet2.addRow({
+          name: `${u?.firstName || ''} ${u?.lastName || ''}`.trim(),
+          weekStart: c.weekStart,
+          empType: c.employmentType,
+          limitHours: (c.weeklyHourLimit / 60).toFixed(0),
+          actualHours: (c.actualWorkedMinutes / 60).toFixed(1),
+          overLimit: c.overLimitMinutes,
+          violation: c.violation ? 'EVET ⚠️' : 'Hayır',
+          legal: c.legalReference,
+        });
+      });
+      weekStartCursor.setDate(weekStartCursor.getDate() + 7);
+    }
+
+    // ─── Header ───
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="PDKS-${branch.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'rapor'}-${startDate}-${endDate}.xlsx"`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error: any) {
+    console.error('[PDKS-EXPORT]', error);
+    res.status(500).json({ error: error?.message || 'Excel export başarısız' });
   }
 });
 

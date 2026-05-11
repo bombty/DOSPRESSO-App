@@ -245,3 +245,110 @@ export async function getMonthClassification(
     totalOvertimeMinutes, holidayWorkedDays
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 15 (S15.3) — Haftalık 45h Kontrol (İş Kanunu m.63)
+// ═══════════════════════════════════════════════════════════════════
+//
+// Fulltime: 45h/hafta üst sınır (m.63)
+// Parttime: pozisyon tanımlı saat (genelde 30h/hafta)
+//
+// users.employmentType bilinmiyorsa fulltime varsayılır.
+// İhlal durumunda result.violation: true olur.
+// ═══════════════════════════════════════════════════════════════════
+
+export interface WeeklyHourCheckResult {
+  userId: string;
+  weekStart: string;  // YYYY-MM-DD (Pazartesi)
+  weekEnd: string;    // YYYY-MM-DD (Pazar)
+  employmentType: 'fulltime' | 'parttime' | 'intern' | 'unknown';
+  weeklyHourLimit: number;     // dk cinsinden (fulltime: 2700, parttime: 1800)
+  actualWorkedMinutes: number; // gerçek çalışma
+  overLimitMinutes: number;    // sınır aşımı (negatifse 0)
+  underLimitMinutes: number;   // sınırın altı (parttime için anlamlı)
+  violation: boolean;          // sınır aşımı varsa true
+  legalReference: string;      // 'İş K. m.63'
+}
+
+export async function getWeeklyHourCheck(
+  userId: string,
+  weekStartIso: string  // ISO date: monday of the week
+): Promise<WeeklyHourCheckResult> {
+  const { users } = await import("@shared/schema");
+
+  // User'ın employmentType'ını al
+  const [user] = await db
+    .select({ id: users.id, employmentType: (users as any).employmentType })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const empType: 'fulltime' | 'parttime' | 'intern' | 'unknown' =
+    user?.employmentType === 'parttime' ? 'parttime' :
+    user?.employmentType === 'intern'   ? 'intern' :
+    user?.employmentType === 'fulltime' ? 'fulltime' :
+    'unknown';
+
+  // Sınır (dk)
+  const weeklyHourLimit =
+    empType === 'parttime' ? 30 * 60 :   // 1800 dk
+    empType === 'intern'   ? 40 * 60 :   // 2400 dk
+    45 * 60;                              // 2700 dk (fulltime + unknown default)
+
+  const weekStart = new Date(weekStartIso);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+  const weekEndStr = weekEnd.toISOString().split('T')[0];
+
+  // Bu hafta günlerinden classifyDay topla
+  let actualWorkedMinutes = 0;
+  const cursor = new Date(weekStart);
+  while (cursor <= weekEnd) {
+    const dateStr = cursor.toISOString().split('T')[0];
+    try {
+      const day = await classifyDay(dateStr, userId);
+      if (day.status === 'worked') {
+        actualWorkedMinutes += day.workedMinutes;
+      }
+    } catch (e) {
+      console.warn(`[pdks-engine] classifyDay failed for ${userId} ${dateStr}:`, e);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  const overLimitMinutes = Math.max(0, actualWorkedMinutes - weeklyHourLimit);
+  const underLimitMinutes = Math.max(0, weeklyHourLimit - actualWorkedMinutes);
+  const violation = overLimitMinutes > 0;
+
+  return {
+    userId,
+    weekStart: weekStartStr,
+    weekEnd: weekEndStr,
+    employmentType: empType,
+    weeklyHourLimit,
+    actualWorkedMinutes,
+    overLimitMinutes,
+    underLimitMinutes,
+    violation,
+    legalReference: 'İş Kanunu m.63 (45h/hafta fulltime, 30h/hafta parttime üst sınırı)',
+  };
+}
+
+// Birden fazla personel için toplu hafta kontrolü (rapor için)
+export async function getWeeklyHourCheckBulk(
+  userIds: string[],
+  weekStartIso: string
+): Promise<WeeklyHourCheckResult[]> {
+  const results: WeeklyHourCheckResult[] = [];
+  for (const userId of userIds) {
+    try {
+      const r = await getWeeklyHourCheck(userId, weekStartIso);
+      results.push(r);
+    } catch (e: any) {
+      console.warn(`[pdks-engine] getWeeklyHourCheck failed for ${userId}:`, e.message);
+    }
+  }
+  return results;
+}
