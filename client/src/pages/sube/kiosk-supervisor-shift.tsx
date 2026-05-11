@@ -61,6 +61,18 @@ import { useToast } from "@/hooks/use-toast";
 
 const SUPERVISOR_ROLES = ["supervisor", "supervisor_buddy", "mudur"];
 
+// Aslan 11 May 2026 HOTFIX: Kiosk auth header helper
+// Bug: AI öneri "Yetkiniz yok" hatası — kiosk üzerinden web session yok
+// Fix: x-kiosk-token header'ı her API call'a ekle
+function kioskHeaders(extra: Record<string, string> = {}): HeadersInit {
+  const token = typeof window !== "undefined" ? localStorage.getItem("kiosk-token") || "" : "";
+  return {
+    "Content-Type": "application/json",
+    "x-kiosk-token": token,
+    ...extra,
+  };
+}
+
 // 3 hazır şablon — drag-drop için
 const SHIFT_TEMPLATES = [
   { id: "morning", label: "Sabah", time: "09:00-17:00", startTime: "09:00", endTime: "17:00", shiftType: "morning", color: "bg-amber-500" },
@@ -133,7 +145,7 @@ export default function KioskSupervisorShift() {
     queryFn: async () => {
       const res = await fetch(
         `/api/shifts?branchId=${kioskUser.branchId}&startDate=${startStr}&endDate=${endStr}`,
-        { credentials: "include" }
+        { credentials: "include", headers: kioskHeaders() }
       );
       if (!res.ok) return { shifts: [] };
       return res.json();
@@ -146,6 +158,7 @@ export default function KioskSupervisorShift() {
     queryFn: async () => {
       const res = await fetch(`/api/branches/${kioskUser.branchId}/kiosk/staff`, {
         credentials: "include",
+        headers: kioskHeaders(),
       });
       if (!res.ok) return [];
       return res.json();
@@ -158,7 +171,7 @@ export default function KioskSupervisorShift() {
     mutationFn: async (payload: any) => {
       const res = await fetch("/api/shifts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: kioskHeaders(),
         credentials: "include",
         body: JSON.stringify(payload),
       });
@@ -189,6 +202,7 @@ export default function KioskSupervisorShift() {
       const res = await fetch(`/api/shifts/${shiftId}`, {
         method: "DELETE",
         credentials: "include",
+        headers: kioskHeaders(),
       });
       if (!res.ok) throw new Error("Silinemedi");
       return res.json();
@@ -209,7 +223,7 @@ export default function KioskSupervisorShift() {
     mutationFn: async () => {
       const res = await fetch("/api/shifts/ai-generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: kioskHeaders(),
         credentials: "include",
         body: JSON.stringify({
           branchId: kioskUser.branchId,
@@ -240,7 +254,7 @@ export default function KioskSupervisorShift() {
       if (!aiPreview?.shifts) throw new Error("Öneri yok");
       const res = await fetch("/api/shifts/ai-apply", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: kioskHeaders(),
         credentials: "include",
         body: JSON.stringify({
           branchId: kioskUser.branchId,

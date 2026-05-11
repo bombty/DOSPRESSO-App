@@ -3641,6 +3641,17 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
 
     const enrichedSession = {
       ...session,
+      // Aslan 11 May 2026 HOTFIX-2: Raw SQL snake_case → camelCase normalize
+      // Bug: NaN:NaN:NaN gösterimi — checkInTime undefined olduğu için
+      id: session.id,
+      userId: session.user_id,
+      branchId: session.branch_id,
+      checkInTime: session.check_in_time,
+      checkOutTime: session.check_out_time,
+      status: session.status,
+      checkInLatitude: session.check_in_latitude,
+      checkInLongitude: session.check_in_longitude,
+      // breakMinutes/breakStartTime override (yukarıdaki hesap)
       breakStartTime,
       breakMinutes: currentBreakMinutes,
       dailyPlannedMinutes: DAILY_BREAK_LIMIT,

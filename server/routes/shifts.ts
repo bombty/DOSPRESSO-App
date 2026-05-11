@@ -1,7 +1,8 @@
 import { Router } from "express";
+import type { RequestHandler } from "express";
 import { db } from "../db";
 import { storage } from "../storage";
-import { isAuthenticated } from "../localAuth";
+import { isAuthenticated, validateKioskSession } from "../localAuth";
 import { isHQRole, isBranchRole, type UserRoleType } from "@shared/schema";
 import { parsePagination, wrapPaginatedResponse, handleApiError } from "./helpers";
 import {
@@ -22,6 +23,35 @@ import { critLog } from "../lib/crit-log";
 import { trDateString, trTimeStringShort } from "../lib/datetime";
 
 const router = Router();
+
+// Aslan 11 May 2026 HOTFIX: Kiosk-token destekli auth middleware
+// Bug: Sprint 15.1 supervisor-shift sayfası /api/shifts/* endpoint'lerine ulaşamıyor
+//      çünkü kiosk üzerinden web session yok.
+// Fix: x-kiosk-token header kabul et, valid ise req.user'ı kiosk user ile doldur.
+const kioskOrAuth: RequestHandler = async (req: any, res, next) => {
+  // Önce kiosk token dene
+  const token = req.headers['x-kiosk-token'] as string;
+  if (token) {
+    try {
+      const session = await validateKioskSession(token);
+      if (session) {
+        // Kiosk user'ı DB'den çek, req.user'a set et (downstream role check için)
+        const kioskUser = await storage.getUser(session.userId);
+        if (kioskUser) {
+          req.user = kioskUser;
+          req.authMethod = 'kiosk_token';
+          return next();
+        }
+      }
+    } catch {}
+  }
+  // Web session kabul et
+  if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+    req.authMethod = 'web_session';
+    return next();
+  }
+  return res.status(401).json({ message: 'Yetkilendirme gerekli' });
+};
 
 // Haversine formula - iki nokta arasındaki mesafeyi metre cinsinden hesapla
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -1274,7 +1304,7 @@ router.get('/api/shift-attendances/my-recent', isAuthenticated, async (req, res)
 // ===== SHIFTS CRUD ROUTES =====
 
 // GET /api/shifts - Get all shifts
-router.get('/api/shifts', isAuthenticated, async (req, res) => {
+router.get('/api/shifts', kioskOrAuth, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1321,7 +1351,7 @@ router.get('/api/shifts/my', isAuthenticated, async (req, res) => {
 });
 
 // POST /api/shifts - Create a new shift
-router.post('/api/shifts', isAuthenticated, requireManifestAccess('vardiya', 'create'), async (req, res) => {
+router.post('/api/shifts', kioskOrAuth, requireManifestAccess('vardiya', 'create'), async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -1718,7 +1748,7 @@ router.patch('/api/shift-checklists/:id', isAuthenticated, async (req, res) => {
 });
 
 // DELETE /api/shifts/:id - Delete a shift (AFTER reset-weekly to avoid :id matching reset-weekly)
-router.delete('/api/shifts/:id', isAuthenticated, requireManifestAccess('vardiya', 'delete'), async (req, res) => {
+router.delete('/api/shifts/:id', kioskOrAuth, requireManifestAccess('vardiya', 'delete'), async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -2669,7 +2699,7 @@ router.get('/api/shift-corrections/abuse-report', isAuthenticated, async (req, r
 // ===== AI SHIFT PLAN GENERATION =====
 
 // POST /api/shifts/ai-generate — generate weekly plan with break scheduling (preview only, no save)
-router.post('/api/shifts/ai-generate', isAuthenticated, async (req, res) => {
+router.post('/api/shifts/ai-generate', kioskOrAuth, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
@@ -2770,7 +2800,7 @@ router.post('/api/shifts/ai-generate', isAuthenticated, async (req, res) => {
 });
 
 // POST /api/shifts/ai-apply — save generated plan to DB (replaces week's shifts for branch)
-router.post('/api/shifts/ai-apply', isAuthenticated, async (req, res) => {
+router.post('/api/shifts/ai-apply', kioskOrAuth, async (req, res) => {
   try {
     const user = req.user!;
     const role = user.role as UserRoleType;
