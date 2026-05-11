@@ -104,8 +104,9 @@ function getShiftBgClass(startTime?: string | null): string {
 }
 
 interface DragData {
-  type: "staff" | "template";
+  type: "staff" | "template" | "shift";
   staff?: any;
+  shift?: any;
   template?: typeof SHIFT_TEMPLATES[0];
   pendingShift?: { startTime: string; endTime: string; shiftType: string };
 }
@@ -249,6 +250,34 @@ export default function KioskSupervisorShift() {
     },
   });
 
+  // Sprint 19.3 (Aslan 12 May): Vardiya tarihi/saati güncelle (drag-drop ile başka güne taşıma)
+  const updateShiftMutation = useMutation({
+    mutationFn: async ({ shiftId, updates }: { shiftId: number; updates: any }) => {
+      const res = await fetch(`/api/shifts/${shiftId}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: kioskHeaders(),
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Vardiya güncellenemedi");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      toast({ title: "✅ Vardiya taşındı", description: "Plan güncellendi." });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "❌ Taşıma hatası",
+        description: err.message || "Bir sorun oluştu",
+        variant: "destructive",
+      });
+    },
+  });
+
   // AI öneri (POST /api/shifts/ai-generate → preview, sonra /ai-apply)
   const aiGenerateMutation = useMutation({
     mutationFn: async () => {
@@ -340,20 +369,27 @@ export default function KioskSupervisorShift() {
     if (!overData?.date) return;
 
     if (dragData.type === "staff" && dragData.staff) {
-      // Personel sürüklendi → default şablon (sabah 09-17) ile vardiya oluştur
+      // Personel sürüklendi → şablon seçim modalı aç
       const staff = dragData.staff;
-      const date = overData.date;
-
-      // Confirm dialog (pendingDrop state)
       setPendingDrop({
         staffId: staff.id,
-        date,
+        date: overData.date,
         staffName: `${staff.firstName} ${staff.lastName}`,
       });
     }
 
+    // Sprint 19.3 (Aslan 12 May): Vardiya sürüklendi → başka güne taşı
+    if (dragData.type === "shift" && dragData.shift) {
+      const shift = dragData.shift;
+      const newDate = overData.date;
+      if (shift.shiftDate === newDate) return; // Aynı güne bırakıldı, no-op
+      updateShiftMutation.mutate({
+        shiftId: shift.id,
+        updates: { shiftDate: newDate },
+      });
+    }
+
     if (dragData.type === "template" && dragData.template && dragData.pendingShift) {
-      // Şablon sürüklendi → o günün boş hücresi - kullanıcı seçmeli (basit: ilk uygun personel)
       toast({
         title: "Şablon kullanımı",
         description: "Önce personeli güne sürükleyin, sonra düzenleyin.",
@@ -361,18 +397,84 @@ export default function KioskSupervisorShift() {
     }
   };
 
+  // Sprint 19.5 (Aslan 12 May): Şablon seçimi sonrası 'Tüm hafta aynı saat?' state
+  const [weekFillPending, setWeekFillPending] = useState<{
+    template: typeof SHIFT_TEMPLATES[0];
+    staffId: string;
+    staffName: string;
+    startDate: string;
+  } | null>(null);
+
   // Şablon ile vardiya oluştur (pendingDrop modal'dan tetiklenir)
   const confirmShiftCreate = (template: typeof SHIFT_TEMPLATES[0]) => {
     if (!pendingDrop) return;
+    const drop = pendingDrop;
     createMutation.mutate({
       branchId: kioskUser.branchId,
-      assignedToId: pendingDrop.staffId,
-      shiftDate: pendingDrop.date,
+      assignedToId: drop.staffId,
+      shiftDate: drop.date,
       startTime: template.startTime,
       endTime: template.endTime,
       shiftType: template.shiftType,
       status: "scheduled",
     });
+    // Sprint 19.5: İlk vardiya oluşturulduktan sonra 'Tüm hafta aynı?' sor
+    setWeekFillPending({
+      template,
+      staffId: drop.staffId,
+      staffName: drop.staffName,
+      startDate: drop.date,
+    });
+  };
+
+  // Sprint 19.5: Tüm haftayı doldur (6 gün, aynı şablon)
+  const fillRestOfWeek = async () => {
+    if (!weekFillPending) return;
+    const { template, staffId, startDate } = weekFillPending;
+    // Aynı haftadaki diğer günleri bul (startDate dahil değil, 5 gün daha)
+    const start = new Date(startDate);
+    const dayOfWeek = (start.getDay() + 6) % 7; // 0=Pzt
+    const weekStart = new Date(start);
+    weekStart.setDate(start.getDate() - dayOfWeek);
+    // 6 gün çalışma (Pzt-Cmt veya başlangıç gününe göre)
+    const promises: Promise<any>[] = [];
+    for (let d = 0; d < 7; d++) {
+      const dayDate = new Date(weekStart);
+      dayDate.setDate(weekStart.getDate() + d);
+      const dayStr = format(dayDate, "yyyy-MM-dd");
+      if (dayStr === startDate) continue; // Zaten oluşturuldu
+      // Önce o gün için bu personelin shift'i var mı kontrol
+      const existing = (shiftsQuery.data?.shifts || []).find(
+        (s: any) => s.assignedToId === staffId && s.shiftDate === dayStr
+      );
+      if (existing) continue;
+      // İlk 6 günü doldur, Pazar off
+      if (d === 6) continue;
+      promises.push(
+        fetch("/api/shifts", {
+          method: "POST",
+          credentials: "include",
+          headers: kioskHeaders(),
+          body: JSON.stringify({
+            branchId: kioskUser.branchId,
+            assignedToId: staffId,
+            shiftDate: dayStr,
+            startTime: template.startTime,
+            endTime: template.endTime,
+            shiftType: template.shiftType,
+            status: "scheduled",
+          }),
+        })
+      );
+    }
+    const results = await Promise.allSettled(promises);
+    const ok = results.filter((r) => r.status === "fulfilled").length;
+    queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+    toast({
+      title: "📅 Hafta dolduruldu",
+      description: `${ok} ek vardiya oluşturuldu (Pazar off)`,
+    });
+    setWeekFillPending(null);
   };
 
   // Shifts data flatten
@@ -604,6 +706,11 @@ export default function KioskSupervisorShift() {
               👤 {activeDragData.staff.firstName} {activeDragData.staff.lastName}
             </Badge>
           )}
+          {activeDragData?.type === "shift" && activeDragData.shift && (
+            <Badge className="px-4 py-2 text-base bg-purple-600 text-white shadow-lg cursor-grabbing">
+              📅 {activeDragData.shift.startTime?.slice(0, 5)}-{activeDragData.shift.endTime?.slice(0, 5)} → Taşı
+            </Badge>
+          )}
         </DragOverlay>
       </DndContext>
 
@@ -745,6 +852,35 @@ export default function KioskSupervisorShift() {
         </DialogContent>
       </Dialog>
 
+      {/* Sprint 19.5 (Aslan 12 May): Tüm hafta aynı saat? Confirm Dialog */}
+      <Dialog open={!!weekFillPending} onOpenChange={(o) => !o && setWeekFillPending(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>📅 Tüm Hafta Aynı Saat?</DialogTitle>
+            <DialogDescription>
+              <strong>{weekFillPending?.staffName}</strong> için{" "}
+              <strong>
+                {weekFillPending?.template.label} ({weekFillPending?.template.time})
+              </strong>{" "}
+              vardiyasını <strong>haftanın diğer günleri için de</strong> oluşturmak ister misin?
+              <br /><br />
+              <span className="text-xs text-muted-foreground">
+                Pazartesi'den Cumartesi'ye 6 gün aynı saat oluşturulur. Pazar OFF.
+                Mevcut vardiyalar atlanır (üzerine yazılmaz).
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWeekFillPending(null)}>
+              Hayır, Sadece Bu Gün
+            </Button>
+            <Button onClick={fillRestOfWeek} className="bg-blue-600 hover:bg-blue-700">
+              Evet, Tüm Haftayı Doldur
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Sprint 19.2: Tümünü Sil Confirm Dialog */}
       <Dialog open={deleteAllConfirmOpen} onOpenChange={setDeleteAllConfirmOpen}>
         <DialogContent>
@@ -867,33 +1003,65 @@ function DroppableDay({
         ) : (
           <div className="space-y-1">
             {shifts.map((shift: any) => {
-              // Sprint 19.1: Personel ismini staff lookup'tan al (backend join yok)
               const staff = shift.assignedToId ? staffLookup[shift.assignedToId] : null;
               const staffName = staff
                 ? `${staff.firstName || ""} ${staff.lastName || ""}`.trim() || staff.username || "?"
                 : shift.assignedToFirstName || shift.assignedToName || "—";
-              const bgClass = getShiftBgClass(shift.startTime);
               return (
-                <button
+                <DraggableShiftCard
                   key={shift.id}
-                  onClick={() => onShiftClick(shift)}
-                  className={`text-xs rounded px-2 py-1.5 w-full text-left transition-colors ${bgClass}`}
-                  data-testid={`shift-card-${shift.id}`}
-                >
-                  <div className="font-medium truncate flex items-center gap-1">
-                    <Clock className="h-3 w-3 flex-shrink-0" />
-                    {staffName}
-                  </div>
-                  <div className="text-muted-foreground text-[10px]">
-                    {shift.startTime?.slice(0, 5)}-{shift.endTime?.slice(0, 5)}
-                  </div>
-                </button>
+                  shift={shift}
+                  staffName={staffName}
+                  onShiftClick={onShiftClick}
+                />
               );
             })}
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 19.3 (Aslan 12 May): Draggable Vardiya Kartı
+// Mevcut vardiyayı başka güne sürükleyebilmek için
+// ═══════════════════════════════════════════════════════════════════
+function DraggableShiftCard({
+  shift,
+  staffName,
+  onShiftClick,
+}: {
+  shift: any;
+  staffName: string;
+  onShiftClick: (shift: any) => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `shift-${shift.id}`,
+    data: { type: "shift", shift } as DragData,
+  });
+  const bgClass = getShiftBgClass(shift.startTime);
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      onClick={() => onShiftClick(shift)}
+      className={`text-xs rounded px-2 py-1.5 w-full text-left transition-colors cursor-grab active:cursor-grabbing touch-none ${bgClass} ${
+        isDragging ? "opacity-50" : ""
+      }`}
+      data-testid={`shift-card-${shift.id}`}
+      role="button"
+    >
+      <div className="font-medium truncate flex items-center gap-1">
+        <Clock className="h-3 w-3 flex-shrink-0" />
+        {staffName}
+      </div>
+      <div className="text-muted-foreground text-[10px]">
+        {shift.startTime?.slice(0, 5)}-{shift.endTime?.slice(0, 5)}
+      </div>
+    </div>
   );
 }
 
