@@ -120,6 +120,9 @@ export default function KioskSupervisorShift() {
   const [activeDragData, setActiveDragData] = useState<DragData | null>(null);
   const [pendingDrop, setPendingDrop] = useState<{ staffId: string; date: string; staffName: string } | null>(null);
   const [shiftToDelete, setShiftToDelete] = useState<any | null>(null);
+  // Sprint 19.3 (Aslan 12 May): Özel saat aralığı input state
+  const [customStartTime, setCustomStartTime] = useState("");
+  const [customEndTime, setCustomEndTime] = useState("");
   // Sprint 19.2: Aktif hafta tab (0=Hafta 1, 1=Hafta 2) — weekAnalysis için
   const [currentWeekTab, setCurrentWeekTab] = useState<0 | 1>(0);
   const [aiPreview, setAiPreview] = useState<any | null>(null);
@@ -433,23 +436,53 @@ export default function KioskSupervisorShift() {
       });
     });
 
-    // Uyarılar
+    // Uyarılar — Sprint 19.6+19.7 (Aslan 12 May)
     const warnings: string[] = [];
+    const overtimeCandidates: Array<{ userId: string; name: string; hours: number; daysWorked: number; reason: string }> = [];
     (staffQuery.data || []).forEach((s: any) => {
       const isFT = s.employmentType !== "parttime" && s.employmentType !== "yari_zamanli";
       const target = isFT ? 45 : 30;
       const data = perStaff[s.id];
       if (!data) return;
       const name = `${s.firstName || ""} ${s.lastName || ""}`.trim() || s.username;
+      const daysWorkedCount = data.daysWorked.length;
+
+      // Eksik plan uyarısı (FT için 45h altı)
       if (isFT && data.hours > 0 && data.hours < target - 0.5) {
         warnings.push(`⚠️ ${name} (FT): ${data.hours.toFixed(1)}h planlandı (hedef 45h)`);
       }
-      if (data.hours > target + 7) {
-        warnings.push(`🔴 ${name}: ${data.hours.toFixed(1)}h planlandı — mesai onayı gerekli`);
+
+      // PT için saat uyarısı (Sprint 19.7)
+      if (!isFT && data.hours > target) {
+        warnings.push(`⚠️ ${name} (PT): ${data.hours.toFixed(1)}h planlandı (PT hedef ${target}h üstü)`);
+      }
+
+      // Sprint 19.6: Mesai onayı gerektiren durumlar
+      // 1) 7 gün çalışma (haftalık izin yok)
+      if (daysWorkedCount >= 7) {
+        warnings.push(`🔴 ${name}: 7 gün çalışma planlandı — MESAİ ONAY GEREKLİ`);
+        overtimeCandidates.push({
+          userId: s.id,
+          name,
+          hours: data.hours,
+          daysWorked: daysWorkedCount,
+          reason: `7 gün arka arkaya çalışma (haftalık izin yok)`,
+        });
+      }
+      // 2) FT 45h üstü veya PT 30h üstü (7+ saat aşım)
+      else if (data.hours > target + 7) {
+        warnings.push(`🔴 ${name}: ${data.hours.toFixed(1)}h planlandı — MESAİ ONAY GEREKLİ`);
+        overtimeCandidates.push({
+          userId: s.id,
+          name,
+          hours: data.hours,
+          daysWorked: daysWorkedCount,
+          reason: `${data.hours.toFixed(1)}h haftalık planlama (${isFT ? 'FT' : 'PT'} hedef ${target}h)`,
+        });
       }
     });
 
-    return { perStaff, warnings };
+    return { perStaff, warnings, overtimeCandidates };
   }, [shiftsByDate, staffQuery.data, week1Days, week2Days, currentWeekTab]);
 
   // Sprint 19.2: Tüm haftayı silme mutation (test için, yeniden tasarlamak)
@@ -480,6 +513,43 @@ export default function KioskSupervisorShift() {
     },
   });
   const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState(false);
+  // Sprint 19.6 (Aslan 12 May): Mesai onay talebi state
+  const [overtimeReasonOpen, setOvertimeReasonOpen] = useState<null | {
+    userId: string;
+    name: string;
+    hours: number;
+    daysWorked: number;
+    reason: string;
+  }>(null);
+  const [overtimeReasonText, setOvertimeReasonText] = useState("");
+
+  // Sprint 19.6: Mesai onay talebi mutation
+  const overtimeRequestMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await fetch(`/api/branches/${kioskUser.branchId}/kiosk/overtime-request`, {
+        method: "POST",
+        credentials: "include",
+        headers: kioskHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Talep oluşturulamadı");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "📋 Mesai Talebi Oluşturuldu",
+        description: "Müdür/HR onayı bekliyor. Şu an plana eklenmedi, onay sonrası aktifleşir.",
+      });
+      setOvertimeReasonOpen(null);
+      setOvertimeReasonText("");
+    },
+    onError: (err: any) => {
+      toast({ title: "❌ Hata", description: err.message, variant: "destructive" });
+    },
+  });
 
   return (
     <div className="min-h-screen bg-background p-4 lg:p-6">
@@ -608,7 +678,13 @@ export default function KioskSupervisorShift() {
       </DndContext>
 
       {/* Şablon Seçim Modal — Personel günü bırakınca */}
-      <Dialog open={!!pendingDrop} onOpenChange={(open) => !open && setPendingDrop(null)}>
+      <Dialog open={!!pendingDrop} onOpenChange={(open) => {
+        if (!open) {
+          setPendingDrop(null);
+          setCustomStartTime("");
+          setCustomEndTime("");
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Vardiya Şablonu Seç</DialogTitle>
@@ -633,6 +709,61 @@ export default function KioskSupervisorShift() {
                 </div>
               </Button>
             ))}
+
+            {/* Sprint 19.3 (Aslan 12 May): Özel saat aralığı — TimePicker */}
+            <div className="mt-3 pt-3 border-t">
+              <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                ⏰ Özel Saat Aralığı
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Başlangıç</label>
+                  <input
+                    type="time"
+                    value={customStartTime}
+                    onChange={(e) => setCustomStartTime(e.target.value)}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    data-testid="custom-start-time"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Bitiş</label>
+                  <input
+                    type="time"
+                    value={customEndTime}
+                    onChange={(e) => setCustomEndTime(e.target.value)}
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    data-testid="custom-end-time"
+                  />
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  if (!pendingDrop || !customStartTime || !customEndTime) return;
+                  // Type'ı saatten çıkar (renk için)
+                  const startH = parseInt(customStartTime.split(":")[0]);
+                  const shiftType = startH < 10 ? "morning" : startH < 14 ? "morning" : "evening";
+                  confirmShiftCreate({
+                    id: "custom",
+                    label: "Özel",
+                    time: `${customStartTime}-${customEndTime}`,
+                    startTime: customStartTime,
+                    endTime: customEndTime,
+                    shiftType,
+                    color: "bg-purple-500",
+                  });
+                }}
+                disabled={createMutation.isPending || !customStartTime || !customEndTime}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                size="sm"
+                data-testid="btn-create-custom-shift"
+              >
+                ✨ Özel Saat ile Oluştur
+              </Button>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Şube açılış-kapanış saatleri içinde olmalı.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPendingDrop(null)}>
