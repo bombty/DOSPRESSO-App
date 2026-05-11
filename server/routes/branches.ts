@@ -3722,6 +3722,106 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 19.4 (Aslan 12 May 2026): Vardiya kartından görev/mesaj bırakma
+// "isme tıklayınca o kişiye görev checklist veya mesaj bırakma imkanı olmalı"
+// Kiosk kullanıcısı (supervisor/supervisor_buddy/mudur) başka bir personele
+// not/görev oluşturabilir. Hedef kişi kioska girdiğinde 'Görevlerim' altında görür.
+// ═══════════════════════════════════════════════════════════════════
+router.post('/api/branches/:branchId/kiosk/shift-task', isKioskOrAuthenticated, async (req: any, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const issuerId = req.kioskUserId;
+    const { assignedToId, description, priority, dueDate, shiftId } = req.body;
+
+    if (!assignedToId || !description || description.trim().length === 0) {
+      return res.status(400).json({ message: "Atanan kişi ve açıklama gerekli" });
+    }
+
+    // Yetki kontrolü: issuer'ın role'u supervisor / supervisor_buddy / mudur olmalı
+    const issuer = await storage.getUser(issuerId);
+    if (!issuer) return res.status(401).json({ message: "Yetkilendirme hatası" });
+    const allowedRoles = ['supervisor', 'supervisor_buddy', 'mudur', 'admin', 'coach', 'trainer', 'ceo'];
+    if (!allowedRoles.includes(issuer.role || '')) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    // Assignee aynı şubede mi (branch isolation)
+    const assignee = await storage.getUser(assignedToId);
+    if (!assignee) return res.status(404).json({ message: "Atanan kişi bulunamadı" });
+    if (assignee.branchId !== branchId && !['admin', 'ceo', 'coach', 'trainer'].includes(issuer.role || '')) {
+      return res.status(403).json({ message: "Sadece kendi şubenizdeki personele görev atayabilirsiniz" });
+    }
+
+    const task = await storage.createTask({
+      branchId,
+      assignedToId,
+      assignedById: issuerId,
+      description: description.trim(),
+      priority: priority || 'orta',
+      status: 'beklemede',
+      dueDate: dueDate ? new Date(dueDate) : null,
+      sourceType: 'shift_bound',
+    } as any);
+
+    res.json({ success: true, task });
+  } catch (error: unknown) {
+    console.error("Error creating shift task:", error);
+    res.status(500).json({ message: "Görev oluşturulamadı" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 19.6 (Aslan 12 May 2026): Vardiya planlama mesai onay talebi
+// "7 gün veya 45h+ planlama → mesai talebe taabii → müdür/HQ onayı"
+// ═══════════════════════════════════════════════════════════════════
+router.post('/api/branches/:branchId/kiosk/overtime-request', isKioskOrAuthenticated, async (req: any, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const issuerId = req.kioskUserId;
+    const { assignedToId, overtimeDate, startTime, endTime, requestedMinutes, reason } = req.body;
+
+    if (!assignedToId || !overtimeDate || !reason || reason.trim().length < 10) {
+      return res.status(400).json({ message: "Personel, tarih ve sebep (min 10 karakter) zorunlu" });
+    }
+
+    const issuer = await storage.getUser(issuerId);
+    if (!issuer) return res.status(401).json({ message: "Yetkilendirme hatası" });
+
+    // Sadece supervisor / supervisor_buddy / mudur mesai talebi oluşturabilir
+    const allowedRoles = ['supervisor', 'supervisor_buddy', 'mudur', 'admin', 'coach', 'trainer', 'ceo'];
+    if (!allowedRoles.includes(issuer.role || '')) {
+      return res.status(403).json({ message: "Bu işlem için yetkiniz yok" });
+    }
+
+    // Branch izolasyonu
+    const assignee = await storage.getUser(assignedToId);
+    if (!assignee) return res.status(404).json({ message: "Personel bulunamadı" });
+    if (assignee.branchId !== branchId && !['admin', 'ceo', 'coach', 'trainer'].includes(issuer.role || '')) {
+      return res.status(403).json({ message: "Şube isolasyonu" });
+    }
+
+    // overtime_requests tablosuna insert
+    const { overtimeRequests } = await import('@shared/schema');
+    const [request] = await db.insert(overtimeRequests).values({
+      userId: assignedToId,
+      branchId,
+      overtimeDate,
+      startTime: startTime || '00:00',
+      endTime: endTime || '00:00',
+      requestedMinutes: requestedMinutes || 60,
+      reason: reason.trim(),
+      status: 'pending',
+      requestedBy: issuerId,
+    } as any).returning();
+
+    res.json({ success: true, request, message: "Mesai talebi oluşturuldu, müdür/HR onayını bekliyor." });
+  } catch (error: unknown) {
+    console.error("Error creating overtime request:", error);
+    res.status(500).json({ message: "Mesai talebi oluşturulamadı" });
+  }
+});
+
 router.post('/api/branches/:branchId/kiosk/set-pin', isAuthenticated, async (req, res) => {
   try {
     const user = req.user as any;

@@ -173,7 +173,7 @@ export const M03_VARDIYA: ModuleManifest = {
     trainer:            { view: true, create: false, edit: false, delete: false, approve: false, scope: 'all_branches' },
     mudur:            { view: true, create: true, edit: true, delete: true, approve: true, scope: 'own_branch' },
     supervisor:       { view: true, create: true, edit: true, delete: true, approve: false, scope: 'own_branch' },
-    supervisor_buddy: { view: true, create: true, edit: true, delete: false, approve: false, scope: 'own_branch' },
+    supervisor_buddy: { view: true, create: true, edit: true, delete: true, approve: false, scope: 'own_branch' },
     barista:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
     bar_buddy:        { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
     stajyer:          { view: true, create: false, edit: false, delete: false, approve: false, scope: 'own_data' },
