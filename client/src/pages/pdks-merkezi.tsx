@@ -106,10 +106,21 @@ export default function PdksMerkeziPage() {
             Personel devam-takip yönetimi — tüm araçlar tek sayfada
           </p>
         </div>
-        <Button onClick={handleExcelExport} className="gap-2">
-          <Download className="h-4 w-4" />
-          Bu Ayı Excel İndir
-        </Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => setLocation("/bordro-merkezi")} className="gap-2">
+            💰 Bordro Merkezi
+          </Button>
+          <Button variant="outline" onClick={() => setLocation("/personel-puantajim")} className="gap-2">
+            📊 Puantaj
+          </Button>
+          <Button variant="outline" onClick={() => setLocation("/sube-bordro-ozet")} className="gap-2">
+            🏢 Şube Bordro
+          </Button>
+          <Button onClick={handleExcelExport} className="gap-2">
+            <Download className="h-4 w-4" />
+            Excel İndir
+          </Button>
+        </div>
       </div>
 
       {/* Haftalık ihlal banner (Sprint 15 S15.3) */}
