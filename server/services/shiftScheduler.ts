@@ -174,7 +174,10 @@ export class ShiftScheduler {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    const maxSimultaneous = branchSize === 'large' ? 2 : 1;
+    // Sprint 19.2 HOTFIX-5 (Aslan 12 May): Medium branch (7-12 personel) için
+    // aynı anda max 2 kişi mola yapabilmeli. 'large' için 3.
+    // Önce: medium=1 (aşırı kısıtlayıcı, 10 personel ile %75 violation)
+    const maxSimultaneous = branchSize === 'large' ? 3 : branchSize === 'medium' ? 2 : 1;
     const minGapMinutes = 10;
 
     const activeShifts = shifts.filter(s => !s.isOff && s.breakStart);
@@ -213,10 +216,20 @@ export class ShiftScheduler {
     }
 
     const minOnFloor = branchSize === 'small' ? 1 : 2;
-    const earliestShift = Math.min(...activeShifts.map(s => timeToMinutes(s.startTime)));
-    const latestShift = Math.max(...activeShifts.map(s => timeToMinutes(s.endTime)));
 
-    for (let slot = earliestShift; slot <= latestShift; slot += 30) {
+    // Sprint 19.2 HOTFIX-5: Slot boundary fix
+    // Açılış öncesi (sadece 1 opening personeli) ve kapanış sonrası (sadece 1 closing) slot'larında
+    // 'min 2 kişi' kuralı false positive verir. Bu slot'lar opening/closing window'ları —
+    // tek personel doğru pattern. Sadece 'core hours' içinde kontrol et.
+    const startTimes = activeShifts.map(s => timeToMinutes(s.startTime)).sort((a, b) => a - b);
+    const endTimes = activeShifts.map(s => timeToMinutes(s.endTime)).sort((a, b) => a - b);
+
+    // Core hours: 2. erkenci shift'in başlangıcı → 2. son shift'in bitişi
+    // (yani açılış/kapanış için tek personel pattern'i dışlanır)
+    const coreStart = startTimes[Math.min(1, startTimes.length - 1)] || startTimes[0];
+    const coreEnd = endTimes[Math.max(0, endTimes.length - 2)] || endTimes[endTimes.length - 1];
+
+    for (let slot = coreStart; slot < coreEnd; slot += 30) {
       const working = activeShifts.filter(s => {
         const sStart = timeToMinutes(s.startTime);
         const sEnd = timeToMinutes(s.endTime);
