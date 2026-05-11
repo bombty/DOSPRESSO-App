@@ -1673,29 +1673,6 @@ export default function BranchKiosk() {
                 >
                   {startShiftMutation.isPending ? 'Başlatılıyor...' : 'Vardiya Başlat'}
                 </button>
-
-                {/* Sprint 15.1 (11 May 2026): Vardiya Planla butonu — sadece supervisor/mudur */}
-                {selectedUser && ['supervisor', 'supervisor_buddy', 'mudur'].includes(selectedUser.role || '') && (
-                  <button
-                    onClick={() => {
-                      // Kiosk-user'ı localStorage'a yaz (supervisor-shift sayfası okuyacak)
-                      if (typeof window !== 'undefined') {
-                        localStorage.setItem('kiosk-user', JSON.stringify({
-                          id: selectedUser.id,
-                          firstName: selectedUser.firstName,
-                          lastName: selectedUser.lastName,
-                          role: selectedUser.role,
-                          branchId: branchId,
-                        }));
-                      }
-                      setLocation('/sube/kiosk-supervisor-shift');
-                    }}
-                    data-testid="button-vardiya-planla"
-                    style={{ background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 10, padding: '15px', fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%', marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                  >
-                    📅 Vardiya Planla
-                  </button>
-                )}
               </div>
             ) : isOnBreak ? (
               <div>
@@ -1897,19 +1874,46 @@ export default function BranchKiosk() {
             )}
           </div>
 
-          {/* Sorun Bildir + Mesai */}
-          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <button onClick={() => setShowKioskFaultReport(true)} data-testid="button-kiosk-report-fault"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 20 }}>⚠️</span>
-              Sorun Bildir
+          {/* Sorun Bildir + Mesai + (supervisor için Vardiya Planla) */}
+          {/* Sprint 17 (11 May 2026): Supervisor/Buddy/Mudur için 3 kolonlu, diğerleri için 2 kolonlu */}
+          {(() => {
+            const isSupervisor = selectedUser && ['supervisor', 'supervisor_buddy', 'mudur'].includes(selectedUser.role || '');
+            return (
+              <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, display: 'grid', gridTemplateColumns: isSupervisor ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
+                <button onClick={() => setShowKioskFaultReport(true)} data-testid="button-kiosk-report-fault"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 20 }}>⚠️</span>
+                  Sorun Bildir
+                </button>
+                <button onClick={() => setShowOvertimeRequest(true)} data-testid="button-overtime-request"
+                  style={{ background: 'rgba(245,158,11,0.06)', border: '0.5px solid rgba(245,158,11,0.35)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: '#d97706', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 20 }}>⏱</span>
+                  Mesai Talep Et
             </button>
-            <button onClick={() => setShowOvertimeRequest(true)} data-testid="button-overtime-request"
-              style={{ background: 'rgba(245,158,11,0.06)', border: '0.5px solid rgba(245,158,11,0.35)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: '#d97706', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 20 }}>⏱</span>
-              Mesai Talep Et
-            </button>
+            {/* Sprint 17 (11 May 2026): Supervisor için "Vardiya Planla" butonu — her durumda görünür */}
+            {isSupervisor && (
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined' && selectedUser) {
+                    localStorage.setItem('kiosk-user', JSON.stringify({
+                      id: selectedUser.id,
+                      firstName: selectedUser.firstName,
+                      lastName: selectedUser.lastName,
+                      role: selectedUser.role,
+                      branchId: branchId,
+                    }));
+                  }
+                  setLocation('/sube/kiosk-supervisor-shift');
+                }}
+                data-testid="button-vardiya-planla"
+                style={{ background: 'rgba(29,78,216,0.12)', border: '0.5px solid rgba(29,78,216,0.5)', borderRadius: 10, padding: '16px 8px', cursor: 'pointer', color: '#60a5fa', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 20 }}>📅</span>
+                Vardiya Planla
+              </button>
+            )}
           </div>
+            );
+          })()}
 
           {/* Şube Görev Havuzu — isteyen üstlenir, skor kazanır */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto', gridColumn: 'span 2' }}>
