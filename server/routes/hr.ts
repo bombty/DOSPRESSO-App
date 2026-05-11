@@ -725,10 +725,11 @@ router.use((req: any, res, next) => {
 
       // Audit log: Record password reset event
       await storage.createAuditLog({
-        userId: user.id, // Who performed the action
+        userId: user.id,
+        eventType: 'password_reset',
         action: 'password_reset',
         resource: 'users',
-        resourceId: employeeId, // Target user
+        resourceId: employeeId,
         details: {
           performedByRole: role,
           targetUserId: employeeId,
