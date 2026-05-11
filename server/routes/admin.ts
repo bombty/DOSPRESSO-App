@@ -4349,4 +4349,36 @@ router.post("/api/admin/reset-test-data", isAuthenticated, isAdminOrCeo, async (
   }
 });
 
+// ─── Şifre Sıfırlama Yetkilendirme ────────────────────────────────────────────
+router.get('/api/admin/password-reset-roles', isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const { passwordResetRoles } = await import('../config/passwordResetRoles');
+    res.json({ roles: Array.from(passwordResetRoles) });
+  } catch (e) {
+    res.status(500).json({ message: "Roller alınamadı" });
+  }
+});
+
+router.put('/api/admin/password-reset-roles', isAuthenticated, isAdminOrCeo, async (req, res) => {
+  try {
+    const schema = z.object({ roles: z.array(z.string()).min(1, "En az 1 rol seçilmeli") });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+
+    const config = await import('../config/passwordResetRoles');
+    config.passwordResetRoles = new Set(parsed.data.roles);
+
+    await auditLog(req, {
+      action: 'password_reset_roles_updated',
+      resource: 'system',
+      resourceId: 'config',
+      details: { newRoles: parsed.data.roles },
+    });
+
+    res.json({ roles: Array.from(config.passwordResetRoles) });
+  } catch (e) {
+    res.status(500).json({ message: "Güncelleme başarısız" });
+  }
+});
+
 export default router;

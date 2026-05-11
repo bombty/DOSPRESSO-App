@@ -693,8 +693,9 @@ router.use((req: any, res, next) => {
       const { role } = user;
       const employeeId = req.params.id;
 
-      // Permission check: admin, coach, muhasebe_ik şifre sıfırlayabilir
-      if (role !== 'admin' && role !== 'coach' && role !== 'muhasebe_ik') {
+      // Permission check: admin panelinden yönetilebilir dinamik rol listesi
+      const { passwordResetRoles } = await import('../config/passwordResetRoles');
+      if (!passwordResetRoles.has(role)) {
         return res.status(403).json({ message: "Şifre sıfırlama yetkiniz yok" });
       }
 

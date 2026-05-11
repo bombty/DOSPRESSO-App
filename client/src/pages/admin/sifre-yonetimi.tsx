@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Redirect } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,16 +14,26 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { KeyRound, AlertTriangle, Users, Shield, Loader2 } from "lucide-react";
+import { KeyRound, AlertTriangle, Users, Shield, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { ROLE_LABELS } from "@/lib/turkish-labels";
 
 /**
  * Admin Şifre Yönetimi
- * Şube veya kullanıcı bazlı toplu/tekil şifre sıfırlama
+ * - Şube bazlı toplu şifre sıfırlama
+ * - Şifre sıfırlama yetkisi olan rolleri yönetme
  *
  * Yetki: admin, ceo, cgo, adminhq
  */
 
 const ALLOWED_ROLES = ["admin", "ceo", "cgo", "adminhq"];
+
+// Seçilebilir tüm roller (kiosk/ghost roller hariç)
+const SELECTABLE_ROLES = [
+  "admin", "ceo", "cgo", "coach", "trainer",
+  "muhasebe_ik", "muhasebe", "satinalma", "marketing",
+  "teknik", "destek", "fabrika_mudur", "mudur", "supervisor",
+  "kalite_kontrol", "gida_muhendisi",
+];
 
 interface BranchInfo {
   id: number;
@@ -38,8 +48,9 @@ export default function AdminSifreYonetimiPage() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [confirmText, setConfirmText] = useState<string>("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [localRoles, setLocalRoles] = useState<string[] | null>(null);
 
-  // Şube listesi (kullanıcı sayısı dahil)
+  // Şube listesi
   const { data: branchData, isLoading: branchesLoading } = useQuery<{ branches: BranchInfo[] }>({
     queryKey: ["/api/admin/branches-for-password-reset"],
     queryFn: async () => {
@@ -50,7 +61,20 @@ export default function AdminSifreYonetimiPage() {
     enabled: !!user && ALLOWED_ROLES.includes(user.role),
   });
 
-  // Sıfırlama mutation
+  // Şifre sıfırlama rolleri
+  const { data: rolesData, isLoading: rolesLoading } = useQuery<{ roles: string[] }>({
+    queryKey: ["/api/admin/password-reset-roles"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/password-reset-roles", { credentials: "include" });
+      if (!res.ok) throw new Error("Roller alınamadı");
+      return res.json();
+    },
+    enabled: !!user && ALLOWED_ROLES.includes(user.role),
+  });
+
+  const activeRoles: string[] = localRoles ?? rolesData?.roles ?? [];
+
+  // Toplu sıfırlama mutation
   const resetMutation = useMutation({
     mutationFn: async ({ branchId, confirm }: { branchId: number; confirm: string }) => {
       const res = await fetch("/api/admin/reset-branch-passwords", {
@@ -66,23 +90,40 @@ export default function AdminSifreYonetimiPage() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast({
-        title: "✅ Şifreler sıfırlandı",
-        description: data.message,
-      });
+      toast({ title: "Şifreler sıfırlandı", description: data.message });
       setShowConfirmDialog(false);
       setSelectedBranchId("");
       setConfirmText("");
       queryClient.invalidateQueries({ queryKey: ["/api/admin/branches-for-password-reset"] });
     },
     onError: (error: Error) => {
-      toast({
-        title: "❌ Hata",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
     },
   });
+
+  // Rol güncelleme mutation
+  const updateRolesMutation = useMutation({
+    mutationFn: async (roles: string[]) => {
+      return apiRequest("PUT", "/api/admin/password-reset-roles", { roles });
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Yetkilendirme güncellendi", description: `${data.roles?.length} rol aktif` });
+      setLocalRoles(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/password-reset-roles"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Hata", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const toggleRole = (role: string) => {
+    const current = localRoles ?? rolesData?.roles ?? [];
+    setLocalRoles(
+      current.includes(role) ? current.filter(r => r !== role) : [...current, role]
+    );
+  };
+
+  const hasUnsavedChanges = localRoles !== null;
 
   if (authLoading) return <div className="p-6">Yükleniyor...</div>;
   if (!user) return <Redirect to="/login" />;
@@ -109,7 +150,7 @@ export default function AdminSifreYonetimiPage() {
           Şifre Yönetimi
         </h1>
         <p className="text-muted-foreground mt-1">
-          Şube bazlı veya tekil kullanıcı şifre sıfırlama
+          Şube bazlı şifre sıfırlama ve rol yetkilendirme
         </p>
       </div>
 
@@ -123,6 +164,84 @@ export default function AdminSifreYonetimiPage() {
           (admin kullanıcısı hariç). Tüm işlemler kayıt altına alınır.
         </AlertDescription>
       </Alert>
+
+      {/* ─── Şifre Sıfırlama Yetkilendirme ─── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Şifre Sıfırlama Yetkisi
+          </CardTitle>
+          <CardDescription>
+            Aşağıdaki roller personel profilinden şifre sıfırlayabilir.
+            Değişiklik sadece server yeniden başlatılana kadar geçerlidir.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {rolesLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Yükleniyor...
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {SELECTABLE_ROLES.map(role => {
+                const isActive = activeRoles.includes(role);
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    data-testid={`toggle-role-${role}`}
+                    onClick={() => toggleRole(role)}
+                    className={[
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-muted-foreground border-border hover-elevate",
+                    ].join(" ")}
+                  >
+                    {isActive
+                      ? <CheckCircle2 className="h-3.5 w-3.5" />
+                      : <XCircle className="h-3.5 w-3.5" />}
+                    {ROLE_LABELS[role] ?? role}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {hasUnsavedChanges && (
+            <Alert variant="default" className="border-yellow-500">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="flex items-center justify-between gap-4">
+                <span>Kaydedilmemiş değişiklikler var.</span>
+                <div className="flex gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setLocalRoles(null)}
+                  >
+                    İptal
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={updateRolesMutation.isPending || activeRoles.length === 0}
+                    onClick={() => updateRolesMutation.mutate(activeRoles)}
+                    data-testid="button-save-roles"
+                  >
+                    {updateRolesMutation.isPending
+                      ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Kaydediliyor...</>
+                      : "Kaydet"}
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Aktif: {activeRoles.map(r => ROLE_LABELS[r] ?? r).join(", ")}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Şube Bazlı Sıfırlama */}
       <Card>
