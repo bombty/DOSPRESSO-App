@@ -238,7 +238,14 @@ export default function KioskSupervisorShift() {
     },
     onSuccess: (data) => {
       setAiPreview(data);
-      toast({ title: "💡 AI önerisi hazır", description: `${data.shifts?.length || 0} vardiya önerildi` });
+      // Aslan 11 May 2026 HOTFIX-3: Backend 'plan' döndürüyor, 'shifts' değil
+      const planCount = data?.plan?.length || 0;
+      toast({ 
+        title: planCount > 0 ? "💡 AI önerisi hazır" : "ℹ️ AI: vardiya üretilemedi", 
+        description: planCount > 0 
+          ? `${planCount} vardiya önerildi (${data.staffCount || 0} personel)` 
+          : `${data.staffCount || 0} personel için plan üretilemedi (izinli/şube saati problemi?)` 
+      });
     },
     onError: (err: any) => {
       toast({
@@ -251,26 +258,39 @@ export default function KioskSupervisorShift() {
 
   const aiApplyMutation = useMutation({
     mutationFn: async () => {
-      if (!aiPreview?.shifts) throw new Error("Öneri yok");
+      // Aslan 11 May 2026 HOTFIX-3: Backend 'plan' field bekliyor + weekStartDate gerekli
+      if (!aiPreview?.plan?.length) throw new Error("Öneri yok");
       const res = await fetch("/api/shifts/ai-apply", {
         method: "POST",
         headers: kioskHeaders(),
         credentials: "include",
         body: JSON.stringify({
           branchId: kioskUser.branchId,
-          shifts: aiPreview.shifts,
+          plan: aiPreview.plan,
+          weekStartDate: startStr,
+          confirmOverwrite: true,  // Kiosktan uygulanıyor, mevcut planı override et
         }),
       });
-      if (!res.ok) throw new Error("Uygulanamadı");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Uygulanamadı");
+      }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
-      toast({ title: "✅ AI önerisi uygulandı", description: "Tüm vardiyalar kaydedildi." });
+      toast({ 
+        title: "✅ AI önerisi uygulandı", 
+        description: `${data?.created || 0} vardiya kaydedildi.` 
+      });
       setAiPreview(null);
     },
-    onError: () => {
-      toast({ title: "Uygulama hatası", variant: "destructive" });
+    onError: (err: any) => {
+      toast({ 
+        title: "Uygulama hatası", 
+        description: err.message || "Bilinmeyen hata",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -520,26 +540,35 @@ export default function KioskSupervisorShift() {
               AI Vardiya Önerisi
             </DialogTitle>
             <DialogDescription>
-              {aiPreview?.shifts?.length || 0} vardiya önerildi.{" "}
-              {aiPreview?.summary && (
-                <span className="text-xs">{JSON.stringify(aiPreview.summary)}</span>
+              {/* Aslan 11 May 2026 HOTFIX-3: backend 'plan' field */}
+              {aiPreview?.plan?.length || 0} vardiya önerildi
+              {aiPreview?.staffCount > 0 && ` · ${aiPreview.staffCount} personel`}
+              {aiPreview?.weeklyHours && (
+                <span className="block text-xs mt-1 opacity-75">
+                  Haftalık saat: {Object.values(aiPreview.weeklyHours).reduce((a: any, b: any) => a + b, 0)} saat toplam
+                </span>
               )}
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-64 overflow-y-auto space-y-1 py-2 text-sm">
-            {aiPreview?.shifts?.slice(0, 20).map((s: any, i: number) => (
+            {aiPreview?.plan?.filter((s: any) => !s.isOff).slice(0, 20).map((s: any, i: number) => (
               <div key={i} className="flex items-center justify-between text-xs border-b py-1">
                 <span>
-                  {s.shiftDate} · {s.startTime?.slice(0, 5)}-{s.endTime?.slice(0, 5)}
+                  {s.date} · {s.userName || s.userId?.slice(0, 8)} · {s.startTime?.slice(0, 5)}-{s.endTime?.slice(0, 5)}
                 </span>
                 <Badge variant="outline" className="text-xs">
                   {s.shiftType}
                 </Badge>
               </div>
             ))}
-            {aiPreview?.shifts?.length > 20 && (
+            {aiPreview?.plan?.filter((s: any) => !s.isOff).length > 20 && (
               <p className="text-xs text-muted-foreground text-center py-2">
-                + {aiPreview.shifts.length - 20} tane daha...
+                + {aiPreview.plan.filter((s: any) => !s.isOff).length - 20} tane daha...
+              </p>
+            )}
+            {aiPreview?.plan?.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                Plan üretilemedi. Olası sebepler: tüm personel izinli, şube saati yapılandırılmamış (08:00-17:00 default), veya algoritma bu hafta için uygun atama bulamadı.
               </p>
             )}
           </div>

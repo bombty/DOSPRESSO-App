@@ -2805,7 +2805,8 @@ router.post('/api/shifts/ai-apply', kioskOrAuth, async (req, res) => {
     const user = req.user!;
     const role = user.role as UserRoleType;
 
-    if (!['admin', 'supervisor', 'mudur', 'coach'].includes(role) && !isHQRole(role)) {
+    // Aslan 11 May 2026 HOTFIX-3: supervisor_buddy + mudur eklendi
+    if (!['admin', 'supervisor', 'supervisor_buddy', 'mudur', 'coach', 'ceo', 'cgo'].includes(role) && !isHQRole(role)) {
       return res.status(403).json({ message: "Vardiya planı kaydetme yetkiniz yok" });
     }
 
