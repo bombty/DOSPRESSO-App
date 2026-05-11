@@ -721,7 +721,7 @@ router.use((req: any, res, next) => {
       // Hash the new password
       const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 10);
 
-      await storage.updateUser(employeeId, { hashedPassword, mustChangePassword: true });
+      await storage.updateUserPassword(employeeId, hashedPassword);
 
       // Audit log: Record password reset event
       await storage.createAuditLog({
