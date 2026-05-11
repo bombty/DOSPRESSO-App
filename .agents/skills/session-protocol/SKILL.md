@@ -5,6 +5,30 @@ description: DOSPRESSO oturum sonu zorunlu protokolü (Çalışma Sistemi v2.1).
 
 # DOSPRESSO Çalışma Sistemi v2.1 — Oturum Sonu Protokolü
 
+## 🆕 Son Değişiklik Özeti (11 May 2026 — Pilot Final Hazırlık)
+
+> **v2.1 minor güncellenme — 11 May 2026.** Önceki 6 May notu altında durmaktadır.
+
+**11 May 2026 oturumu (Aslan + Claude):**
+- PR #72 (hotfix mola kümülatif + PIN reset mail) merge edildi
+- PR #73 (Sprint 14a — mola sayaç fabrika + HQ kiosk) merge edildi
+- 2 migration çalıştırıldı: long-shift-auto-close (temizlik 0/0/0) + hq-factory-break-tracking (7 backfilled)
+- 4 yeni karar: D-55 (long-shift ertele), D-56 (Sprint 14a), D-57 (Sema dashboard B planı), D-58 (Replit publish ↔ DB ayrı)
+- D-54 ihlali kapatma: docs + skill update PR'ı bu oturumda yazıldı
+
+**Pilot durumu:** 13 May 2026 Çarşamba 15:00 — ~35 saat kala %99.999 hazır.
+
+**Pilot için kalan iş (Aslan business):**
+- Mahmut bordro 5 BRÜT (P-1, 30 dk)
+- HQ PIN: eren + hqkiosk (P-NEW, 5 dk)
+- Sema 36 hammadde + 4 reçete (~2 saat)
+- Sprint 14a kiosk manuel test (30 dk)
+- Pilot Day-1 dry-run 12 May 14-18 (P-11, 4 lokasyon)
+
+**Önemli öğrenme (D-58):** Replit publish DB'yi sıfırlamaz. DB Neon serverless üstünde. Veri pilot süresince yavaş yavaş birikir.
+
+---
+
 ## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
 > **v2.1 update — 6 May 2026 itibarıyla.** v2.0'dan farklar:

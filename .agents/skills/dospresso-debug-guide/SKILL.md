@@ -5,6 +5,52 @@ description: DOSPRESSO-specific debugging procedures for 39 documented bug patte
 
 # DOSPRESSO Debug Checklist (39 Documented Patterns)
 
+## 🆕 Son Değişiklik Özeti (11 May 2026 — Sprint 14a Pilot Final)
+
+> **Yeni Claude için:** 11 May'da yeni bir bug pattern dökümante edilmedi (Sprint 14a + hotfix temiz geçti). Aşağıda 11 May oturumundan operasyonel notlar var. Önceki 6 May notu altında.
+
+**11 May 2026 oturumu — operasyonel notlar:**
+
+### Önceki Claude'un dokümanı vs git gerçeği (yeni öğrenme)
+
+Önceki Claude (10 May gece) "long-shift monitor 204 satır eklendi" diye yazmıştı. Ama git'te yoktu.
+
+**Kural:** Dokümandaki "yapıldı" iddialarını her zaman git ile doğrula:
+```bash
+ls -la server/services/long-shift-monitor.ts  # gerçekten var mı?
+git log --all -- server/services/long-shift-monitor.ts  # commit history
+```
+
+### Replit Agent'ın görünmez commit'leri
+
+PR'da beklenenden 1 commit fazla çıkabilir — Replit Agent kendi commit'lerini ekler (örn. `2dc0b40` long-shift-auto-close migration, 11 May 01:58'de Agent yazmış).
+
+**Kural:** PR diff'ini her zaman commit-by-commit incele:
+```bash
+git log origin/main..origin/feature-branch --oneline
+git log origin/main..origin/feature-branch --name-only --pretty=format:"---%n%h %s%n"
+```
+
+### API allowlist kısıtı
+
+`api.github.com` Anthropic Claude environment'ında allowlist'te değil — yalnızca `github.com`. Yani GitHub API üzerinden PR açılamaz, sadece git clone/push çalışır.
+
+**Çözüm:** Compare URL ile Aslan'a PR açma linki ver:
+```
+https://github.com/bombty/DOSPRESSO-App/compare/main...BRANCH?expand=1
+```
+
+### Sprint 14a Schema Pattern
+
+Yeni log tablosu ekleme örneği (`hq_break_logs`):
+1. Migration: `CREATE TABLE IF NOT EXISTS` + index
+2. Schema-09'a `pgTable` tanımı
+3. `shared/schema.ts` zaten `export * from './schema/schema-09'` ile re-export ediyor — ek değişiklik gerekmiyor
+4. Backend endpoint'i ayrı dosyada (`server/routes/hq-kiosk-break.ts`)
+5. `server/routes.ts`'e import + register
+
+---
+
 ## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
 > **Yeni Claude için:** §37-§39 yeni eklendi. 36 → 39 dokümante bug.

@@ -5,6 +5,38 @@ description: DOSPRESSO 34-point quality checklist with PASS/FAIL output. Covers 
 
 # DOSPRESSO Quality Gate — 34-Point Checklist
 
+## 🆕 Son Değişiklik Özeti (11 May 2026 — Sprint 14a Pilot Final)
+
+> **Yeni Claude için:** 11 May'da 2 PR (#72 + #73) için Quality Gate uygulandı. Tüm 34 madde + 6 perspektif review başarılı geçti. Önceki 6 May notu altında.
+
+**Bu oturumda QG sonuçları (PR #72 + PR #73):**
+
+| Quality Gate Bölümü | PR #72 | PR #73 |
+|---|---|---|
+| Auth middleware (QG-1-3) | ✅ | ✅ |
+| Drizzle ORM (QG-7-9) | ✅ | ✅ Yeni hqBreakLogs tablo |
+| Schema vs DB column tutarlılığı | ✅ | ✅ Migration idempotent |
+| Turkish UI (QG-4) | ✅ | ✅ Tüm string TR |
+| Null safety (QG-5-6) | ✅ | ✅ |
+| Dark mode (QG-12) | ✅ | ✅ |
+| Role-based access (QG-13) | ✅ | ✅ HQ supervisor için ceo/cgo/mudur/admin |
+| Kiosk auth (QG-21-22) | ✅ | ✅ |
+| Vite + Esbuild dual build (QG-32) | ✅ | ✅ |
+| TypeScript strict (QG-33) | ✅ | ✅ 0 hata |
+| Branch state drift (QG-34) | ✅ | ✅ Oturum başı `git fetch` yapıldı |
+
+**6 Perspektif Review (PR #73 — Sprint 14a):**
+1. Principal Eng ✅ izole değişiklikler
+2. Franchise F&B Ops ✅ İş K. m.68 uyumu fabrika + HQ için
+3. Senior QA ⚠️ Aslan manuel test edecek
+4. Product ✅ Aslan onaylı
+5. Compliance ✅ Mola hak hesabı tüm kioska yayıldı
+6. End User ✅ Berkan/Eren/Mahmut hep aynı UX
+
+**Yeni QG madde önerisi (post-pilot için):** QG-35 — Multi-kiosk feature parity (yeni özellik şubeye eklendiğinde HQ + Fabrika için de düşünüldü mü?).
+
+---
+
 ## 🆕 Son Değişiklik Özeti (6 May 2026 — İK Redesign Sprint 17)
 
 > **Yeni Claude için:** QG 31 → 34 madde + 5 perspektif → 6 perspektif. 3 yeni check.

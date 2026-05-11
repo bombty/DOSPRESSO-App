@@ -1,35 +1,37 @@
-# ⏳ PENDING — Bekleyen İşler (v5.0 — 10 May Maraton)
+# ⏳ PENDING — Bekleyen İşler (v6.0 — 11 May Update)
 
-> **PILOT 13 MAY 15:00 — 3 GÜN KALDI. MEGA PR #65 mergele bekliyor.**
+> **PILOT 13 MAY 15:00 — ~35 SAAT KALDI. PR #72 + #73 merge edildi, Sprint 14a tamam.**
 
-**Son güncelleme:** 10 May 2026, 23:55 (5-10 May maraton özeti, 8 yeni PR, MEGA PR pilot için son temizlik)
-**Pilot tarihi:** **13 Mayıs 2026 Çarşamba 15:00** (önceki tarihler: 5 May → 12 May → 13 May)
+**Son güncelleme:** 11 May 2026 (PR #72 hotfix merge + PR #73 Sprint 14a merge + migration'lar çalıştırıldı)
+**Pilot tarihi:** **13 Mayıs 2026 Çarşamba 15:00** (önceki tarihler: 5 May → 12 May → 13 May, D-45 final)
 
 ---
 
-## 🎯 BUGÜNKÜ DURUM (10 May 23:55)
+## 🎯 BUGÜNKÜ DURUM (11 May)
 
-| Sprint/Maraton | Durum | İlerleme |
+| Sprint/PR | Durum | İlerleme |
 |---|---|---|
-| 5-10 May Maraton | ✅ **8 PR mergele + 1 bekliyor** | %95 |
-| Pilot Bloker (PR #65) | ⏳ Aslan onayı | Mergele beklenecek |
-| KVKK Temizlik (PR #65) | ⏳ Aslan onayı | 28 bordro arşiv + 11 snapshot drop |
-| 9 Reçete Seed | ✅ **DB'de** | Replit V2 ile yükledi |
-| Pilot Hazırlık | 🟢 **%99.999** | Sadece veri doldurma kaldı |
+| 5-10 May Maraton | ✅ **8 PR mergele** | %100 |
+| PR #65 (MEGA pilot prep) | ✅ Mergeli | — |
+| PR #72 (Mola kümülatif + PIN reset mail) | ✅ Mergeli (11 May 00:43) | — |
+| PR #73 (Sprint 14a — Mola sayaç fabrika + HQ) | ✅ Mergeli | — |
+| Migration: long-shift-auto-close | ✅ Çalıştı (0/0/0) | DB zaten temizdi |
+| Migration: hq-factory-break-tracking | ✅ Çalıştı (7 backfilled) | hq_break_logs VAR, factory.break_minutes VAR |
+| Pilot Hazırlık | 🟢 **%99.999** | Sadece test + Aslan business işleri |
 
 ---
 
-## 🔥 ŞU AN AKTİF (10 May Gece → 13 May 15:00)
+## 🔥 ŞU AN AKTİF (11 May → 13 May 15:00)
 
 ### P-1: Mahmut Bey Bordro Doğrulama 🔴 ASLAN
-**Süre:** 30 dk telefon | **Deadline:** 11 May Pazartesi | **Sahibi:** Aslan
+**Süre:** 30 dk telefon | **Deadline:** 11-12 May | **Sahibi:** Aslan
 Excel'deki 5 pozisyon BRÜT rakamlarını al, Replit `PAYROLL_DRY_RUN=false` yapıp hesaplasın.
 
 ### P-NEW (HQ-PIN-RESET) 🔴 ASLAN
 **Süre:** 5 dk + WhatsApp | **Deadline:** 13 May Çar 14:00 | **Sahibi:** Aslan
-- Sadece **eren + hqkiosk** PIN eksik (audit: 22 user toplam, 2 eksik)
-- Diğer 17 user için PIN'ler **VAR** (önceden tespit edilenden farklı)
+- Sadece **eren + hqkiosk** PIN eksik
 - Manuel SQL veya UI'dan tanımla
+- **YENİ kolaylık:** PR #72 ile PIN reset mail endpoint'i de var (`/api/kiosk/pin-reset/request`)
 
 ### P-SEMA: 36 Yeni Hammadde + 4 Reçete 🟡 SEMA
 **Süre:** ~2 saat | **Deadline:** 12 May Salı | **Sahibi:** Sema
@@ -37,17 +39,20 @@ Excel'deki 5 pozisyon BRÜT rakamlarını al, Replit `PAYROLL_DRY_RUN=false` yap
 2. DOREO + Golden Latte aktive (kategori düzelt) (~5 dk)
 3. 4 pilot reçete: "Besin Hesapla" + "Gramaj Onayla" → auto-label tetiklenir (~20 dk)
 
-### P-REPLIT: MEGA PR Çalıştırma 🟡 REPLİT AGENT
-**Süre:** 15 dk | **Deadline:** PR mergele sonrası | **Sahibi:** Replit
-1. `git pull origin main`
-2. DRY RUN: `tsx scripts/pilot-prep-2026-05-10/fix-pilot-blockers.ts --dry-run`
-3. DRY RUN: `tsx scripts/pilot-prep-2026-05-10/kvkk-cleanup.ts --dry-run`
-4. Aslan onaylarsa CANLI çalıştır
-5. Doğrulama: smoke + audit (0 FAIL hedef)
+### P-14A-TEST: Sprint 14a Kiosk Manuel Test 🟡 ASLAN
+**Süre:** 30 dk | **Deadline:** 12 May | **Sahibi:** Aslan
+- HQ kiosk (`/hq/kiosk`): mola başlat → 5 dk → moladan dön → BreakReturnSummary gözükmeli → tekrar mola → "kalan 55 dk" göstermeli
+- Fabrika kiosk (`/fabrika/kiosk`): aynı 45+15 senaryosu, BreakCountdown gözükmeli (eskiden basit timer vardı)
+- Şube kiosk (`/sube/kiosk`): aynı senaryo regresyon kontrolü (PR #72'den sonra bozulmamış olmalı)
+
+### P-DRY-RUN: Pilot Day-1 Dry-Run 🟡 ASLAN + 4 LOK BAŞKANI
+**Süre:** 4 saat | **Deadline:** 12 May 14:00-18:00 | **Sahibi:** Aslan
+- 4 lokasyon × 30 dk simülasyon (Işıklar, Lara, HQ, Fabrika)
+- Checklist: docs/SPRINT-11-P16-PILOT-DAY1-CHECKLIST.md (400 satır)
 
 ---
 
-## ⚠️ POST-PILOT (13 May sonrası, Sprint 14+)
+## ⚠️ POST-PILOT (13 May sonrası)
 
 | # | İş | Sebep | Süre |
 |---|---|---|---|
@@ -58,46 +63,56 @@ Excel'deki 5 pozisyon BRÜT rakamlarını al, Replit `PAYROLL_DRY_RUN=false` yap
 | PP-5 | 15 PDKS sayfası D-44 hub'da topla | UX kaosu | 1 sprint |
 | PP-6 | 3 kiosk endpoint → 1 standart | API consistency | 1 sprint |
 | PP-7 | 36 açık branch temizlik | Git hijyeni | 30 dk |
-| PP-8 | Skill files güncelleme | Çalışma Sistemi v2.0 kuralı | 1 saat |
+| **PP-NEW** | **Long-shift auto-close + monitor scheduler** | D-55 — pilot için ertelendi | 1 sprint |
 
 ---
 
-## 📊 BU MARATON'UN PR'LARI (5-10 MAY)
+## 📊 11 MAY PR'LARI
 
 | PR | Konu | Durum |
 |---|---|---|
-| #46-#57 | Sprint 11/12 (KVKK, TGK audit, Spec PDF, drawer fix, çeşitli) | ✅ |
-| #58 | Derin audit + 5 schema fix | ✅ |
-| #59 | Aslan 5 akış (auto-label, fire/zai, drawer edit, nutrition rawMaterialId) | ✅ |
-| #60 | Kapsamlı 790 satır rapor | ✅ |
-| #61 | Pilot tarihi 18 → 12 düzeltme | ✅ |
-| #62 | 9 reçete seed | ✅ |
-| #63 | Smart Match V2 (7 yanlış eşleşmeyi önle) | ✅ |
-| #64 | Smoke test 12 madde + audit script | ✅ |
-| **#65** | **MEGA pilot prep + KVKK** | ⏳ **MERGE BEKLİYOR** |
-
-**Toplam:** 8 mergele + 1 bekleyen, ~165 commit, ~14.000 satır
+| #65 | MEGA pilot prep + KVKK temizlik (10 May) | ✅ Merge edildi |
+| #66-#70 | Çeşitli (ara PR'lar) | ✅ |
+| #71 | Kiosk mega improvements + KVKK m.11 (10 May gece → 11 May 00:43) | ✅ Merge edildi |
+| **#72** | **Hotfix: Mola kümülatif + PIN reset mail** | ✅ Merge edildi (11 May) |
+| **#73** | **Sprint 14a: Mola sayaç fabrika + HQ** | ✅ Merge edildi (11 May) |
 
 ---
 
 ## 🗓️ TAM TARİH (13 MAY 15:00 BAZLI)
 
 ```
-10 May Pazar 23:55 ── ŞU AN
-11 May Pazartesi ──── Mahmut + HQ PIN + Sema'nın yarısı + dry run
-12 May Salı ────────── Demo + Sema'nın diğer yarısı + audit
-13 May Çar 09-14 ─── Final smoke + audit + backup + HQ PIN dağıt
+11 May Pzt ────────── ŞU AN (Sprint 14a tamam, doc update push'lanıyor)
+12 May Salı ───────── Aslan: kiosk test + Mahmut + HQ PIN + Sema'nın işi + 14-18 dry-run
+13 May Çar 09-14 ──── Final smoke + audit + backup + HQ PIN dağıt
 13 May Çarşamba 15:00 ─ 🎉 PILOT (4 lokasyon)
 ```
 
 ---
 
+## 🤔 BELİRSİZ — Fabrika Müdürü Teyit Edecek (13 May Sabahı)
+
+### Pasif Fabrika User'ları (3 belirsiz)
+
+Fabrika müdürü 13 May sabahı 3 belirsiz user için karar verecek:
+- Çalışıyor → AKTİVE et + PIN ata
+- İşten ayrılmış → DROP (KVKK soft archive: `deleted_at = NOW()`, `account_status = 'archived'`)
+
+SQL:
+```sql
+SELECT id, username, first_name, last_name, role, is_active, deleted_at
+FROM users
+WHERE branch_id = 24
+  AND (is_active = false OR deleted_at IS NOT NULL)
+  AND username NOT IN ('fatiharslanstj')
+ORDER BY username;
+```
 
 ---
 
-## 📚 ARŞİV — Önceki Sprint Detayları (6 May Öncesi)
+## 📚 ARŞİV — Önceki Sprint Detayları
 
-<details><summary>Tıkla aç (Sprint 11/12/13 detayları)</summary>
+<details><summary>Tıkla aç (Sprint 11/12/13/14a detayları)</summary>
 
 ## 🎯 BUGÜNKÜ DURUM (6 May 23:55)
 
