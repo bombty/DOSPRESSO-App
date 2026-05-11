@@ -73,12 +73,35 @@ function kioskHeaders(extra: Record<string, string> = {}): HeadersInit {
   };
 }
 
-// 3 hazır şablon — drag-drop için
+// Sprint 19.1 (12 May 2026 - Aslan UX): Cafe sistemine uygun şablonlar
+// - Gece 22-06 KALDIRILDI (cafe gece çalışmıyor, max 02:00'a kadar)
+// - 3 saat dilimi: Sabah (açılış), Öğle (orta), Akşam (kapanış)
+// - Renkler Aslan'ın isteğine göre: 06-10 sarı, 10-15 mavi, 15-19 pembe
 const SHIFT_TEMPLATES = [
-  { id: "morning", label: "Sabah", time: "09:00-17:00", startTime: "09:00", endTime: "17:00", shiftType: "morning", color: "bg-amber-500" },
-  { id: "evening", label: "Akşam", time: "14:00-22:00", startTime: "14:00", endTime: "22:00", shiftType: "evening", color: "bg-orange-500" },
-  { id: "night", label: "Gece", time: "22:00-06:00", startTime: "22:00", endTime: "06:00", shiftType: "night", color: "bg-indigo-500" },
+  { id: "morning", label: "Sabah Açılış", time: "08:00-17:00", startTime: "08:00", endTime: "17:00", shiftType: "morning", color: "bg-yellow-500" },
+  { id: "mid", label: "Öğle", time: "11:00-20:00", startTime: "11:00", endTime: "20:00", shiftType: "morning", color: "bg-blue-500" },
+  { id: "evening", label: "Akşam Kapanış", time: "14:00-22:00", startTime: "14:00", endTime: "22:00", shiftType: "evening", color: "bg-pink-500" },
 ];
+
+// Saat dilimine göre vardiya kart arka plan rengi (Aslan 12 May UX talebi)
+function getShiftBgClass(startTime?: string | null): string {
+  if (!startTime) return "bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50";
+  const hour = parseInt(startTime.split(":")[0] || "0", 10);
+  // 06-10 sarı (açılış / sabah erken)
+  if (hour >= 6 && hour < 10) {
+    return "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/50 border-l-4 border-yellow-500";
+  }
+  // 10-15 mavi (öğle)
+  if (hour >= 10 && hour < 15) {
+    return "bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 border-l-4 border-blue-500";
+  }
+  // 15-19 pembe (akşam başlayanlar)
+  if (hour >= 15 && hour < 19) {
+    return "bg-pink-100 dark:bg-pink-900/30 hover:bg-pink-200 dark:hover:bg-pink-900/50 border-l-4 border-pink-500";
+  }
+  // 19+ veya 0-5 (gece başlayanlar — nadir, ama varsa indigo)
+  return "bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 border-l-4 border-indigo-500";
+}
 
 interface DragData {
   type: "staff" | "template";
@@ -351,6 +374,15 @@ export default function KioskSupervisorShift() {
   };
 
   // Shifts data flatten
+  // Sprint 19.1: Personel ID → ad lookup (vardiya kartında isim göstermek için)
+  const staffLookup = useMemo(() => {
+    const map: Record<string, any> = {};
+    (staffQuery.data || []).forEach((s: any) => {
+      if (s?.id) map[s.id] = s;
+    });
+    return map;
+  }, [staffQuery.data]);
+
   const shiftsByDate = useMemo(() => {
     const map: Record<string, any[]> = {};
     (shiftsQuery.data?.shifts || []).forEach((s: any) => {
@@ -420,11 +452,11 @@ export default function KioskSupervisorShift() {
           </TabsList>
 
           <TabsContent value="week1" className="mt-4">
-            <WeekGrid days={week1Days} shiftsByDate={shiftsByDate} onShiftClick={setShiftToDelete} />
+            <WeekGrid days={week1Days} shiftsByDate={shiftsByDate} onShiftClick={setShiftToDelete} staffLookup={staffLookup} />
           </TabsContent>
 
           <TabsContent value="week2" className="mt-4">
-            <WeekGrid days={week2Days} shiftsByDate={shiftsByDate} onShiftClick={setShiftToDelete} />
+            <WeekGrid days={week2Days} shiftsByDate={shiftsByDate} onShiftClick={setShiftToDelete} staffLookup={staffLookup} />
           </TabsContent>
         </Tabs>
 
@@ -608,10 +640,12 @@ function WeekGrid({
   days,
   shiftsByDate,
   onShiftClick,
+  staffLookup,
 }: {
   days: Date[];
   shiftsByDate: Record<string, any[]>;
   onShiftClick: (shift: any) => void;
+  staffLookup: Record<string, { firstName?: string; lastName?: string; username?: string }>;
 }) {
   const dayLabels = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
@@ -631,6 +665,7 @@ function WeekGrid({
             shifts={dayShifts}
             isWeekend={isWeekend}
             onShiftClick={onShiftClick}
+            staffLookup={staffLookup}
           />
         );
       })}
@@ -648,6 +683,7 @@ function DroppableDay({
   shifts,
   isWeekend,
   onShiftClick,
+  staffLookup,
 }: {
   date: string;
   dayLabel: string;
@@ -655,6 +691,7 @@ function DroppableDay({
   shifts: any[];
   isWeekend: boolean;
   onShiftClick: (shift: any) => void;
+  staffLookup: Record<string, { firstName?: string; lastName?: string; username?: string }>;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `day-${date}`,
@@ -681,21 +718,30 @@ function DroppableDay({
           </p>
         ) : (
           <div className="space-y-1">
-            {shifts.map((shift: any) => (
-              <button
-                key={shift.id}
-                onClick={() => onShiftClick(shift)}
-                className="text-xs bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 rounded px-2 py-1.5 w-full text-left transition-colors"
-              >
-                <div className="font-medium truncate flex items-center gap-1">
-                  <Clock className="h-3 w-3 flex-shrink-0" />
-                  {shift.assignedToFirstName || shift.assignedToName || "—"}
-                </div>
-                <div className="text-muted-foreground">
-                  {shift.startTime?.slice(0, 5)}-{shift.endTime?.slice(0, 5)}
-                </div>
-              </button>
-            ))}
+            {shifts.map((shift: any) => {
+              // Sprint 19.1: Personel ismini staff lookup'tan al (backend join yok)
+              const staff = shift.assignedToId ? staffLookup[shift.assignedToId] : null;
+              const staffName = staff
+                ? `${staff.firstName || ""} ${staff.lastName || ""}`.trim() || staff.username || "?"
+                : shift.assignedToFirstName || shift.assignedToName || "—";
+              const bgClass = getShiftBgClass(shift.startTime);
+              return (
+                <button
+                  key={shift.id}
+                  onClick={() => onShiftClick(shift)}
+                  className={`text-xs rounded px-2 py-1.5 w-full text-left transition-colors ${bgClass}`}
+                  data-testid={`shift-card-${shift.id}`}
+                >
+                  <div className="font-medium truncate flex items-center gap-1">
+                    <Clock className="h-3 w-3 flex-shrink-0" />
+                    {staffName}
+                  </div>
+                  <div className="text-muted-foreground text-[10px]">
+                    {shift.startTime?.slice(0, 5)}-{shift.endTime?.slice(0, 5)}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </CardContent>
