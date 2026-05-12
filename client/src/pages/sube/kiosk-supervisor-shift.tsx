@@ -361,13 +361,22 @@ export default function KioskSupervisorShift() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // Sprint 27 HOTFIX: Cache temizle + modal kapat ki güncel veri görünsün
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
-      toast({ title: "✅ Vardiya taşındı", description: "Plan güncellendi." });
+      queryClient.refetchQueries({ queryKey: ["/api/shifts"] });
+      // Saat güncellemesi ise (startTime/endTime varsa) modalı kapat
+      if (variables?.updates?.startTime || variables?.updates?.endTime) {
+        setShiftToDelete(null);
+        setEditTimeOpen(false);
+        toast({ title: "✅ Saat güncellendi", description: "Plan yenilendi." });
+      } else {
+        toast({ title: "✅ Vardiya taşındı", description: "Plan güncellendi." });
+      }
     },
     onError: (err: any) => {
       toast({
-        title: "❌ Taşıma hatası",
+        title: "❌ Güncelleme hatası",
         description: err.message || "Bir sorun oluştu",
         variant: "destructive",
       });
@@ -1475,9 +1484,12 @@ function DroppableDay({
           <div className="space-y-1">
             {shifts.map((shift: any) => {
               const staff = shift.assignedToId ? staffLookup[shift.assignedToId] : null;
-              const staffName = staff
-                ? `${staff.firstName || ""} ${staff.lastName || ""}`.trim() || staff.username || "?"
-                : shift.assignedToFirstName || shift.assignedToName || "—";
+              // Sprint 27 (Aslan 12 May 22:16): Kısa isim — "Süleyman O."
+              const firstName = staff?.firstName || shift.assignedToFirstName || "";
+              const lastName = staff?.lastName || "";
+              const staffName = firstName && lastName
+                ? `${firstName} ${lastName.charAt(0).toUpperCase()}.`
+                : firstName || staff?.username || shift.assignedToName || "—";
               return (
                 <DraggableShiftCard
                   key={shift.id}
@@ -1532,6 +1544,13 @@ function DraggableShiftCard({
       <div className="text-muted-foreground text-xs font-semibold mt-0.5">
         {shift.startTime?.slice(0, 5)}-{shift.endTime?.slice(0, 5)}
       </div>
+      {/* Sprint 27 (Aslan 12 May 22:16): Mola saatini göster */}
+      {shift.breakStartTime && shift.breakEndTime && (
+        <div className="text-[11px] text-muted-foreground/80 mt-0.5 flex items-center gap-1">
+          <span>☕</span>
+          <span>{shift.breakStartTime.slice(0, 5)}-{shift.breakEndTime.slice(0, 5)}</span>
+        </div>
+      )}
     </div>
   );
 }
