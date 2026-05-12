@@ -162,17 +162,27 @@ export default function KioskSupervisorShift() {
   const [editShiftEnd, setEditShiftEnd] = useState("");
   // Sprint 26 (Aslan 12 May 21:50): Saat editör collapsible — auto-open bug fix
   const [editTimeOpen, setEditTimeOpen] = useState(false);
+  // Sprint 28 (Aslan 12 May 22:26): Mola editör + state
+  const [editBreakStart, setEditBreakStart] = useState("");
+  const [editBreakEnd, setEditBreakEnd] = useState("");
+  const [editBreakOpen, setEditBreakOpen] = useState(false);
 
   // Modal açıldığında mevcut saatleri yükle
   useEffect(() => {
     if (shiftToDelete) {
       setEditShiftStart(shiftToDelete.startTime?.slice(0, 5) || "");
       setEditShiftEnd(shiftToDelete.endTime?.slice(0, 5) || "");
-      setEditTimeOpen(false); // Sprint 26: Her açılışta kapalı başla
+      setEditBreakStart(shiftToDelete.breakStartTime?.slice(0, 5) || "");
+      setEditBreakEnd(shiftToDelete.breakEndTime?.slice(0, 5) || "");
+      setEditTimeOpen(false);
+      setEditBreakOpen(false);
     } else {
       setEditShiftStart("");
       setEditShiftEnd("");
+      setEditBreakStart("");
+      setEditBreakEnd("");
       setEditTimeOpen(false);
+      setEditBreakOpen(false);
     }
   }, [shiftToDelete]);
   // Sprint 19.3 (Aslan 12 May): Özel saat aralığı input state
@@ -365,11 +375,17 @@ export default function KioskSupervisorShift() {
       // Sprint 27 HOTFIX: Cache temizle + modal kapat ki güncel veri görünsün
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
       queryClient.refetchQueries({ queryKey: ["/api/shifts"] });
-      // Saat güncellemesi ise (startTime/endTime varsa) modalı kapat
-      if (variables?.updates?.startTime || variables?.updates?.endTime) {
+      // Saat veya mola güncellemesi ise modalı kapat
+      const isTimeUpdate = variables?.updates?.startTime || variables?.updates?.endTime;
+      const isBreakUpdate = variables?.updates?.breakStartTime || variables?.updates?.breakEndTime;
+      if (isTimeUpdate || isBreakUpdate) {
         setShiftToDelete(null);
         setEditTimeOpen(false);
-        toast({ title: "✅ Saat güncellendi", description: "Plan yenilendi." });
+        setEditBreakOpen(false);
+        toast({
+          title: isBreakUpdate ? "☕ Mola güncellendi" : "✅ Saat güncellendi",
+          description: "Plan yenilendi."
+        });
       } else {
         toast({ title: "✅ Vardiya taşındı", description: "Plan güncellendi." });
       }
@@ -1201,6 +1217,100 @@ export default function KioskSupervisorShift() {
             )}
           </div>
 
+          {/* Sprint 28 (Aslan 12 May 22:26): Mola Saati Belirleme — Collapsible */}
+          <div className="border-t pt-4 space-y-2">
+            {!editBreakOpen ? (
+              <Button
+                onClick={() => setEditBreakOpen(true)}
+                variant="outline"
+                size="sm"
+                className="w-full"
+                data-testid="btn-open-break-editor"
+              >
+                ☕ Mola Saatini {shiftToDelete?.breakStartTime ? "Düzenle" : "Belirle"}
+                {shiftToDelete?.breakStartTime && shiftToDelete?.breakEndTime && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    ({shiftToDelete.breakStartTime.slice(0, 5)}-{shiftToDelete.breakEndTime.slice(0, 5)})
+                  </span>
+                )}
+              </Button>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    ☕ Mola Saati
+                  </label>
+                  <button
+                    onClick={() => setEditBreakOpen(false)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    ↩ Geri
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Mola Başlangıç</label>
+                    <input
+                      type="time"
+                      value={editBreakStart}
+                      onChange={(e) => setEditBreakStart(e.target.value)}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      data-testid="edit-break-start"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Mola Bitiş</label>
+                    <input
+                      type="time"
+                      value={editBreakEnd}
+                      onChange={(e) => setEditBreakEnd(e.target.value)}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      data-testid="edit-break-end"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!shiftToDelete || !editBreakStart || !editBreakEnd) return;
+                    if (editBreakEnd <= editBreakStart) {
+                      toast({
+                        title: "⚠️ Mola bitiş başlangıçtan sonra olmalı",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    // Mola vardiya saatleri içinde olmalı
+                    const shiftStart = shiftToDelete.startTime?.slice(0, 5) || "00:00";
+                    const shiftEnd = shiftToDelete.endTime?.slice(0, 5) || "23:59";
+                    if (editBreakStart < shiftStart || editBreakEnd > shiftEnd) {
+                      toast({
+                        title: "⚠️ Mola vardiya saatleri içinde olmalı",
+                        description: `Vardiya: ${shiftStart} - ${shiftEnd}`,
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    updateShiftMutation.mutate({
+                      shiftId: shiftToDelete.id,
+                      updates: { breakStartTime: editBreakStart, breakEndTime: editBreakEnd },
+                    });
+                  }}
+                  disabled={updateShiftMutation.isPending || !editBreakStart || !editBreakEnd}
+                  size="sm"
+                  className="w-full bg-orange-600 hover:bg-orange-700"
+                  data-testid="btn-save-break-time"
+                >
+                  {updateShiftMutation.isPending ? (
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                  ) : "☕ Molayı Güncelle"}
+                </Button>
+                <p className="text-[10px] text-muted-foreground">
+                  Mola süresi standart 60 dk önerilir (Türkiye İş Kanunu Madde 68).
+                </p>
+              </>
+            )}
+          </div>
+
           {/* Sprint 19.4: Görev/Mesaj Bırak */}
           <div className="border-t pt-4 space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
@@ -1426,6 +1536,7 @@ function WeekGrid({
             date={dayStr}
             dayLabel={dayLabels[idx]}
             dayNumber={format(day, "d")}
+            dayIndex={idx}
             shifts={dayShifts}
             isWeekend={isWeekend}
             onShiftClick={onShiftClick}
@@ -1444,6 +1555,7 @@ function DroppableDay({
   date,
   dayLabel,
   dayNumber,
+  dayIndex,
   shifts,
   isWeekend,
   onShiftClick,
@@ -1452,6 +1564,7 @@ function DroppableDay({
   date: string;
   dayLabel: string;
   dayNumber: string;
+  dayIndex: number;
   shifts: any[];
   isWeekend: boolean;
   onShiftClick: (shift: any) => void;
@@ -1462,16 +1575,29 @@ function DroppableDay({
     data: { date },
   });
 
+  // Sprint 28 (Aslan 12 May 22:26): Her güne tematik subtle bg renk
+  // Pzt en koyu → Paz en açık (göz hızlı tarama için kademeli)
+  const dayBgClasses = [
+    "bg-slate-100/60 dark:bg-slate-800/30",  // Pzt
+    "bg-slate-50/70 dark:bg-slate-800/20",   // Sal
+    "bg-blue-50/40 dark:bg-blue-900/15",     // Çar
+    "bg-cyan-50/40 dark:bg-cyan-900/15",     // Per
+    "bg-teal-50/40 dark:bg-teal-900/15",     // Cum
+    "bg-amber-50/50 dark:bg-amber-900/15",   // Cmt (haftasonu vurgu)
+    "bg-rose-50/50 dark:bg-rose-900/15",     // Paz (haftasonu vurgu)
+  ];
+  const dayBg = dayBgClasses[dayIndex] || "";
+
   return (
     <Card
       ref={setNodeRef}
       className={`min-h-[160px] transition-colors ${
-        isOver ? "bg-blue-50 dark:bg-blue-900/30 border-blue-500 border-2" : isWeekend ? "bg-muted/30" : ""
+        isOver ? "bg-blue-50 dark:bg-blue-900/30 border-blue-500 border-2" : dayBg
       }`}
     >
       <CardHeader className="pb-2 pt-3">
         <div className="text-center">
-          <div className="text-xs text-muted-foreground">{dayLabel}</div>
+          <div className="text-xs text-muted-foreground font-medium">{dayLabel}</div>
           <div className="text-lg font-bold">{dayNumber}</div>
         </div>
       </CardHeader>

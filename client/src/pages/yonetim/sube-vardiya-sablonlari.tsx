@@ -61,6 +61,10 @@ export default function SubeVardiyaSablonlari() {
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+  // Sprint 28 (Aslan 12 May 22:26): Şube saatleri düzenleme
+  const [editBranchOpening, setEditBranchOpening] = useState("");
+  const [editBranchClosing, setEditBranchClosing] = useState("");
+  const [branchHoursChanged, setBranchHoursChanged] = useState(false);
 
   // Şube listesi
   const branchesQuery = useQuery<Branch[]>({
@@ -94,7 +98,56 @@ export default function SubeVardiyaSablonlari() {
       setTemplates([]);
       setHasChanges(false);
     }
+    // Sprint 28: Şube saatlerini yükle
+    if (branchQuery.data) {
+      setEditBranchOpening((branchQuery.data.openingHours || "08:00").toString().slice(0, 5));
+      setEditBranchClosing((branchQuery.data.closingHours || "22:00").toString().slice(0, 5));
+      setBranchHoursChanged(false);
+    }
   }, [branchQuery.data]);
+
+  // Sprint 28 (Aslan 12 May 22:26): Şube saatleri güncelleme mutation
+  const branchHoursMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedBranchId) throw new Error("Şube seçili değil");
+      // Validation
+      if (editBranchClosing <= editBranchOpening) {
+        throw new Error("Kapanış saati açılıştan sonra olmalı");
+      }
+      const res = await fetch(`/api/branches/${selectedBranchId}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          openingHours: editBranchOpening,
+          closingHours: editBranchClosing,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Şube saatleri güncellenemedi");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "✅ Şube saatleri kaydedildi",
+        description: `Açılış: ${editBranchOpening} • Kapanış: ${editBranchClosing}`,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/branches", selectedBranchId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
+      setBranchHoursChanged(false);
+    },
+    onError: (err: any) => {
+      toast({
+        title: "❌ Şube saati hatası",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Save mutation
   const saveMutation = useMutation({
@@ -311,21 +364,64 @@ export default function SubeVardiyaSablonlari() {
 
       {selectedBranchId && branchQuery.data && (
         <>
-          {/* Şube saatleri */}
+          {/* Sprint 28 (Aslan 12 May 22:26): Şube saatleri düzenleme */}
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle className="text-base">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
                 Şube Çalışma Saatleri
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-sm">
-                <strong>Açılış:</strong> {branchOpeningHours} •{" "}
-                <strong>Kapanış:</strong> {branchClosingHours}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Açılış Saati</Label>
+                  <Input
+                    type="time"
+                    value={editBranchOpening}
+                    onChange={(e) => {
+                      setEditBranchOpening(e.target.value);
+                      setBranchHoursChanged(true);
+                    }}
+                    data-testid="input-branch-opening"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Kapanış Saati</Label>
+                  <Input
+                    type="time"
+                    value={editBranchClosing}
+                    onChange={(e) => {
+                      setEditBranchClosing(e.target.value);
+                      setBranchHoursChanged(true);
+                    }}
+                    data-testid="input-branch-closing"
+                  />
+                </div>
               </div>
+              {branchHoursChanged && (
+                <div className="mt-3 flex items-center justify-between bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
+                  <span className="text-xs">⚠️ Kaydedilmemiş şube saati değişikliği</span>
+                  <Button
+                    size="sm"
+                    onClick={() => branchHoursMutation.mutate()}
+                    disabled={branchHoursMutation.isPending}
+                    data-testid="btn-save-branch-hours"
+                  >
+                    {branchHoursMutation.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <>
+                        <Save className="h-3 w-3 mr-1" />
+                        Kaydet
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mt-2">
-                Şablonlar bu saat aralığında olmalı. Şube saatleri değiştirilmek
-                istenirse Şube Listesi sayfasından düzenle.
+                Bu saatler tüm vardiya şablonları için sınır oluşturur.
+                Yaz/kış saati değişikliklerinde günceleyin.
               </p>
             </CardContent>
           </Card>
