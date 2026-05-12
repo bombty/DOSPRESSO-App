@@ -332,6 +332,10 @@ export default function BranchKiosk() {
   const [overtimeManagerName, setOvertimeManagerName] = useState('');
   const [userLocation, setUserLocation] = useState<{latitude: number; longitude: number} | null>(null);
   const [showKioskFaultReport, setShowKioskFaultReport] = useState(false);
+  // Sprint 33 (Aslan 12 May 23:24): Sorun Bildir state
+  const [kioskFaultCategory, setKioskFaultCategory] = useState("ekipman");
+  const [kioskFaultDescription, setKioskFaultDescription] = useState("");
+  const [kioskFaultPriority, setKioskFaultPriority] = useState("orta");
   const [kioskFaultCategory, setKioskFaultCategory] = useState("");
   const [kioskFaultDesc, setKioskFaultDesc] = useState("");
   const [locationStatus, setLocationStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
@@ -688,6 +692,60 @@ export default function BranchKiosk() {
     },
     onError: (error: any) => {
       toast({ title: "Talep gönderilemedi", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Sprint 33 (Aslan 12 May 23:24): Sorun Bildir mutation
+  // Müdüre + supervisor'a notification gönderir
+  const kioskFaultMutation = useMutation({
+    mutationFn: async () => {
+      if (!kioskFaultDescription.trim()) throw new Error("Açıklama gerekli");
+      const categoryLabels: Record<string, string> = {
+        ekipman: "🔧 Ekipman",
+        malzeme: "📦 Malzeme",
+        kasa: "💰 Kasa",
+        musteri: "👤 Müşteri",
+        temizlik: "🧹 Temizlik",
+        guvenlik: "🔒 Güvenlik",
+        diger: "❓ Diğer",
+      };
+      const priorityLabels: Record<string, string> = {
+        dusuk: "🟢 Düşük",
+        orta: "🟡 Orta",
+        yuksek: "🔴 Yüksek",
+      };
+      const reporterName = selectedUser
+        ? `${selectedUser.firstName || ""} ${selectedUser.lastName || ""}`.trim() || (selectedUser as any).username
+        : "Personel";
+      const res = await apiRequest('POST', `/api/branches/${branchId}/kiosk/fault-report`, {
+        userId: selectedUser?.id,
+        branchId,
+        category: kioskFaultCategory,
+        categoryLabel: categoryLabels[kioskFaultCategory],
+        description: kioskFaultDescription,
+        priority: kioskFaultPriority,
+        priorityLabel: priorityLabels[kioskFaultPriority],
+        reporterName,
+        reportedAt: new Date().toISOString(),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "✅ Sorun bildirildi",
+        description: "Yöneticiniz bilgilendirildi.",
+      });
+      setShowKioskFaultReport(false);
+      setKioskFaultCategory("ekipman");
+      setKioskFaultDescription("");
+      setKioskFaultPriority("orta");
+    },
+    onError: (err: any) => {
+      toast({
+        title: "❌ Sorun bildirilemedi",
+        description: err.message || "Tekrar deneyin",
+        variant: "destructive",
+      });
     },
   });
 
@@ -2810,6 +2868,72 @@ export default function BranchKiosk() {
             >
               {overtimeRequestMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Talep Gönder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sprint 33 (Aslan 12 May 23:24): Sorun Bildir Modal */}
+      <Dialog open={showKioskFaultReport} onOpenChange={setShowKioskFaultReport}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              ⚠️ Sorun Bildir
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Kategori</label>
+              <select
+                value={kioskFaultCategory}
+                onChange={(e) => setKioskFaultCategory(e.target.value)}
+                className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm"
+                data-testid="select-fault-category"
+              >
+                <option value="ekipman">🔧 Ekipman/Cihaz arızası</option>
+                <option value="malzeme">📦 Malzeme/Stok eksiği</option>
+                <option value="kasa">💰 Kasa/POS sorunu</option>
+                <option value="musteri">👤 Müşteri sorunu</option>
+                <option value="temizlik">🧹 Temizlik/Hijyen</option>
+                <option value="guvenlik">🔒 Güvenlik</option>
+                <option value="diger">❓ Diğer</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Açıklama</label>
+              <textarea
+                value={kioskFaultDescription}
+                onChange={(e) => setKioskFaultDescription(e.target.value)}
+                placeholder="Sorunu detaylı yazın..."
+                className="w-full mt-1 min-h-[100px] rounded-md border bg-background px-3 py-2 text-sm"
+                data-testid="textarea-fault-description"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Öncelik</label>
+              <select
+                value={kioskFaultPriority}
+                onChange={(e) => setKioskFaultPriority(e.target.value)}
+                className="w-full mt-1 rounded-md border bg-background px-3 py-2 text-sm"
+                data-testid="select-fault-priority"
+              >
+                <option value="dusuk">🟢 Düşük (bekleyebilir)</option>
+                <option value="orta">🟡 Orta (bugün)</option>
+                <option value="yuksek">🔴 Yüksek (hemen)</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowKioskFaultReport(false)}>
+              İptal
+            </Button>
+            <Button
+              onClick={() => kioskFaultMutation.mutate()}
+              disabled={!kioskFaultDescription.trim() || kioskFaultMutation.isPending}
+              data-testid="btn-submit-fault"
+            >
+              {kioskFaultMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              📤 Yöneticiye Gönder
             </Button>
           </DialogFooter>
         </DialogContent>
