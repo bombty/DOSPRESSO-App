@@ -77,15 +77,25 @@ function kioskHeaders(extra: Record<string, string> = {}): HeadersInit {
   };
 }
 
-// Sprint 19.1 (12 May 2026 - Aslan UX): Cafe sistemine uygun şablonlar
-// - Gece 22-06 KALDIRILDI (cafe gece çalışmıyor, max 02:00'a kadar)
-// - 3 saat dilimi: Sabah (açılış), Öğle (orta), Akşam (kapanış)
-// - Renkler Aslan'ın isteğine göre: 06-10 sarı, 10-15 mavi, 15-19 pembe
-const SHIFT_TEMPLATES = [
+// Sprint 19.1 (Aslan 12 May UX): Cafe sistemine uygun varsayılan şablonlar
+// SADECE FALLBACK olarak kullanılır. Sprint 20: Gerçek şablonlar branch.shiftTemplates'ten geldi.
+// HQ admin /api/branches/:id/shift-templates ile günceller, kiosk burdan çeker.
+const DEFAULT_SHIFT_TEMPLATES = [
   { id: "morning", label: "Sabah Açılış", time: "08:00-17:00", startTime: "08:00", endTime: "17:00", shiftType: "morning", color: "bg-yellow-500" },
   { id: "mid", label: "Öğle", time: "11:00-20:00", startTime: "11:00", endTime: "20:00", shiftType: "morning", color: "bg-blue-500" },
   { id: "evening", label: "Akşam Kapanış", time: "14:00-22:00", startTime: "14:00", endTime: "22:00", shiftType: "evening", color: "bg-pink-500" },
 ];
+
+// Sprint 20: Renk kod sözlüğü (DB'de "yellow" → Tailwind class)
+const COLOR_MAP: Record<string, string> = {
+  yellow: "bg-yellow-500",
+  blue: "bg-blue-500",
+  pink: "bg-pink-500",
+  green: "bg-green-500",
+  purple: "bg-purple-500",
+  orange: "bg-orange-500",
+  indigo: "bg-indigo-500",
+};
 
 // Saat dilimine göre vardiya kart arka plan rengi (Aslan 12 May UX talebi)
 function getShiftBgClass(startTime?: string | null): string {
@@ -107,11 +117,22 @@ function getShiftBgClass(startTime?: string | null): string {
   return "bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 border-l-4 border-indigo-500";
 }
 
+interface ShiftTemplate {
+  id: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  shiftType?: string;
+  color: string;
+  time?: string;
+  isActive?: boolean;
+}
+
 interface DragData {
   type: "staff" | "template" | "shift";
   staff?: any;
   shift?: any;
-  template?: typeof SHIFT_TEMPLATES[0];
+  template?: ShiftTemplate;
   pendingShift?: { startTime: string; endTime: string; shiftType: string };
 }
 
@@ -207,6 +228,45 @@ export default function KioskSupervisorShift() {
     },
     enabled: !!kioskUser.branchId,
   });
+
+  // Sprint 20 (Aslan 12 May): Şube bilgisi (openingHours, closingHours, shiftTemplates)
+  // Single source of truth — kiosk şift planlama bu endpoint'ten çeker
+  const branchInfoQuery = useQuery<any>({
+    queryKey: ["/api/branches", kioskUser.branchId, "kiosk-info"],
+    queryFn: async () => {
+      const res = await fetch(`/api/branches/${kioskUser.branchId}/kiosk/info`, {
+        credentials: "include",
+        headers: kioskHeaders(),
+      });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!kioskUser.branchId,
+  });
+
+  // Sprint 20: Dinamik vardiya şablonları (branch.shiftTemplates'ten)
+  const SHIFT_TEMPLATES: ShiftTemplate[] = useMemo(() => {
+    const dbTemplates = branchInfoQuery.data?.shiftTemplates;
+    if (Array.isArray(dbTemplates) && dbTemplates.length > 0) {
+      return dbTemplates
+        .filter((t: any) => t.isActive !== false)
+        .map((t: any) => ({
+          id: t.id,
+          label: t.label,
+          startTime: t.startTime,
+          endTime: t.endTime,
+          shiftType: t.shiftType || (parseInt(t.startTime.split(":")[0]) < 14 ? "morning" : "evening"),
+          color: COLOR_MAP[t.color] || t.color || "bg-blue-500",
+          time: `${t.startTime}-${t.endTime}`,
+          isActive: true,
+        }));
+    }
+    return DEFAULT_SHIFT_TEMPLATES;
+  }, [branchInfoQuery.data]);
+
+  // Şube saatleri (custom time validation için)
+  const branchOpeningHours: string = (branchInfoQuery.data?.openingHours || "08:00").toString().slice(0, 5);
+  const branchClosingHours: string = (branchInfoQuery.data?.closingHours || "22:00").toString().slice(0, 5);
 
   // Vardiya oluştur
   const createMutation = useMutation({
@@ -442,14 +502,14 @@ export default function KioskSupervisorShift() {
 
   // Sprint 19.5 (Aslan 12 May): Şablon seçimi sonrası 'Tüm hafta aynı saat?' state
   const [weekFillPending, setWeekFillPending] = useState<{
-    template: typeof SHIFT_TEMPLATES[0];
+    template: ShiftTemplate;
     staffId: string;
     staffName: string;
     startDate: string;
   } | null>(null);
 
   // Şablon ile vardiya oluştur (pendingDrop modal'dan tetiklenir)
-  const confirmShiftCreate = (template: typeof SHIFT_TEMPLATES[0]) => {
+  const confirmShiftCreate = (template: ShiftTemplate) => {
     if (!pendingDrop) return;
     const drop = pendingDrop;
     createMutation.mutate({
@@ -926,9 +986,33 @@ export default function KioskSupervisorShift() {
               <Button
                 onClick={() => {
                   if (!pendingDrop || !customStartTime || !customEndTime) return;
+                  // Sprint 20: Şube açılış-kapanış kontrolü
+                  if (customStartTime < branchOpeningHours) {
+                    toast({
+                      title: "⚠️ Saat şube açılışından önce",
+                      description: `Şube saat ${branchOpeningHours}'da açılıyor. Başlangıç bu saat veya sonrası olmalı.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  if (customEndTime > branchClosingHours) {
+                    toast({
+                      title: "⚠️ Saat şube kapanışından sonra",
+                      description: `Şube saat ${branchClosingHours}'da kapanıyor. Bitiş bu saat veya öncesi olmalı.`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  if (customEndTime <= customStartTime) {
+                    toast({
+                      title: "⚠️ Bitiş saati başlangıçtan sonra olmalı",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
                   // Type'ı saatten çıkar (renk için)
                   const startH = parseInt(customStartTime.split(":")[0]);
-                  const shiftType = startH < 10 ? "morning" : startH < 14 ? "morning" : "evening";
+                  const shiftType = startH < 14 ? "morning" : "evening";
                   confirmShiftCreate({
                     id: "custom",
                     label: "Özel",
@@ -947,7 +1031,7 @@ export default function KioskSupervisorShift() {
                 ✨ Özel Saat ile Oluştur
               </Button>
               <p className="text-[10px] text-muted-foreground mt-1">
-                Şube açılış-kapanış saatleri içinde olmalı.
+                Şube saatleri: {branchOpeningHours} - {branchClosingHours}
               </p>
             </div>
           </div>
