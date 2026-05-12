@@ -31,6 +31,7 @@ import { seedAcademyCategories } from "./seed-academy-categories";
 import { seedAllKioskAccounts } from "./lib/kiosk-accounts";
 import { seedPdksSprintA } from "./seed-pdks-sprint-a";
 import { startPdksDailySummarySyncScheduler } from "./services/pdks-daily-summary-sync";
+import { startDailyBriefScheduler } from "./services/daily-brief-generator";  // Sprint 48 (Aslan 13 May 2026)
 import { cleanupExpiredKioskSessions } from "./localAuth";
 import { startWeeklyBackupScheduler, stopBackupScheduler, performHealthCheck, startDailyPgDumpScheduler } from "./backup";
 import { startTrackingCleanup, stopTrackingCleanup } from "./tracking";
@@ -426,6 +427,9 @@ app.use((req, res, next) => {
       startPdksMonthlyPayrollScheduler();
       startPdksMonthlyAttendanceSummaryScheduler();
       startPdksDailySummarySyncScheduler();
+
+      // Sprint 48 (Aslan 13 May 2026): Daily AI Brief — her sabah 09:00 TR time
+      startDailyBriefScheduler();
 
       schedulerManager.start();
       log(`All schedulers initialized (${schedulerManager.getJobCount()} jobs, total startup: ${Date.now() - startupTime}ms)`);

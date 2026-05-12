@@ -1,94 +1,50 @@
 # DOSPRESSO — TODAY (Pilot 18 May Pzt 15:00)
-**13 May 2026 — Sprint 47 Foundation BAŞLANGIÇ**
+**13 May 2026 — Sprint 48 Daily AI Brief TAMAM**
 
-## ⏰ Pilot ertelendi: 14 May → 18 May (Pazartesi)
+## ✅ Tamamlanan (Bu gece marathon)
 
-## Bu Gece (13 May 01:30 → 03:00)
+| Sprint | PR | Durum |
+|--------|-----|-------|
+| 47.1 Foundation | #111 | ✅ main |
+| 47.2 UI + 13 Prompt | #112 | ✅ main |
+| 47.3 Kiosk Hotfix | #113 | ✅ main |
+| 48 Daily Brief | #114 | ⏳ merge bekliyor |
 
-### ✅ TAMAMLANAN (Sprint 47.1 Foundation)
+## Sprint 48 İçeriği
 
-1. **DB Schema** (`shared/schema/schema-30-onboarding-ai.ts`)
-   - `onboarding_conversations` — Mr. Dobody chat
-   - `onboarding_messages` — her mesaj (user/ai)
-   - `onboarding_templates` — rol bazlı prompt + steps
-   - `daily_briefs` — günlük AI brief
-   - `ai_alerts` — sistem otomatik uyarı (besin değeri eksik vb.)
+### Backend
+- `services/daily-brief-generator.ts`:
+  * aggregateRoleData() — rol bazlı veri toplama
+  * generateBriefForUser() — kişisel brief
+  * generateBriefsForAllUsers() — toplu cron
+  * startDailyBriefScheduler() — her gün 09:00 TR
+- `routes/daily-briefs.ts`:
+  * GET /today (yoksa anında üret)
+  * GET /history (son 7 gün)
+  * POST /:id/view, /reaction, /click
+  * POST /generate-now (admin)
 
-2. **Migration SQL** (`migrations/sprint-47-48-onboarding-ai.sql`)
-   - 5 tablo CREATE
-   - İlk satinalma template (placeholder)
+### Frontend
+- `DailyBriefCard.tsx`:
+  * Markdown + priority items
+  * Faydalı/değil reaction
+  * Compact mode + tam görünüm
+- HomeScreen entegrasyonu
 
-3. **Excel Parser** (185 hammadde + 2 tedarikçi)
-   - `scripts/raw-materials-seed.json` (185 ürün)
-   - `scripts/seed-raw-materials.ts` (upsert seed script)
-   - 10 kategori: aroma_verici, tatlandirici, yag, maya_enzim, vb.
-   - Tahmin: Kalealtı, Turyağ + diğerleri manuel girilecek
+### Server
+- index.ts'e scheduler register
 
-4. **Onboarding API** (`server/routes/onboarding.ts`)
-   - GET  /api/onboarding/status
-   - POST /api/onboarding/start
-   - POST /api/onboarding/message (ChatGPT API entegrasyonu)
-   - POST /api/onboarding/skip
-   - POST /api/onboarding/reset/:userId (ADMIN)
-   - generateAIResponse() — gpt-4o-mini ile
+## ⏳ Kalan
 
-5. **Route Registration** — server/routes.ts'e eklendi
+### Sprint 49 — AI Uyarı Sistemi (4h)
+- Besin değer eksik (185 hammadde)
+- Fiyat anomali tespit
+- ai_alerts otomatik oluşturma
 
-## Yarın (14 May Çarşamba)
+### Sprint 50 — Tedarikçi Yardımcı (3h)
+- Mr. Dobody tedarikçi kart oluşturma
 
-### Sprint 47.2 — UI + Sistem Prompt'lar (10 rol)
-- Conversational onboarding modal (mobile + desktop)
-- TypeWriter efekti, quick replies
-- 10 rol × 7 adım = 70 dialogue point
-  - satinalma (yarı yapıldı)
-  - gida_muhendisi (Sema)
-  - cgo, coach, trainer, ceo
-  - fabrika_mudur, mudur, supervisor, barista
-
-### Sprint 47.3 — Re-onboarding Admin UI
-- Admin paneli: kullanıcı listesi
-- "Onboarding'i Sıfırla" butonu
-- Confirmation modal
-
-### Sprint 48 — Daily AI Brief
-- Cron job (her gün 09:00)
-- Rol bazlı data aggregation
-- ChatGPT API ile özet
-- Dashboard widget
-
-## Cuma 16 May
-- Sprint 49 — AI Uyarı Sistemi
-- Sprint 50 — Tedarikçi kartı yardımcısı
-
-## Cumartesi 17 May
-- FULL SYSTEM TEST (4 şube)
-- Bug fix
-- Mahmut + Sema bilgilendirme
-
-## Pazar 18 May 15:00
-🎉 **AI-NATIVE PİLOT BAŞLAR**
-
-## Test Senaryoları (post-merge)
-
-### Sprint 47 Test:
-```sql
--- Replit'te migration çalıştır
-\i migrations/sprint-47-48-onboarding-ai.sql
-
--- Seed çalıştır
--- (Bu otomatik DB'ye 185 ürün + 2 tedarikçi yükler)
-npx tsx scripts/seed-raw-materials.ts
-
--- Doğrulama
-SELECT COUNT(*) FROM raw_materials;     -- 185
-SELECT COUNT(*) FROM suppliers;         -- 2+
-SELECT COUNT(*) FROM onboarding_templates; -- 1 (satinalma)
-```
-
-## Notlar
-
-- **Mahmut bordro:** Yarın aramaya gerek yok (pilot 18 May'a alındı)
-- **Sema WhatsApp:** Cuma günü gönderirsin
-- **ChatGPT API:** Mevcut altyapı kullanılıyor (AI_INTEGRATIONS_OPENAI_API_KEY)
-- **Maliyet tahmini:** gpt-4o-mini onboarding × 50 kullanıcı ≈ $5-10 total
-- **Daily brief:** 50 kullanıcı × 30 gün × gpt-4o-mini ≈ $15/ay
+## Cron
+- Server start'ta scheduler register
+- Her gün 09:00 TR time
+- Tüm aktif kullanıcılar için otomatik üretim

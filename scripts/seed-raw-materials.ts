@@ -132,8 +132,8 @@ async function main() {
         priceLastUpdated: new Date(),
         supplierId: supplierId || null,
         isActive: true,
-        nutritionSource: "manual", // başlangıçta manuel — Sema doldurmalı
-        // Besin değerleri NULL — AI uyarı sistemi tetiklenecek
+        // Besin değerleri (energyKcal vb.) NULL — AI uyarı sistemi tetiklenecek
+        // Sema bunları doldurmalı; Sprint 49 alert
       });
       inserted++;
     }

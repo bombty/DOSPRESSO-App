@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { WelcomeHeader } from "./WelcomeHeader";
 import { ModuleCard } from "./ModuleCard";
 import { DobodyCard } from "./DobodyCard";
+import { DailyBriefCard } from "@/components/DailyBriefCard";  // Sprint 48 (Aslan 13 May 2026)
 import { getModulesForRole, showDobodyCard } from "./role-module-config";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -71,6 +72,11 @@ export default function HomeScreen() {
           <DobodyCard />
         </div>
       )}
+
+      {/* Sprint 48 (Aslan 13 May 2026): Daily AI Brief */}
+      <div className="mb-3">
+        <DailyBriefCard />
+      </div>
 
       {/* Module Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3">
