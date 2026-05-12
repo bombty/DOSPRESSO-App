@@ -153,6 +153,7 @@ const YONETIM_MENU: ModuleMenuConfig = {
   title: "Yönetim",
   items: [
     { id: "ayarlar", label: "Dashboard Ayarları", path: "/admin/dashboard-ayarlari", icon: Settings },
+    { id: "sube-vardiya-sablonlari", label: "Şube Vardiya Şablonları", path: "/yonetim/sube-vardiya-sablonlari", icon: Clock, allowedRoles: ["admin","ceo","cgo","mudur"] },
     { id: "kullanicilar", label: "Yetkilendirme", path: "/admin/yetkilendirme", icon: Users },
     { id: "loglar", label: "Aktivite Logları", path: "/admin/aktivite-loglari", icon: FileText },
     { id: "bannerlar", label: "Bannerlar", path: "/admin/bannerlar", icon: FileText },
