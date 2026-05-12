@@ -1,0 +1,56 @@
+Pasted-Plan-modunday-m-5-sorguyu-paralel-al-t-r-yorum-T-m-sonu_1778592564288.txt
+Plan modundayım — 5 sorguyu paralel çalıştırıyorum:
+Tüm sonuçlar geldi. Sorgu 3a'yı factory_product_id → product_id düzelterek yeniden çalıştırıyorum, diğerleri hazır:
+Tüm 5 sorgu tamamlandı. Sonuçlar:
+
+SORGU 1 — Yetkilendirme Matrisi (role_permission_grants)
+Rol	Modül Sayısı	Aksiyon Sayısı
+admin	13	53
+mudur	9	21
+muhasebe_ik	6	20
+cgo	10	18
+ceo	10	17
+supervisor	6	13
+yatirimci_branch	8	10
+...	...	...
+satinalma	4	6
+destek	1	3
+Toplam: 27 rol DB'de aktif kayıtlı. role_permission_grants sistemi gerçekten kullanılıyor.
+
+SORGU 2 — Manifest'te Rol Sayısı
+24 rol shared/module-manifest.ts içinde tanımlı.
+
+Fark: DB'de 27 rol var, manifest'te 24 → 3 rol (satin_alma, vs.) manifeste yansımamış veya alt çizgi farkı var.
+
+SORGU 3 — Sipariş Akışı
+Metrik	Değer
+branch_orders toplam sipariş	0
+Benzersiz şube	0
+Sipariş akışı hiç kullanılmamış. Tablo var, schema eksiksiz ama sıfır kayıt. branch_order_items FK'ları: order_id, product_id (factory_product_id yok — schema tasarımı farklı).
+
+branch_orders kolon özeti: order_number, branch_id, status, priority, requested_by_id, approved_by_id, shipment_id, total_amount
+
+SORGU 4 — 4 Pilot Şube Modül Durumu
+Şube	Aktif	Toplam
+5 — Işıklar	1	1
+8 — Antalya Lara	0	1
+23 — Merkez Ofis HQ	0	1
+24 — Fabrika	0	1
+Kritik: module_flags.branch_id bazlı kayıt neredeyse yok. Modüller scope='global' üzerinden yönetiliyor — bu sorguda NULL branch'li global flag'ler JOIN ile eşleşmiyor. Yani Sorgu 4 aslında branch-specific override olup olmadığını test etti: yok. Global flag sistemi çalışıyor, bu normal.
+
+SORGU 5 — 4 Pilot Şube Kullanıcı Dağılımı
+Branch ID	Şube	Kullanıcı	Roller
+5	Işıklar	14	barista, coach, mudur, sube_kiosk, supervisor_buddy, trainer, yatirimci_branch
+8	Antalya Lara	13	bar_buddy, barista, mudur, stajyer, sube_kiosk, supervisor_buddy
+23	Merkez Ofis HQ	6	cgo, fabrika_mudur, marketing, muhasebe_ik, satinalma, sube_kiosk
+24	Fabrika	13	fabrika_operator, gida_muhendisi, sef, supervisor
+Toplam 4 şubede 46 aktif kullanıcı.
+
+Özet — Pilot Öncesi Durum
+Alan	Durum
+role_permission_grants sistemi	Aktif, 27 rol kayıtlı ✅
+Manifest ↔ DB rol eşleşmesi	24 vs 27 — 3 rol farkı ⚠️
+Sipariş akışı (branch_orders)	Schema hazır ama sıfır kayıt — henüz test edilmemiş
+Modül flag'leri (branch bazlı)	Global scope yeterli, branch override yok — normal
+Pilot şube kullanıcıları	46 aktif, rol dağılımı sağlıklı ✅
+stok modülü	Az önce is_enabled=TRUE yapıldı ✅

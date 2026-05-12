@@ -17,7 +17,7 @@ import { Router } from "express";
 import { db } from "../db";
 import { rawMaterials, suppliers } from "@shared/schema";
 import { eq, and, desc, ilike, or } from "drizzle-orm";
-import { isAuthenticated } from "../auth";
+import { isAuthenticated } from "../localAuth";
 import { requireManifestAccess } from "../services/manifest-auth";
 
 const router = Router();

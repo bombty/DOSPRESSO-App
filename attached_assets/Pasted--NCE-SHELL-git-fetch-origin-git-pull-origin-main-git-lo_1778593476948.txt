@@ -1,0 +1,73 @@
+═══ ÖNCE SHELL ═══
+git fetch origin && git pull origin main && git log --oneline | head -8
+
+═══ SONRA AGENT ═══
+
+Sprint 20.1 + 21 + 22 merge edildi (3 PR). Tam test:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADIM 1: Build + Server (PARALEL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+npm run build  (60s timeout)
+Server restart
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADIM 2: Kod doğrulamaları (PARALEL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Sprint 20.1 — Yeni sayfa
+ls -la client/src/pages/yonetim/sube-vardiya-sablonlari.tsx
+# Beklenen: ~14KB dosya var
+
+grep -n "Route path=\"/yonetim/sube-vardiya-sablonlari\"" client/src/App.tsx
+# Beklenen: 1 eşleşme
+
+# Sprint 21 — Hibrit middleware
+grep -c "checkDbExtension\|db_extension\|Sprint 21" server/services/manifest-auth.ts
+# Beklenen: 8+ eşleşme
+
+# Sprint 22 — Raw Materials API
+ls -la server/routes/raw-materials.ts
+# Beklenen: ~5KB dosya var
+
+grep -n "rawMaterialsRouter\|raw-materials" server/routes.ts
+# Beklenen: 2 eşleşme (import + use)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADIM 3: API testleri (PARALEL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Test A: Raw materials erişim (Aslan/admin login session ile)
+curl -s -b /tmp/cookies.txt \
+  "http://localhost:5000/api/raw-materials?limit=3" | jq '.items | length'
+# Beklenen: 3 (admin manifest'te stok/view var)
+
+# Test B: Sprint 21 hibrit — satinalma için manifest'te stok/view YOK
+# Bu durumda 403 dönmeli (DB extension henüz eklenmediyse)
+# Samet hesabı varsa onunla test:
+SAMET_ID=$(psql "$DATABASE_URL" -t -c \
+  "SELECT id FROM users WHERE username='hq-samet-satinalma' LIMIT 1;")
+echo "Samet ID: $SAMET_ID"
+
+# Test C: Kategori listesi
+curl -s -b /tmp/cookies.txt \
+  "http://localhost:5000/api/raw-materials/categories/list" | jq '.categories | length'
+# Beklenen: 5-20 kategori (Sema'nın oluşturduğu hammadde kategorileri)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ADIM 4: Server log gözlemle
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Sprint 21 audit log — DB extension kullanım örüntüsü
+grep "Sprint 21 Audit\|db_extension" /tmp/server.log 2>/dev/null | tail -5
+# Beklenen: Henüz 0 (kimse DB extension kullanmadı, normal)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RAPOR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Tüm sonuçları tablo halinde:
+- Sprint 20.1: dosya + route + UI render durumu
+- Sprint 21: middleware import + checkDbExtension fonksiyon var
+- Sprint 22: API + 3 endpoint çalışıyor
+- Build time + warning count

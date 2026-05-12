@@ -1,0 +1,72 @@
+═══ ÖNCE Replit SHELL ═══
+git pull origin main && git log --oneline | head -3
+
+═══ SONRA Replit AGENT ═══
+
+5 sorgu paralel çalıştır, sonuçları tablo halinde sun:
+
+────────────────────────────────────────────────
+SORGU 1 — Yetkilendirme matrisi (yeni DB sistem)
+────────────────────────────────────────────────
+SELECT 
+  role, 
+  COUNT(DISTINCT module_key) AS module_count,
+  COUNT(DISTINCT action_id) AS action_count
+FROM role_permission_grants rpg
+INNER JOIN permission_actions pa ON rpg.action_id = pa.id
+WHERE rpg.is_active = true
+GROUP BY role
+ORDER BY action_count DESC;
+
+→ Hangi roller DB'de tanımlı + kaç yetki kayıtlı
+
+────────────────────────────────────────────────
+SORGU 2 — Manifest dosyası kod roller
+────────────────────────────────────────────────
+grep -c "^    [a-z_]*: {" shared/module-manifest.ts
+
+→ Kod manifest'te kaç rol tanımı var (toplam)
+
+────────────────────────────────────────────────
+SORGU 3 — Satın alma sipariş akışı tasarımı  
+────────────────────────────────────────────────
+SELECT 
+  COUNT(*) AS total_orders,
+  COUNT(DISTINCT branch_id) AS unique_branches,
+  COUNT(DISTINCT factory_product_id) AS factory_products_ordered
+FROM branch_orders;
+
+SELECT column_name FROM information_schema.columns 
+WHERE table_name = 'branch_order_items';
+
+→ Mevcut sipariş akışı kullanılıyor mu? Hangi FK var?
+
+────────────────────────────────────────────────
+SORGU 4 — Pilot Day-1: 4 şube modül durumu
+────────────────────────────────────────────────
+SELECT 
+  b.id, b.name,
+  COUNT(CASE WHEN mf.is_enabled = true THEN 1 END) AS enabled_modules,
+  COUNT(*) AS total_modules
+FROM branches b
+LEFT JOIN module_flags mf ON mf.branch_id = b.id
+WHERE b.id IN (5, 8, 23, 24)
+GROUP BY b.id, b.name;
+
+→ 4 pilot şubede kaç modül aktif
+
+────────────────────────────────────────────────
+SORGU 5 — Pilot Day-1: 4 şube kullanıcı durumu
+────────────────────────────────────────────────
+SELECT 
+  branch_id, 
+  COUNT(*) AS user_count,
+  STRING_AGG(DISTINCT role, ', ') AS roles
+FROM users
+WHERE branch_id IN (5, 8, 23, 24) 
+  AND is_active = true 
+  AND deleted_at IS NULL
+GROUP BY branch_id
+ORDER BY branch_id;
+
+→ 4 şubede aktif kullanıcı + rol dağılımı
