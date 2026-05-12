@@ -12,6 +12,7 @@ import {
   insertShiftAttendanceSchema,
   users,
   pdksRecords,
+  branches,
 } from "@shared/schema";
 import { eq, desc, and, sql, isNull, gte, lte, ne, notInArray, inArray } from "drizzle-orm";
 import { analyzeDressCodePhoto } from "../ai";
@@ -2836,6 +2837,21 @@ router.post('/api/shifts/ai-generate', kioskOrAuth, async (req, res) => {
       return res.status(403).json({ message: "Sadece kendi şubeniz için plan oluşturabilirsiniz" });
     }
 
+    // Sprint 35 (Aslan 13 May 00:30): HQ/Fabrika için vardiya planlama YASAK
+    // Operasyonel kafe değiller — farklı vardiya sistemi kullanırlar
+    const targetBranch = await db.select({ id: branches.id, name: branches.name })
+      .from(branches)
+      .where(eq(branches.id, branchId))
+      .limit(1);
+    if (targetBranch.length > 0) {
+      const bName = (targetBranch[0].name || '').toLowerCase();
+      if (bName.includes('merkez') || bName.includes('fabrika') || bName.includes('hq')) {
+        return res.status(403).json({
+          message: "HQ ve Fabrika için vardiya planlama desteklenmiyor. Kafe şubeleri için kullanılır."
+        });
+      }
+    }
+
     const { ShiftScheduler } = await import('../services/shiftScheduler');
     const { leaveRequests: leaveRequestsTable } = await import('@shared/schema');
     const { gte, lte, inArray } = await import('drizzle-orm');
@@ -2936,6 +2952,20 @@ router.post('/api/shifts/ai-apply', kioskOrAuth, async (req, res) => {
 
     if (isBranchRole(role) && user.branchId !== branchId) {
       return res.status(403).json({ message: "Sadece kendi şubeniz için plan kaydedebilirsiniz" });
+    }
+
+    // Sprint 35 (Aslan 13 May 00:30): HQ/Fabrika için vardiya planlama YASAK
+    const targetBranchApply = await db.select({ id: branches.id, name: branches.name })
+      .from(branches)
+      .where(eq(branches.id, branchId))
+      .limit(1);
+    if (targetBranchApply.length > 0) {
+      const bName = (targetBranchApply[0].name || '').toLowerCase();
+      if (bName.includes('merkez') || bName.includes('fabrika') || bName.includes('hq')) {
+        return res.status(403).json({
+          message: "HQ ve Fabrika için vardiya planlama desteklenmiyor."
+        });
+      }
     }
 
     const weekEnd = new Date(weekStartDate);

@@ -1689,7 +1689,14 @@ export default function BranchKiosk() {
             Action butonlar üstte birleştirildi → eski 3-kolon Sorun/Mesai grid kaldırıldı. */}
         {hasSession && !isOnBreak && (() => {
           const isSupervisor = selectedUser && ['supervisor', 'supervisor_buddy', 'mudur'].includes(selectedUser.role || '');
-          const buttonCount = isSupervisor ? 4 : 3;
+          // Sprint 35 (Aslan 13 May 00:30): Vardiya Planlama sadece kafe şubelerinde
+          // HQ (Merkez) ve Fabrika operasyonel kafe değil — vardiya planlama menüsü gösterilmez
+          const branchName = branchAuth?.name || '';
+          const isOperationalBranch = !branchName.toLowerCase().includes('merkez')
+            && !branchName.toLowerCase().includes('fabrika')
+            && !branchName.toLowerCase().includes('hq');
+          const showPlanButton = isSupervisor && isOperationalBranch;
+          const buttonCount = showPlanButton ? 4 : 3;
           return (
             <div style={{ background: '#0f1419', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '10px 12px', display: 'grid', gridTemplateColumns: `repeat(${buttonCount}, 1fr)`, gap: 8, flexShrink: 0 }}>
               <button
@@ -1717,7 +1724,7 @@ export default function BranchKiosk() {
                 <span style={{ fontSize: 18 }}>⚠️</span>
                 Sorun
               </button>
-              {isSupervisor && (
+              {showPlanButton && (
                 <button
                   onClick={() => {
                     if (typeof window !== 'undefined' && selectedUser) {
