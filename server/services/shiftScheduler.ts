@@ -307,12 +307,13 @@ export class ShiftScheduler {
         return !leaveUserDates.has(key);
       });
 
-      // V2: Off sayısı — Cmt+Paz YASAK, Cum minimum, Pzt-Sal max
+      // V2: Off sayısı — Cmt+Paz YASAK, Cum 1-2, Pzt-Sal max
       let needOff = 0;
       if (isWeekendStrict) {
         needOff = 0; // Cmt+Paz YASAK
       } else if (isFriday) {
-        needOff = Math.min(1, Math.floor(staffCount * 0.05)); // Cum minimum (0-1 kişi)
+        // Sprint 34: Cum 1-2 off (önceden 0-1 idi, Aslan talebi: 1 veya 2)
+        needOff = Math.max(1, Math.min(2, Math.floor(staffCount * 0.10)));
       } else if (isQuietDay) {
         needOff = Math.ceil(staffCount * 0.35); // Pzt+Sal en çok
       } else {
@@ -341,17 +342,65 @@ export class ShiftScheduler {
       const opening_mid_count = Math.floor(remaining / 2);
       // const closing_mid_count = remaining - opening_mid_count; // kalan
 
-      // Sprint 32 V2: Haftaya göre ROTASYON (geçmişe dönük adillik)
-      // ISO hafta numarası (1-53) → rotasyon offset
-      // Her personel hafta hafta farklı shift dilimine geçer
+      // ═══════════════════════════════════════════════════════════
+      // Sprint 34 HOTFIX (Aslan 12 May 23:59) — GERÇEK ROTASYON
+      // ═══════════════════════════════════════════════════════════
+      // Problem: Önceki hash-based shuffle aynı kişiyi her hafta aynı tier'a yazıyordu
+      // (Ateş Güney her hafta açılış, Cihan her hafta açılış...)
+      //
+      // Yeni çözüm: TIER-BASED ROTATION
+      // Her personel için:
+      //   1. Sabit "başlangıç tier" hesapla (ID hash → 0-3)
+      //   2. Her hafta tier 1 artar (mod 4)
+      //   3. Tier 0 = Açılış, 1 = Açılış Aracısı, 2 = Kapanış Aracısı, 3 = Kapanış
+      //
+      // Örnek Cihan (başlangıç tier 0):
+      //   Hafta 1: tier 0 → Açılış
+      //   Hafta 2: tier 1 → Açılış Aracısı
+      //   Hafta 3: tier 2 → Kapanış Aracısı
+      //   Hafta 4: tier 3 → Kapanış
+      //   Hafta 5: tier 0 → Açılış (tekrar)
       const weekNum = Math.floor((dateObj.getTime() - new Date(dateObj.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
 
-      // Rotasyon için personelleri shuffle (hafta numarasına göre deterministic)
-      const rotatedStaff = [...workingToday].sort((a, b) => {
-        const hashA = ((a.id.charCodeAt(0) || 0) + weekNum * 7) % 1000;
-        const hashB = ((b.id.charCodeAt(0) || 0) + weekNum * 7) % 1000;
-        return hashA - hashB;
-      });
+      // Her personel için hedef tier (0-3) hesapla — hafta bazlı rotasyon
+      const personTier: Record<string, number> = {};
+      for (const p of workingToday) {
+        // ID karakterlerinin toplamı → başlangıç tier (sabit personel kimliği)
+        const idHashSum = p.id.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0);
+        const startTier = idHashSum % 4;
+        // Her hafta tier 1 artar (mod 4 ile döngüsel)
+        personTier[p.id] = (startTier + weekNum) % 4;
+      }
+
+      // Tier'a göre grupla
+      const tier0 = workingToday.filter(p => personTier[p.id] === 0); // Açılış adayları
+      const tier1 = workingToday.filter(p => personTier[p.id] === 1); // Açılış Aracısı adayları
+      const tier2 = workingToday.filter(p => personTier[p.id] === 2); // Kapanış Aracısı adayları
+      const tier3 = workingToday.filter(p => personTier[p.id] === 3); // Kapanış adayları
+
+      // Hedef sırada birleştir: Açılış → Aracı → KapAracı → Kapanış
+      // Eğer tier'da çok kişi varsa, fazlalar bir sonraki tier'a kayar (overflow)
+      const rotatedStaff: typeof workingToday = [];
+
+      // Açılış (max opening_count): tier 0'dan al
+      const opening = tier0.slice(0, opening_count);
+      const tier0_overflow = tier0.slice(opening_count);
+      rotatedStaff.push(...opening);
+
+      // Açılış Aracısı: tier 1 + tier 0 overflow
+      const middle1 = [...tier1, ...tier0_overflow].slice(0, opening_mid_count);
+      const tier1_overflow = [...tier1, ...tier0_overflow].slice(opening_mid_count);
+      rotatedStaff.push(...middle1);
+
+      // Kapanış (max closing_count): tier 3'den al (sondan)
+      // closing son sırada olmalı — önce kapanış aracısını ekle
+      const closing = tier3.slice(0, closing_count);
+      const tier3_overflow = tier3.slice(closing_count);
+
+      // Kapanış Aracısı: tier 2 + tier 1 overflow + tier 3 overflow
+      const middle2 = [...tier2, ...tier1_overflow, ...tier3_overflow];
+      rotatedStaff.push(...middle2);
+      rotatedStaff.push(...closing);
 
 
       for (let i = 0; i < rotatedStaff.length; i++) {
