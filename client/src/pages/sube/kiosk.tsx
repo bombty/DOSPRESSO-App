@@ -168,6 +168,29 @@ export default function BranchKiosk() {
     staleTime: 60000,
   });
 
+  // Sprint 47.3 fix (Aslan 13 May 2026): Personelin kendi vardiyalarını kiosk'ta gösterme
+  // Bug: Şift yöneticisi vardiya planı yapınca personel kendi kiosk'unda göremiyordu
+  const { data: myShifts = [] } = useQuery<any[]>({
+    queryKey: ['/api/shifts/personal', selectedUser?.id, branchId],
+    queryFn: async () => {
+      if (!selectedUser?.id || !branchId) return [];
+      // Bugünden 14 gün ileriye kadar
+      const today = new Date();
+      const future = new Date(today);
+      future.setDate(today.getDate() + 14);
+      const dateFrom = today.toISOString().split('T')[0];
+      const dateTo = future.toISOString().split('T')[0];
+      const res = await fetch(`/api/shifts?branchId=${branchId}&assignedToId=${selectedUser.id}&dateFrom=${dateFrom}&dateTo=${dateTo}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      // shifts array veya paginated response
+      return Array.isArray(data) ? data : (data.items || data.data || []);
+    },
+    enabled: step === 'working' && !!selectedUser?.id && !!branchId,
+    staleTime: 60000, // 1 dk
+    refetchInterval: 5 * 60 * 1000, // 5 dk'da bir refresh
+  });
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (user?.role === 'sube_kiosk' && user.branchId) {
@@ -1973,8 +1996,168 @@ export default function BranchKiosk() {
             )}
           </div>
 
+          {/* Sprint 47.3 fix (Aslan 13 May 2026): Bu Haftaki Vardiyam */}
+          {/* Personel kendi vardiyalarını kiosk'ta göremiyordu — şift yöneticisi
+              plan yapınca diğer personeller kendi şiftlerini ekranda göremiyordu */}
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                📅 Bu Haftaki Vardiyam
+              </p>
+              {myShifts.length > 0 && (
+                <span style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', borderRadius: 20, padding: '2px 8px', fontSize: 13, fontWeight: 600 }}>
+                  {myShifts.length} vardiya
+                </span>
+              )}
+            </div>
+            {myShifts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>📆</div>
+                <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: 0 }}>Planlanmış vardiya yok</p>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, margin: '4px 0 0' }}>
+                  Vardiya planlandığında burada görünür
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(() => {
+                  // Bugünden ileri sıralı + max 7 göster
+                  const sorted = [...myShifts].sort((a: any, b: any) => {
+                    const dateA = new Date(a.shiftDate || a.date);
+                    const dateB = new Date(b.shiftDate || b.date);
+                    return dateA.getTime() - dateB.getTime();
+                  });
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+
+                  return sorted.slice(0, 7).map((shift: any, idx: number) => {
+                    const shiftDate = new Date(shift.shiftDate || shift.date);
+                    shiftDate.setHours(0, 0, 0, 0);
+                    const diffDays = Math.floor((shiftDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const isToday = diffDays === 0;
+                    const isTomorrow = diffDays === 1;
+
+                    const dayLabel = isToday ? 'Bugün' : isTomorrow ? 'Yarın' :
+                      shiftDate.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short' });
+
+                    // Vardiya tipi → emoji
+                    const typeEmoji = shift.shiftType === 'morning' ? '🌅' :
+                      shift.shiftType === 'evening' ? '🌇' :
+                      shift.shiftType === 'night' ? '🌙' : '☀️';
+
+                    // Status renk
+                    const statusColor = shift.status === 'completed' ? '#22c55e' :
+                      shift.status === 'cancelled' ? '#ef4444' :
+                      isToday ? '#fbbf24' : 'rgba(255,255,255,0.6)';
+
+                    return (
+                      <div key={shift.id || idx} style={{
+                        padding: '10px 12px',
+                        background: isToday ? 'rgba(251,191,36,0.08)' : 'rgba(255,255,255,0.04)',
+                        border: isToday ? '1px solid rgba(251,191,36,0.3)' : '1px solid transparent',
+                        borderRadius: 7,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8
+                      }} data-testid={`shift-row-${idx}`}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <span style={{ fontSize: 18 }}>{typeEmoji}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontWeight: 600, color: statusColor, fontSize: 13, margin: 0 }}>
+                              {dayLabel}
+                              {isToday && <span style={{ marginLeft: 6, fontSize: 11, background: 'rgba(251,191,36,0.2)', padding: '1px 6px', borderRadius: 4 }}>BUGÜN</span>}
+                            </p>
+                            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, margin: '2px 0 0' }}>
+                              {shift.startTime} - {shift.endTime}
+                              {shift.status === 'cancelled' && <span style={{ color: '#ef4444', marginLeft: 6 }}>İptal</span>}
+                            </p>
+                          </div>
+                        </div>
+                        {shift.notes && (
+                          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, margin: 0, fontStyle: 'italic', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {shift.notes}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+                {myShifts.length > 7 && (
+                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', margin: '4px 0 0' }}>
+                    +{myShifts.length - 7} vardiya daha
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Sprint 19 (11 May 2026): Eski 3-kolon Sorun/Mesai/Vardiya Planla grid kaldırıldı.
               Artık üstteki sticky action bar'da. Bkz: satır ~1654 civarı. */}
+
+          {/* Sprint 47.3 fix (Aslan 13 May 2026): Bugünkü Skorum — Şube Görev Havuzu'ndan
+              ÖNCEYE alındı. Eski sıralamada Şube Görev Havuzu span-2 olduğu için
+              Bu Haftaki Vardiyam'ın yanı boş kalıyor, Skorum 1 satır altta yan boşlukta
+              gözüküyordu (UI overlap raporu). Şimdi: Vardiyam | Skorum row 2, Görev Havuzu row 3. */}
+          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              ⭐ Bugünkü Skorum
+            </p>
+            {/* S-UX Pilot Day-1 Banner (21 Nis 2026) - demotivasyon önleme */}
+            {(() => {
+              const pilotStart = new Date('2026-04-28T00:00:00');
+              const now = new Date();
+              const daysSincePilot = Math.floor((now.getTime() - pilotStart.getTime()) / (1000 * 60 * 60 * 24));
+              // Pilot ilk 7 gün: skor toplama dönemi banner'ı göster
+              if (daysSincePilot >= 0 && daysSincePilot < 7) {
+                return (
+                  <div style={{
+                    background: 'rgba(251,191,36,0.1)',
+                    border: '1px solid rgba(251,191,36,0.3)',
+                    borderRadius: 8,
+                    padding: '8px 10px',
+                    marginBottom: 12
+                  }}>
+                    <p style={{ color: '#fbbf24', fontSize: 14, fontWeight: 600, margin: 0 }}>
+                      🎯 Pilot İlk Hafta
+                    </p>
+                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, margin: '2px 0 0', lineHeight: 1.4 }}>
+                      Skor toplama dönemi. Değerler stabil değil, 7 gün sonra normalleşir.
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            {userScore ? (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 32, fontWeight: 700, color: userScore.score >= 80 ? '#22c55e' : userScore.score >= 50 ? '#fbbf24' : '#ef4444' }}>
+                    {Math.round(userScore.score)}
+                  </span>
+                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>/ 100</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 14 }}>
+                  <div style={{ padding: '8px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: 6 }}>
+                    <p style={{ color: '#22c55e', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.completed || 0}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Tamamlanan</p>
+                  </div>
+                  <div style={{ padding: '8px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6 }}>
+                    <p style={{ color: '#ef4444', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.overdue || 0}</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Gecikmiş</p>
+                  </div>
+                </div>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>
+                  Son 30 gün
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
+                Henüz görev üstlenmediniz<br/>
+                <span style={{ fontSize: 14 }}>Üstte "Üstlen" butonu ile başlayın</span>
+              </p>
+            )}
+          </div>
 
           {/* Şube Görev Havuzu — isteyen üstlenir, skor kazanır */}
           <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14, overflow: 'auto', gridColumn: 'span 2' }}>
@@ -2053,67 +2236,6 @@ export default function BranchKiosk() {
                   );
                 })}
               </div>
-            )}
-          </div>
-
-          {/* Bugünkü Skorum — kullanıcı motivasyonu için */}
-          <div style={{ background: '#141820', border: '0.5px solid rgba(255,255,255,0.09)', borderRadius: 10, padding: 14 }}>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
-              ⭐ Bugünkü Skorum
-            </p>
-            {/* S-UX Pilot Day-1 Banner (21 Nis 2026) - demotivasyon önleme */}
-            {(() => {
-              const pilotStart = new Date('2026-04-28T00:00:00');
-              const now = new Date();
-              const daysSincePilot = Math.floor((now.getTime() - pilotStart.getTime()) / (1000 * 60 * 60 * 24));
-              // Pilot ilk 7 gün: skor toplama dönemi banner'ı göster
-              if (daysSincePilot >= 0 && daysSincePilot < 7) {
-                return (
-                  <div style={{
-                    background: 'rgba(251,191,36,0.1)',
-                    border: '1px solid rgba(251,191,36,0.3)',
-                    borderRadius: 8,
-                    padding: '8px 10px',
-                    marginBottom: 12
-                  }}>
-                    <p style={{ color: '#fbbf24', fontSize: 14, fontWeight: 600, margin: 0 }}>
-                      🎯 Pilot İlk Hafta
-                    </p>
-                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, margin: '2px 0 0', lineHeight: 1.4 }}>
-                      Skor toplama dönemi. Değerler stabil değil, 7 gün sonra normalleşir.
-                    </p>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-            {userScore ? (
-              <div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 32, fontWeight: 700, color: userScore.score >= 80 ? '#22c55e' : userScore.score >= 50 ? '#fbbf24' : '#ef4444' }}>
-                    {Math.round(userScore.score)}
-                  </span>
-                  <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>/ 100</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 14 }}>
-                  <div style={{ padding: '8px 10px', background: 'rgba(34,197,94,0.08)', borderRadius: 6 }}>
-                    <p style={{ color: '#22c55e', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.completed || 0}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Tamamlanan</p>
-                  </div>
-                  <div style={{ padding: '8px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: 6 }}>
-                    <p style={{ color: '#ef4444', fontSize: 18, fontWeight: 700, margin: 0 }}>{userScore.details?.overdue || 0}</p>
-                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, margin: 0 }}>Gecikmiş</p>
-                  </div>
-                </div>
-                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginTop: 8, textAlign: 'center' }}>
-                  Son 30 gün
-                </p>
-              </div>
-            ) : (
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
-                Henüz görev üstlenmediniz<br/>
-                <span style={{ fontSize: 14 }}>Üstte "Üstlen" butonu ile başlayın</span>
-              </p>
             )}
           </div>
 
