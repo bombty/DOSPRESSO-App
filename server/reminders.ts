@@ -1063,7 +1063,7 @@ export async function checkOnboardingCompletions() {
         employeeName: users.firstName,
         employeeLastName: users.lastName,
         employeeUsername: users.username,
-        templateName: onboardingTemplates.name,
+        templateName: onboardingTemplates.roleDisplayName,
       })
       .from(employeeOnboardingAssignments)
       .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))

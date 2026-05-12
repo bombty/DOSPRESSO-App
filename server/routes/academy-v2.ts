@@ -1262,13 +1262,9 @@ router.get('/api/academy/onboarding/templates', isAuthenticated, requireAcademyC
   try {
     const templates = await db.select({
       id: onboardingTemplates.id,
-      name: onboardingTemplates.name,
-      description: onboardingTemplates.description,
-      targetRole: onboardingTemplates.targetRole,
-      scope: onboardingTemplates.scope,
-      durationDays: onboardingTemplates.durationDays,
+      name: onboardingTemplates.roleDisplayName,
+      targetRole: onboardingTemplates.role,
       isActive: onboardingTemplates.isActive,
-      createdById: onboardingTemplates.createdById,
       createdAt: onboardingTemplates.createdAt,
       updatedAt: onboardingTemplates.updatedAt,
       stepCount: sql<number>`(SELECT COUNT(*) FROM onboarding_template_steps WHERE template_id = ${onboardingTemplates.id})::int`,
@@ -1422,8 +1418,7 @@ router.get('/api/academy/onboarding/assignments', isAuthenticated, requireAcadem
       userName: users.firstName,
       userLastName: users.lastName,
       userRole: users.role,
-      templateName: onboardingTemplates.name,
-      templateDuration: onboardingTemplates.durationDays,
+      templateName: onboardingTemplates.roleDisplayName,
     })
     .from(employeeOnboardingAssignments)
     .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))
@@ -1437,7 +1432,6 @@ router.get('/api/academy/onboarding/assignments', isAuthenticated, requireAcadem
       userName: `${r.userName || ''} ${r.userLastName || ''}`.trim(),
       userRole: r.userRole,
       templateName: r.templateName,
-      templateDuration: r.templateDuration,
     }));
 
     if (ACADEMY_SUPERVISOR_ROLES.has(user.role)) {
@@ -1529,8 +1523,7 @@ router.get('/api/academy/onboarding/my-assignment', isAuthenticated, async (req,
     const userId = req.user!.id;
     const [assignment] = await db.select({
       assignment: employeeOnboardingAssignments,
-      templateName: onboardingTemplates.name,
-      templateDuration: onboardingTemplates.durationDays,
+      templateName: onboardingTemplates.roleDisplayName,
     })
     .from(employeeOnboardingAssignments)
     .leftJoin(onboardingTemplates, eq(employeeOnboardingAssignments.templateId, onboardingTemplates.id))
@@ -1679,8 +1672,7 @@ router.get('/api/academy/onboarding/team-progress', isAuthenticated, requireAcad
       userName: users.firstName,
       userLastName: users.lastName,
       userRole: users.role,
-      templateName: onboardingTemplates.name,
-      templateDuration: onboardingTemplates.durationDays,
+      templateName: onboardingTemplates.roleDisplayName,
     })
     .from(employeeOnboardingAssignments)
     .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))
