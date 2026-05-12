@@ -52,7 +52,7 @@ async function main() {
   const db = drizzle({ client: pool });
 
   console.log("📂 Reading seed JSON...");
-  const seedPath = path.join(__dirname, "raw-materials-seed.json");
+  const seedPath = path.join(new URL('.', import.meta.url).pathname, "raw-materials-seed.json");
   const seedData: SeedData = JSON.parse(fs.readFileSync(seedPath, "utf-8"));
 
   console.log(`📊 ${seedData.raw_materials.length} hammadde, ${seedData.suppliers_inferred.length} tedarikçi`);

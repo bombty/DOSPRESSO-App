@@ -707,41 +707,11 @@ export const insertEmployeeOnboardingTaskSchema = createInsertSchema(employeeOnb
 export type InsertEmployeeOnboardingTask = z.infer<typeof insertEmployeeOnboardingTaskSchema>;
 export type EmployeeOnboardingTask = typeof employeeOnboardingTasks.$inferSelect;
 
-// ========================================
-// ONBOARDING TEMPLATES - Coach Onboarding Şablonları
-// ========================================
-
-// Onboarding şablonları - Coach HQ'da oluşturur, tüm şubelerde kullanılır
-export const onboardingTemplates = pgTable("onboarding_templates", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 200 }).notNull(), // "Yeni Barista Onboarding", "Stajyer Programı"
-  description: text("description"),
-  targetRole: varchar("target_role", { length: 50 }).notNull().default("barista"), // barista, stajyer, supervisor_buddy
-  scope: varchar("scope", { length: 20 }).notNull().default("branch"), // branch, factory
-  durationDays: integer("duration_days").notNull().default(60), // Toplam süre (örn: 60 gün = 2 ay deneme süresi)
-  isActive: boolean("is_active").notNull().default(true),
-  createdById: varchar("created_by_id").notNull(), // Coach user ID
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-  deletedAt: timestamp("deleted_at"),
-}, (table) => [
-  index("onboarding_templates_target_role_idx").on(table.targetRole),
-  index("onboarding_templates_active_idx").on(table.isActive),
-]);
-
-export const insertOnboardingTemplateSchema = createInsertSchema(onboardingTemplates).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type InsertOnboardingTemplate = z.infer<typeof insertOnboardingTemplateSchema>;
-export type OnboardingTemplate = typeof onboardingTemplates.$inferSelect;
-
 // Onboarding şablon adımları - Her şablondaki eğitim aşamaları
+// (onboardingTemplates tablosu schema-30-onboarding-ai.ts'e taşındı — Sprint 47.1)
 export const onboardingTemplateSteps = pgTable("onboarding_template_steps", {
   id: serial("id").primaryKey(),
-  templateId: integer("template_id").notNull().references(() => onboardingTemplates.id, { onDelete: "cascade" }),
+  templateId: integer("template_id").notNull(),
   stepOrder: integer("step_order").notNull().default(1),
   title: varchar("title", { length: 200 }).notNull(),
   description: text("description"),
@@ -779,7 +749,7 @@ export const employeeOnboardingAssignments = pgTable("employee_onboarding_assign
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull(), // Yeni personel
   branchId: integer("branch_id").notNull(),
-  templateId: integer("template_id").notNull().references(() => onboardingTemplates.id),
+  templateId: integer("template_id").notNull(),
   mentorId: varchar("mentor_id"),
   startDate: timestamp("start_date").notNull().defaultNow(),
   expectedEndDate: timestamp("expected_end_date"), // Beklenen bitiş (startDate + durationDays)
