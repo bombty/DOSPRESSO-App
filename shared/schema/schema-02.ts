@@ -2624,6 +2624,15 @@ export const branches = pgTable("branches", {
   managerName: varchar("manager_name", { length: 255 }),
   openingHours: time("opening_hours", { precision: 0 }).default(sql`'08:00'::time`),
   closingHours: time("closing_hours", { precision: 0 }).default(sql`'22:00'::time`),
+  // Sprint 20 (Aslan 12 May 2026): Şube-spesifik vardiya şablonları
+  // Single source of truth — kiosk supervisor-shift bu listeyi kullanır.
+  // HQ admin /api/branches/:id/shift-templates ile günceller.
+  // Default 3 şablon: Sabah Açılış, Öğle, Akşam Kapanış
+  shiftTemplates: jsonb("shift_templates").default(sql`'[
+    {"id":"morning","label":"Sabah Açılış","startTime":"08:00","endTime":"17:00","color":"yellow","isActive":true},
+    {"id":"mid","label":"Öğle","startTime":"11:00","endTime":"20:00","color":"blue","isActive":true},
+    {"id":"evening","label":"Akşam Kapanış","startTime":"14:00","endTime":"22:00","color":"pink","isActive":true}
+  ]'::jsonb`),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   shiftCornerPhotoUrl: text("shift_corner_photo_url"),

@@ -241,6 +241,83 @@ router.get('/api/branches/:id', isAuthenticated, async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 20 (Aslan 12 May 2026): Kiosk üzerinden şube bilgisi
+// Kiosk supervisor-shift sayfası bu endpoint'ten branch.shift_templates çeker.
+// Sadece: openingHours, closingHours, shiftTemplates (PII bilgisi yok)
+// ═══════════════════════════════════════════════════════════════════
+router.get('/api/branches/:branchId/kiosk/info', isKioskOrAuthenticated, async (req: any, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    if (isNaN(branchId)) return res.status(400).json({ message: "Geçersiz şube ID" });
+
+    const branch = await storage.getBranch(branchId);
+    if (!branch) return res.status(404).json({ message: "Şube bulunamadı" });
+
+    // Public fields only (PII koruması)
+    res.json({
+      id: branch.id,
+      name: branch.name,
+      openingHours: branch.openingHours,
+      closingHours: branch.closingHours,
+      shiftTemplates: (branch as any).shiftTemplates || [
+        { id: "morning", label: "Sabah Açılış", startTime: "08:00", endTime: "17:00", color: "yellow", isActive: true },
+        { id: "mid", label: "Öğle", startTime: "11:00", endTime: "20:00", color: "blue", isActive: true },
+        { id: "evening", label: "Akşam Kapanış", startTime: "14:00", endTime: "22:00", color: "pink", isActive: true },
+      ],
+    });
+  } catch (error: unknown) {
+    console.error("Error fetching branch info:", error);
+    res.status(500).json({ message: "Şube bilgisi alınamadı" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 20: HQ admin tarafından şube vardiya şablonları güncelleme
+// PATCH /api/branches/:id/shift-templates
+// Body: { shiftTemplates: [...] }
+// Yetki: admin / ceo / cgo / mudur (own_branch)
+// ═══════════════════════════════════════════════════════════════════
+router.patch('/api/branches/:id/shift-templates', isAuthenticated, async (req: any, res) => {
+  try {
+    const user = req.user!;
+    const id = parseInt(req.params.id);
+    const { shiftTemplates } = req.body;
+
+    if (!Array.isArray(shiftTemplates)) {
+      return res.status(400).json({ message: "shiftTemplates dizi olmalı" });
+    }
+
+    // Validation
+    for (const t of shiftTemplates) {
+      if (!t.id || !t.label || !t.startTime || !t.endTime) {
+        return res.status(400).json({ message: "Her şablon id, label, startTime, endTime içermeli" });
+      }
+      if (!/^\d{2}:\d{2}$/.test(t.startTime) || !/^\d{2}:\d{2}$/.test(t.endTime)) {
+        return res.status(400).json({ message: "startTime ve endTime HH:MM formatında olmalı" });
+      }
+    }
+
+    // Yetki: admin/ceo/cgo her şube, mudur sadece kendi şubesi
+    const allowedAll = ['admin', 'ceo', 'cgo'];
+    const allowedOwn = ['mudur'];
+    const role = user.role || '';
+    if (!allowedAll.includes(role) && !allowedOwn.includes(role)) {
+      return res.status(403).json({ message: "Şablonları sadece admin/ceo/cgo/müdür düzenleyebilir" });
+    }
+    if (allowedOwn.includes(role) && user.branchId !== id) {
+      return res.status(403).json({ message: "Sadece kendi şubenizin şablonlarını düzenleyebilirsiniz" });
+    }
+
+    await db.update(branches).set({ shiftTemplates } as any).where(eq(branches.id, id));
+    const updated = await storage.getBranch(id);
+    res.json({ success: true, branch: updated });
+  } catch (error: unknown) {
+    console.error("Error updating shift templates:", error);
+    res.status(500).json({ message: "Şablonlar güncellenemedi" });
+  }
+});
+
 router.get('/api/branches/:branchId/recipients', isAuthenticated, async (req: any, res) => {
   try {
     const user = req.user!;
