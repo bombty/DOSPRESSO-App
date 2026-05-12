@@ -410,6 +410,7 @@ import employeeTypesRouter from "./routes/employee-types";
 import aiPolicyAdminRouter from "./routes/ai-policy-admin";
 import branchInventoryRouter from "./routes/branch-inventory";
 import branchOrdersRouter from "./routes/branch-orders";
+import rawMaterialsRouter from "./routes/raw-materials";
 import pushRouter from "./routes/push";
 import dataManagementRouter from "./routes/data-management";
 import setupRouter from "./routes/setup";
@@ -901,6 +902,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(employeeTypesRouter);
   app.use(aiPolicyAdminRouter);
   app.use(branchOrdersRouter);
+  app.use(rawMaterialsRouter);
   app.use(branchInventoryRouter);
   app.use(pushRouter);
   app.use(dataManagementRouter);
