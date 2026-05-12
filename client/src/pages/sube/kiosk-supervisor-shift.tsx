@@ -185,6 +185,44 @@ export default function KioskSupervisorShift() {
       setEditBreakOpen(false);
     }
   }, [shiftToDelete]);
+
+  // Sprint 29 (Aslan 12 May 22:50): Full-time için başlangıç değişince bitiş +8.5h otomatik
+  // "8 den 9 a ayarlandığında otomatik olarak full time için çıkış saati 8.5 saat sonra"
+  // Part-time için manuel
+  useEffect(() => {
+    if (!shiftToDelete || !editShiftStart || !editTimeOpen) return;
+    const staff = shiftToDelete.assignedToId ? staffLookup[shiftToDelete.assignedToId] : null;
+    if (!staff) return;
+    // FT kontrolü (default fulltime)
+    const isFT = staff.employmentType !== "parttime" && staff.employmentType !== "yari_zamanli";
+    if (!isFT) return;
+    // Sadece kullanıcı manuel değiştirdiğinde tetiklensin (initial load'da değil)
+    const originalStart = shiftToDelete.startTime?.slice(0, 5) || "";
+    if (editShiftStart === originalStart) return;
+    // +8.5 saat = +510 dk
+    const [h, m] = editShiftStart.split(":").map(Number);
+    const totalMin = h * 60 + (m || 0) + 510;
+    const newH = Math.floor(totalMin / 60) % 24;
+    const newM = totalMin % 60;
+    const newEnd = `${newH.toString().padStart(2, "0")}:${newM.toString().padStart(2, "0")}`;
+    setEditShiftEnd(newEnd);
+  }, [editShiftStart, shiftToDelete, staffLookup, editTimeOpen]);
+
+  // Sprint 29: Mola başlangıç değişince otomatik bitiş = +60 dk
+  // "mola başlangıç saati yazınca otomatik olarak 1 saat yani 60 dakika ayarlanmalı"
+  useEffect(() => {
+    if (!editBreakStart || !editBreakOpen) return;
+    // Sadece kullanıcı manuel değiştirdiğinde tetiklensin
+    const originalStart = shiftToDelete?.breakStartTime?.slice(0, 5) || "";
+    if (editBreakStart === originalStart) return;
+    // +60 dk
+    const [h, m] = editBreakStart.split(":").map(Number);
+    const totalMin = h * 60 + (m || 0) + 60;
+    const newH = Math.floor(totalMin / 60) % 24;
+    const newM = totalMin % 60;
+    const newEnd = `${newH.toString().padStart(2, "0")}:${newM.toString().padStart(2, "0")}`;
+    setEditBreakEnd(newEnd);
+  }, [editBreakStart, shiftToDelete, editBreakOpen]);
   // Sprint 19.3 (Aslan 12 May): Özel saat aralığı input state
   const [customStartTime, setCustomStartTime] = useState("");
   const [customEndTime, setCustomEndTime] = useState("");
@@ -1161,7 +1199,11 @@ export default function KioskSupervisorShift() {
                 />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Bitiş</label>
+                <label className="text-xs text-muted-foreground">Bitiş {(() => {
+                  const staff = shiftToDelete?.assignedToId ? staffLookup[shiftToDelete.assignedToId] : null;
+                  const isFT = staff && staff.employmentType !== "parttime" && staff.employmentType !== "yari_zamanli";
+                  return isFT ? <span className="text-blue-500">(FT otomatik +8.5h)</span> : <span className="text-amber-500">(PT manuel)</span>;
+                })()}</label>
                 <input
                   type="time"
                   value={editShiftEnd}
@@ -1259,7 +1301,7 @@ export default function KioskSupervisorShift() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Mola Bitiş</label>
+                    <label className="text-xs text-muted-foreground">Mola Bitiş <span className="text-blue-500">(otomatik +60dk)</span></label>
                     <input
                       type="time"
                       value={editBreakEnd}
