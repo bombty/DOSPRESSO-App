@@ -278,26 +278,51 @@ export class ShiftScheduler {
       dateObj.setDate(dateObj.getDate() + dayOffset);
       const dateStr = dateObj.toISOString().split('T')[0];
       const dayOfWeek = dateObj.getDay();
-      // Sprint 19.2 (Aslan 12 May): Cuma, Cmt, Paz cafe için EN YOĞUN günler.
-      // Hafta sonu OFF verilmemeli (yoğun gün → herkes çalışsın).
-      const isBusyDay = [0, 5, 6].includes(dayOfWeek); // 0=Paz, 5=Cuma, 6=Cmt
-      const isQuietDay = [1, 2].includes(dayOfWeek);   // 1=Pzt, 2=Sal
+      // ═══════════════════════════════════════════════════════════
+      // Sprint 32 (Aslan 12 May 23:24) — ALGORITMA V2
+      // ═══════════════════════════════════════════════════════════
+      // OFF GÜNÜ KURALLARI (Aslan: 'Cmt+Paz off yasağı, Cum minimum,
+      //                      en off günleri Pzt-Per max')
+      //   0=Paz, 1=Pzt, 2=Sal, 3=Çar, 4=Per, 5=Cum, 6=Cmt
+      //   Cmt+Paz   → 0 OFF (yasak)
+      //   Cum       → max 1 kişi (sadece zorunluysa, yoğun gün)
+      //   Pzt-Sal   → en çok off (sakin)
+      //   Çar-Per   → normal off
+      //
+      // SHIFT DAĞILIMI (Aslan: '4 katman: Açılış-Aracı-AkşamAracı-Kapanış')
+      //   - Açılış (max 2): açılış saati (open-30dk başlar)
+      //   - Açılış Aracısı (~30%): open+2.5h gelir
+      //   - Kapanış Aracısı (~30%): close-7.5h gelir
+      //   - Kapanış (max 2-3): close+30dk biter
+      //
+      // ROTASYON (Aslan: 'adil sistem, geçmişe dönük')
+      //   ISO hafta numarası + staff index → 4 katman tipi
+      //   Personel hafta hafta açılış→kapanış aracı→kapanış→açılış aracısı
+      const isWeekendStrict = dayOfWeek === 0 || dayOfWeek === 6; // Cmt+Paz
+      const isFriday = dayOfWeek === 5;
+      const isQuietDay = dayOfWeek === 1 || dayOfWeek === 2; // Pzt+Sal
 
       const availableToday = staff.filter(s => {
         const key = `${s.id}_${dateStr}`;
         return !leaveUserDates.has(key);
       });
 
-      // Sprint 19.2: Busy day (Fri/Sat/Sun) → SIFIR off verilir, herkes çalışır
-      const needOff = isBusyDay
-        ? 0
-        : isQuietDay
-          ? Math.ceil(staffCount * 0.3)
-          : Math.ceil(staffCount * 0.2);
+      // V2: Off sayısı — Cmt+Paz YASAK, Cum minimum, Pzt-Sal max
+      let needOff = 0;
+      if (isWeekendStrict) {
+        needOff = 0; // Cmt+Paz YASAK
+      } else if (isFriday) {
+        needOff = Math.min(1, Math.floor(staffCount * 0.05)); // Cum minimum (0-1 kişi)
+      } else if (isQuietDay) {
+        needOff = Math.ceil(staffCount * 0.35); // Pzt+Sal en çok
+      } else {
+        needOff = Math.ceil(staffCount * 0.20); // Çar+Per normal
+      }
 
       const offCandidates = availableToday
         .filter(s => offDaysTracker[s.id] < 2)
-        .filter(s => !(s.role === 'mudur' && isBusyDay))
+        // Müdür Cmt/Paz/Cum off yasağı (yoğun gün liderlik)
+        .filter(s => !(s.role === 'mudur' && (isWeekendStrict || isFriday)))
         .sort((a, b) => offDaysTracker[a.id] - offDaysTracker[b.id]);
 
       const todayOffIds = new Set(offCandidates.slice(0, Math.min(needOff, offCandidates.length)).map(s => s.id));
@@ -307,31 +332,73 @@ export class ShiftScheduler {
 
       const dayBreaks: { start: string; end: string }[] = [];
 
-      for (let i = 0; i < workingToday.length; i++) {
-        const person = workingToday[i];
+      // Sprint 32 V2: 4-katman dağılımı için sayılar
+      // Personel sayısı az olsa bile en az 1 açılış + 1 kapanış olmalı
+      const totalToday = workingToday.length;
+      const opening_count = Math.min(2, Math.max(1, Math.ceil(totalToday * 0.20)));
+      const closing_count = Math.min(3, Math.max(1, Math.ceil(totalToday * 0.25)));
+      const remaining = Math.max(0, totalToday - opening_count - closing_count);
+      const opening_mid_count = Math.floor(remaining / 2);
+      // const closing_mid_count = remaining - opening_mid_count; // kalan
+
+      // Sprint 32 V2: Haftaya göre ROTASYON (geçmişe dönük adillik)
+      // ISO hafta numarası (1-53) → rotasyon offset
+      // Her personel hafta hafta farklı shift dilimine geçer
+      const weekNum = Math.floor((dateObj.getTime() - new Date(dateObj.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+
+      // Rotasyon için personelleri shuffle (hafta numarasına göre deterministic)
+      const rotatedStaff = [...workingToday].sort((a, b) => {
+        const hashA = ((a.id.charCodeAt(0) || 0) + weekNum * 7) % 1000;
+        const hashB = ((b.id.charCodeAt(0) || 0) + weekNum * 7) % 1000;
+        return hashA - hashB;
+      });
+
+
+      for (let i = 0; i < rotatedStaff.length; i++) {
+        const person = rotatedStaff[i];
         const isFT = person.employmentType === 'fulltime' || person.employmentType === 'tam_zamanli' || !person.employmentType;
         // Sprint 19.2 (Aslan kuralı): FT = 8.5h gross = 7.5h work + 1h break
-        // 6 gün × 7.5h = 45h work (İş K. m.63 uyumlu)
-        // PT = 6h gross = 5h work + 1h break
         const targetDailyHours = isFT ? 8.5 : 6;
 
         let startTime: string;
         let endTime: string;
         let shiftType: 'opening' | 'standard' | 'closing' = 'standard';
 
-        if (i < 2) {
+        // Sprint 32 V2 — 4 KATMAN DAĞILIMI
+        // i < opening_count                                    → Açılış
+        // i < opening_count + opening_mid_count                → Açılış Aracısı
+        // i < opening_count + opening_mid_count + (remaining-opening_mid_count) → Kapanış Aracısı
+        // else                                                 → Kapanış
+        const openingMin = openH * 60 + openM;
+        const closingMin = closeH * 60 + closeM;
+
+        if (i < opening_count) {
+          // AÇILIŞ (max 2): open-30dk → +8.5h
           shiftType = 'opening';
-          startTime = i === 0
-            ? minutesToTime(openH * 60 + openM - 30)
-            : minutesToTime(openH * 60 + openM);
+          startTime = minutesToTime(openingMin - 30);
           endTime = minutesToTime(timeToMinutes(startTime) + targetDailyHours * 60);
-        } else if (i >= workingToday.length - (isBusyDay ? 3 : 2)) {
-          shiftType = 'closing';
-          endTime = minutesToTime(closeH * 60 + closeM + 30);
-          startTime = minutesToTime(timeToMinutes(endTime) - targetDailyHours * 60);
+        } else if (i < opening_count + opening_mid_count) {
+          // AÇILIŞ ARACISI: open + 2.5h → +8.5h (örn 10:30→19:00)
+          shiftType = 'standard';
+          startTime = minutesToTime(openingMin + 150); // +2.5h
+          endTime = minutesToTime(timeToMinutes(startTime) + targetDailyHours * 60);
+        } else if (i < rotatedStaff.length - closing_count) {
+          // KAPANIŞ ARACISI: close - 8.5h (örn 13:30→22:00 eğer kapanış 22:00)
+          shiftType = 'standard';
+          endTime = minutesToTime(closingMin);
+          startTime = minutesToTime(closingMin - targetDailyHours * 60);
         } else {
-          startTime = minutesToTime(openH * 60 + openM);
-          endTime = minutesToTime(timeToMinutes(startTime) + targetDailyHours * 60);
+          // KAPANIŞ (max 2-3): close+30dk → -8.5h (örn 17:30→02:00 eğer kapanış 01:30)
+          shiftType = 'closing';
+          endTime = minutesToTime(closingMin + 30);
+          startTime = minutesToTime(timeToMinutes(endTime) - targetDailyHours * 60);
+        }
+
+        // Şube saati dışı kontrolü (gece kapanış için + tolerance)
+        // Eğer endTime şube kapanışından geçiyorsa, sabit kapanış+30 ata
+        if (timeToMinutes(endTime) > closingMin + 60 && shiftType !== 'closing') {
+          endTime = minutesToTime(closingMin);
+          startTime = minutesToTime(closingMin - targetDailyHours * 60);
         }
 
         const breakInfo = this.calculateBreakTime(startTime, endTime, dayBreaks, 60);
