@@ -1260,19 +1260,19 @@ router.get('/api/academy/content-packs', isAuthenticated, requireAcademyCoach, a
 
 router.get('/api/academy/onboarding/templates', isAuthenticated, requireAcademyCoach, async (req, res) => {
   try {
+    // Sprint 47.1 (13 May 2026): Schema-30 yeni yapı — name/description/targetRole/scope/durationDays
+    // kolonları kaldırıldı. Yerine: roleDisplayName, role, systemPrompt, steps (JSONB), dailyBriefPrompt.
+    // Academy endpoint geriye uyumlu: name = roleDisplayName, targetRole = role.
     const templates = await db.select({
       id: onboardingTemplates.id,
-      name: onboardingTemplates.name,
-      description: onboardingTemplates.description,
-      targetRole: onboardingTemplates.targetRole,
-      scope: onboardingTemplates.scope,
-      durationDays: onboardingTemplates.durationDays,
+      name: onboardingTemplates.roleDisplayName,
+      targetRole: onboardingTemplates.role,
       isActive: onboardingTemplates.isActive,
-      createdById: onboardingTemplates.createdById,
+      version: onboardingTemplates.version,
       createdAt: onboardingTemplates.createdAt,
       updatedAt: onboardingTemplates.updatedAt,
-      stepCount: sql<number>`(SELECT COUNT(*) FROM onboarding_template_steps WHERE template_id = ${onboardingTemplates.id})::int`,
-      assignmentCount: sql<number>`(SELECT COUNT(*) FROM employee_onboarding_assignments WHERE template_id = ${onboardingTemplates.id})::int`,
+      // stepCount JSONB'den hesaplanır (eski onboarding_template_steps tablosu artık yok)
+      stepCount: sql<number>`COALESCE(jsonb_array_length(${onboardingTemplates.steps}), 0)::int`,
     }).from(onboardingTemplates)
       .orderBy(desc(onboardingTemplates.updatedAt));
     res.json(templates);
@@ -1422,8 +1422,8 @@ router.get('/api/academy/onboarding/assignments', isAuthenticated, requireAcadem
       userName: users.firstName,
       userLastName: users.lastName,
       userRole: users.role,
-      templateName: onboardingTemplates.name,
-      templateDuration: onboardingTemplates.durationDays,
+      templateName: onboardingTemplates.roleDisplayName,
+      templateDuration: sql<number>`30`,
     })
     .from(employeeOnboardingAssignments)
     .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))
@@ -1529,8 +1529,8 @@ router.get('/api/academy/onboarding/my-assignment', isAuthenticated, async (req,
     const userId = req.user!.id;
     const [assignment] = await db.select({
       assignment: employeeOnboardingAssignments,
-      templateName: onboardingTemplates.name,
-      templateDuration: onboardingTemplates.durationDays,
+      templateName: onboardingTemplates.roleDisplayName,
+      templateDuration: sql<number>`30`,
     })
     .from(employeeOnboardingAssignments)
     .leftJoin(onboardingTemplates, eq(employeeOnboardingAssignments.templateId, onboardingTemplates.id))
@@ -1679,8 +1679,8 @@ router.get('/api/academy/onboarding/team-progress', isAuthenticated, requireAcad
       userName: users.firstName,
       userLastName: users.lastName,
       userRole: users.role,
-      templateName: onboardingTemplates.name,
-      templateDuration: onboardingTemplates.durationDays,
+      templateName: onboardingTemplates.roleDisplayName,
+      templateDuration: sql<number>`30`,
     })
     .from(employeeOnboardingAssignments)
     .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))

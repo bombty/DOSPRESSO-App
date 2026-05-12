@@ -1063,7 +1063,7 @@ export async function checkOnboardingCompletions() {
         employeeName: users.firstName,
         employeeLastName: users.lastName,
         employeeUsername: users.username,
-        templateName: onboardingTemplates.name,
+        templateName: onboardingTemplates.roleDisplayName,  // Sprint 47.1 schema: name → roleDisplayName
       })
       .from(employeeOnboardingAssignments)
       .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))

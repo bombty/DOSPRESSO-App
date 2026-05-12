@@ -3608,8 +3608,8 @@ JSON formatında yanıt ver:
         evaluationStatus: employeeOnboardingAssignments.evaluationStatus,
         createdAt: employeeOnboardingAssignments.createdAt,
         employeeName: sql`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.username})`.as('employeeName'),
-        templateName: onboardingTemplates.name,
-        templateDurationDays: onboardingTemplates.durationDays,
+        templateName: onboardingTemplates.roleDisplayName,
+        templateDurationDays: sql<number>`30`,
       })
         .from(employeeOnboardingAssignments)
         .leftJoin(users, eq(employeeOnboardingAssignments.userId, users.id))

@@ -284,7 +284,6 @@ const EXACT_ROUTE_MAP: Record<string, ModuleMenuConfig> = {
   "/agent-merkezi": YONETIM_MENU,
   "/qr-tara": OPERASYON_MENU,
   "/hq-dashboard": YONETIM_MENU,
-  "/canli-takip": SUBELER_MENU,
 };
 
 const PREFIX_ROUTE_MAP: Array<{ prefix: string; config: ModuleMenuConfig }> = [
