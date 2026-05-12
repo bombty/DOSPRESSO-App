@@ -1450,6 +1450,62 @@ router.post('/api/shifts', kioskOrAuth, requireManifestAccess('vardiya', 'create
       }
     }
     
+    // Sprint 26 (Aslan 12 May 21:50): Otomatik mola atama + 15 dk stagger
+    // Talep: "işe başladıktan 4 saat sonra otomatik mola...
+    //         biri saat 13:00 de çıkıyorsa bir sonraki 13:15 de çıksın"
+    if (!validated.breakStartTime && validated.startTime && validated.endTime) {
+      try {
+        const { timeToMinutes, minutesToTime } = await import('../services/shiftScheduler');
+        const startMin = timeToMinutes(validated.startTime);
+        const endMin = timeToMinutes(validated.endTime);
+        const shiftDurationMin = endMin - startMin;
+
+        // Sadece 5+ saat vardiyalarda otomatik mola (kısa vardiyalar muaf)
+        if (shiftDurationMin >= 300) {
+          let candidateBreakStart = startMin + 240; // 4 saat sonra mola
+          const BREAK_DURATION = 60; // 60 dk mola (Türkiye İş Kanunu)
+          const STAGGER_MIN = 15; // 15 dk min gap
+
+          // Aynı gün + aynı şubede mevcut mola başlangıçlarını topla
+          const existingShifts = await db.select({
+            breakStart: shifts.breakStartTime,
+          })
+            .from(shifts)
+            .where(and(
+              eq(shifts.branchId, validated.branchId),
+              eq(shifts.shiftDate, validated.shiftDate),
+              isNull(shifts.deletedAt)
+            ));
+
+          const usedBreakMins = existingShifts
+            .map(s => s.breakStart ? timeToMinutes(s.breakStart) : null)
+            .filter((m): m is number => m !== null)
+            .sort((a, b) => a - b);
+
+          // Çakışma yoksa kullan, varsa STAGGER_MIN sonraya kaydır
+          let attempts = 0;
+          while (attempts < 20) {
+            const conflict = usedBreakMins.find(
+              m => Math.abs(candidateBreakStart - m) < STAGGER_MIN
+            );
+            if (!conflict) break;
+            candidateBreakStart = conflict + STAGGER_MIN;
+            attempts++;
+          }
+
+          // Mola vardiya sonundan önce bitmeli
+          if (candidateBreakStart + BREAK_DURATION <= endMin) {
+            validated.breakStartTime = minutesToTime(candidateBreakStart);
+            validated.breakEndTime = minutesToTime(candidateBreakStart + BREAK_DURATION);
+            console.log(`[Sprint 26 Auto-Break] Mola atandı: ${validated.breakStartTime}-${validated.breakEndTime} (shift ${validated.startTime}-${validated.endTime})`);
+          }
+        }
+      } catch (breakErr) {
+        console.error("[Sprint 26 Auto-Break] Hata:", breakErr);
+        // Auto-break başarısız → manuel ayarlanabilir, devam et
+      }
+    }
+    
     const shift = await storage.createShift({
       ...validated,
       status: 'confirmed',
