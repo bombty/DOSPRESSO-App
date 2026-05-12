@@ -3800,6 +3800,61 @@ router.get('/api/branches/:branchId/kiosk/session/:userId', async (req, res) => 
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// Sprint 33 (Aslan 12 May 23:24): Kiosk Sorun Bildir endpoint
+// Personel kiosktan "Sorun Bildir" butonu → müdüre + supervisor'a notification
+// ═══════════════════════════════════════════════════════════════════
+router.post('/api/branches/:branchId/kiosk/fault-report', isKioskOrAuthenticated, async (req: any, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    const reporterId = req.kioskUserId || (req.user as any)?.id;
+    const { category, categoryLabel, description, priority, priorityLabel, reporterName } = req.body;
+
+    if (!description || description.trim().length === 0) {
+      return res.status(400).json({ message: "Açıklama gerekli" });
+    }
+
+    // Şubedeki müdürleri ve supervisor'ları bul → herkese notification
+    const managers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(
+        eq(users.branchId, branchId),
+        inArray(users.role, ['mudur', 'supervisor', 'supervisor_buddy', 'coach', 'trainer'])
+      ));
+
+    const priorityEmoji = priority === 'yuksek' ? '🔴' : priority === 'orta' ? '🟡' : '🟢';
+    const title = `${priorityEmoji} Sorun: ${categoryLabel || category}`;
+    const message = `${reporterName || 'Personel'}: ${description.trim()}`;
+
+    // Her yöneticiye notification gönder
+    const notifPromises = managers.map(m =>
+      storage.createNotification({
+        userId: m.id,
+        type: 'fault_report',
+        title,
+        message,
+        link: `/sube/faaliyet-takip`,
+        branchId,
+      })
+    );
+
+    await Promise.all(notifPromises);
+
+    // Audit log
+    console.log(`[Sprint 33 Fault Report] branch=${branchId} reporter=${reporterId} category=${category} priority=${priority} managers=${managers.length}`);
+
+    res.json({
+      success: true,
+      notifiedCount: managers.length,
+      message: `${managers.length} yöneticiye bildirim gönderildi`,
+    });
+  } catch (error: unknown) {
+    console.error("[Sprint 33 Fault Report] Hata:", error);
+    res.status(500).json({ message: "Sorun bildirilemedi" });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════
 // Sprint 19.4 (Aslan 12 May 2026): Vardiya kartından görev/mesaj bırakma
 // "isme tıklayınca o kişiye görev checklist veya mesaj bırakma imkanı olmalı"
 // Kiosk kullanıcısı (supervisor/supervisor_buddy/mudur) başka bir personele
