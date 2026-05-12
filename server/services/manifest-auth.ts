@@ -7,16 +7,55 @@
  * Kullanım:
  *   router.get('/api/shifts', isAuthenticated, requireManifestAccess('vardiya', 'view'), handler)
  *   router.post('/api/shifts', isAuthenticated, requireManifestAccess('vardiya', 'create'), handler)
+ * 
+ * Sprint 21 (Aslan 12 May 2026): Hibrit Sufficiency Model
+ *   - Önce manifest kontrol (baseline)
+ *   - Manifest izin verirse → İZİN
+ *   - Manifest reddederse → DB ek yetki var mı kontrol (role_module_permissions tablosu)
+ *   - DB'de extension varsa → İZİN (admin UI'dan eklenmiş)
+ *   - Aksi halde → REDDE
+ *   - Tüm DB extension kullanımları audit log'a yazılır
  */
 
 import type { RequestHandler } from 'express';
 import { hasModuleAccess, getModuleScope, getModuleByFlagKey } from '@shared/module-manifest';
 import { isModuleEnabled } from './module-flag-service';
+import { db } from '../db';
+import { roleModulePermissions } from '@shared/schema';
+import { and, eq } from 'drizzle-orm';
 
 /**
- * Manifest tabanlı yetki middleware
+ * Sprint 21: DB extension lookup — manifest reddettiğinde fallback
+ * UI yetkilendirme sayfasından admin'in eklediği grant'leri okur
+ */
+async function checkDbExtension(role: string, module: string, action: string): Promise<boolean> {
+  try {
+    const record = await db
+      .select({ actions: roleModulePermissions.actions })
+      .from(roleModulePermissions)
+      .where(
+        and(
+          eq(roleModulePermissions.role, role),
+          eq(roleModulePermissions.module, module)
+        )
+      )
+      .limit(1);
+
+    if (record.length === 0) return false;
+    const actions = record[0].actions || [];
+    return actions.includes(action);
+  } catch (error) {
+    // DB hatası → fail-closed (manifest sonucuna güven)
+    console.error(`[Sprint 21 Hybrid] DB extension lookup failed for ${role}/${module}/${action}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Manifest tabanlı yetki middleware (Sprint 21 hibrit)
  * 1. Modül aktif mi? (module_flags DB tablosu)
- * 2. Kullanıcı rolü bu modüle erişebilir mi? (manifest)
+ * 2a. Kullanıcı rolü manifest'te erişebilir mi?
+ * 2b. Manifest reddederse DB extension kontrol et
  * 3. Scope kontrolü (own_branch, managed_branches, all_branches)
  */
 export function requireManifestAccess(
@@ -39,19 +78,32 @@ export function requireManifestAccess(
         });
       }
 
-      // 2. Rol yetkisi var mı?
-      if (!hasModuleAccess(user.role, flagKey, action)) {
-        return res.status(403).json({ 
-          error: `Bu işlem için yetkiniz yok (${action})`,
-          module: flagKey,
-          role: user.role,
-        });
+      // 2a. Rol yetkisi var mı? (manifest baseline)
+      const manifestAllow = hasModuleAccess(user.role, flagKey, action);
+      let permissionSource: 'manifest' | 'db_extension' = 'manifest';
+
+      if (!manifestAllow) {
+        // 2b. Sprint 21 Hibrit Fallback — DB extension kontrolü
+        const dbExtensionAllow = await checkDbExtension(user.role, flagKey, action);
+
+        if (!dbExtensionAllow) {
+          return res.status(403).json({
+            error: `Bu işlem için yetkiniz yok (${action})`,
+            module: flagKey,
+            role: user.role,
+          });
+        }
+
+        // DB extension verdi → audit log
+        permissionSource = 'db_extension';
+        console.log(`[Sprint 21 Audit] DB extension granted: role=${user.role} module=${flagKey} action=${action} userId=${user.id}`);
       }
 
       // 3. Scope kontrolü — req.manifestScope olarak sakla (handler kullanabilir)
       const scope = getModuleScope(user.role, flagKey);
       (req as any).manifestScope = scope;
       (req as any).manifestModule = flagKey;
+      (req as any).permissionSource = permissionSource;
 
       next();
     } catch (error) {
