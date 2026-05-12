@@ -231,6 +231,9 @@ export default function KioskSupervisorShift() {
   const week1Days = Array.from({ length: 7 }, (_, i) => addDays(week1Start, i));
   const week2Days = Array.from({ length: 7 }, (_, i) => addDays(week2Start, i));
   const startStr = format(week1Start, "yyyy-MM-dd");
+  // Sprint 31 (Aslan 12 May 23:24): AI Öneri seçili haftayı gönderir
+  // BUG: AI Öneri her zaman week1Start kullanıyordu → Hafta 2'de tıklayınca plan Hafta 1'e gidiyordu
+  const activeWeekStartStr = format(currentWeekTab === 0 ? week1Start : week2Start, "yyyy-MM-dd");
   const endStr = format(addDays(week2Start, 6), "yyyy-MM-dd");
 
   // Veri çekme
@@ -442,7 +445,8 @@ export default function KioskSupervisorShift() {
         credentials: "include",
         body: JSON.stringify({
           branchId: kioskUser.branchId,
-          weekStartDate: startStr,
+          // Sprint 31: Seçili haftayı gönder (Hafta 1 / Hafta 2)
+          weekStartDate: activeWeekStartStr,
         }),
       });
       if (!res.ok) {
@@ -482,7 +486,8 @@ export default function KioskSupervisorShift() {
         body: JSON.stringify({
           branchId: kioskUser.branchId,
           plan: aiPreview.plan,
-          weekStartDate: startStr,
+          // Sprint 31: Seçili haftayı gönder
+          weekStartDate: activeWeekStartStr,
           confirmOverwrite: true,  // Kiosktan uygulanıyor, mevcut planı override et
         }),
       });
