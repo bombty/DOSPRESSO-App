@@ -1378,6 +1378,32 @@ router.post('/api/shifts', kioskOrAuth, requireManifestAccess('vardiya', 'create
     if (isBranchRole(role) && validated.branchId !== user.branchId) {
       return res.status(403).json({ message: "Sadece kendi şubeniz için vardiya oluşturabilirsiniz" });
     }
+
+    // Sprint 25 (Aslan 12 May): Duplicate engelleme — aynı kişi aynı gün max 1 vardiya
+    // "burda aynı gün aynı kişi 2 defa şifte yazılmasını engelle. bu mantık dışı."
+    if (validated.assignedToId) {
+      const duplicateCheck = await db.select({ id: shifts.id })
+        .from(shifts)
+        .where(and(
+          eq(shifts.branchId, validated.branchId),
+          eq(shifts.shiftDate, validated.shiftDate),
+          eq(shifts.assignedToId, validated.assignedToId),
+          isNull(shifts.deletedAt)
+        ))
+        .limit(1);
+
+      if (duplicateCheck.length > 0) {
+        const assignedUser = await storage.getUser(validated.assignedToId);
+        const userName = assignedUser
+          ? `${assignedUser.firstName || ''} ${assignedUser.lastName || ''}`.trim() || assignedUser.username
+          : 'Bu personel';
+        return res.status(409).json({
+          message: `${userName} için ${validated.shiftDate} tarihinde zaten bir vardiya var. Aynı gün ikinci vardiya oluşturulamaz.`,
+          duplicate: true,
+          existingShiftId: duplicateCheck[0].id,
+        });
+      }
+    }
     
     if (validated.assignedToId) {
       try {
@@ -1633,6 +1659,43 @@ router.patch('/api/shifts/:id', kioskOrAuth, requireManifestAccess('vardiya', 'e
     });
     
     const validated = updateSchema.parse(req.body);
+
+    // Sprint 25 (Aslan 12 May): PATCH duplicate engelleme
+    // shiftDate veya assignedToId değişiyorsa, yeni kombinasyon başka shift'le çakışıyor mu?
+    const newShiftDate = validated.shiftDate || shift.shiftDate;
+    const newAssignedToId = validated.assignedToId !== undefined ? validated.assignedToId : shift.assignedToId;
+
+    if (newAssignedToId && (validated.shiftDate || validated.assignedToId !== undefined)) {
+      const isMovingTarget =
+        newShiftDate !== shift.shiftDate || newAssignedToId !== shift.assignedToId;
+
+      if (isMovingTarget) {
+        const duplicateCheck = await db.select({ id: shifts.id })
+          .from(shifts)
+          .where(and(
+            eq(shifts.branchId, shift.branchId!),
+            eq(shifts.shiftDate, newShiftDate),
+            eq(shifts.assignedToId, newAssignedToId),
+            isNull(shifts.deletedAt)
+          ))
+          .limit(1);
+
+        // Aynı shift değil ise (kendisi hariç başka bir kayıt varsa) reddet
+        const conflict = duplicateCheck.find(d => d.id !== id);
+        if (conflict) {
+          const assignedUser = await storage.getUser(newAssignedToId);
+          const userName = assignedUser
+            ? `${assignedUser.firstName || ''} ${assignedUser.lastName || ''}`.trim() || assignedUser.username
+            : 'Bu personel';
+          return res.status(409).json({
+            message: `${userName} için ${newShiftDate} tarihinde zaten bir vardiya var. Aynı gün ikinci vardiya oluşturulamaz.`,
+            duplicate: true,
+            existingShiftId: conflict.id,
+          });
+        }
+      }
+    }
+
     const previousAssignedTo = shift.assignedToId;
     const updated = await storage.updateShift(id, validated);
     

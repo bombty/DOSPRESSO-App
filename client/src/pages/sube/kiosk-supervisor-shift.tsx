@@ -24,7 +24,7 @@
 // REFERANS: docs/SPRINT-15-1-PLAN-KIOSK-VARDIYA.md (466 satır plan)
 // ═══════════════════════════════════════════════════════════════════
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -97,24 +97,38 @@ const COLOR_MAP: Record<string, string> = {
   indigo: "bg-indigo-500",
 };
 
-// Saat dilimine göre vardiya kart arka plan rengi (Aslan 12 May UX talebi)
+// Sprint 25 (Aslan 12 May): 4 katman zaman dilimi — açık renkler
+// - Açılış (06-10):  Sarı tonları
+// - Aracı (10-14):   Mavi tonları
+// - Akşam (14-18):   Turuncu/peach tonları
+// - Kapanış (18+):   Pembe/mor tonları
 function getShiftBgClass(startTime?: string | null): string {
-  if (!startTime) return "bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50";
+  if (!startTime) return "bg-slate-50 dark:bg-slate-900/20 hover:bg-slate-100 dark:hover:bg-slate-900/40";
   const hour = parseInt(startTime.split(":")[0] || "0", 10);
-  // 06-10 sarı (açılış / sabah erken)
+  // AÇILIS (06-10) — sarı pastel
   if (hour >= 6 && hour < 10) {
-    return "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/50 border-l-4 border-yellow-500";
+    return "bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 border-l-4 border-yellow-400";
   }
-  // 10-15 mavi (öğle)
-  if (hour >= 10 && hour < 15) {
-    return "bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 border-l-4 border-blue-500";
+  // ARACI (10-14) — açık mavi pastel
+  if (hour >= 10 && hour < 14) {
+    return "bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 border-l-4 border-sky-400";
   }
-  // 15-19 pembe (akşam başlayanlar)
-  if (hour >= 15 && hour < 19) {
-    return "bg-pink-100 dark:bg-pink-900/30 hover:bg-pink-200 dark:hover:bg-pink-900/50 border-l-4 border-pink-500";
+  // AKSAM (14-18) — peach / turuncu pastel
+  if (hour >= 14 && hour < 18) {
+    return "bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 border-l-4 border-orange-400";
   }
-  // 19+ veya 0-5 (gece başlayanlar — nadir, ama varsa indigo)
-  return "bg-indigo-100 dark:bg-indigo-900/30 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 border-l-4 border-indigo-500";
+  // KAPANIS (18+ veya 0-5) — pembe/lavender pastel
+  return "bg-pink-50 dark:bg-pink-900/20 hover:bg-pink-100 dark:hover:bg-pink-900/30 border-l-4 border-pink-400";
+}
+
+// Sprint 25: Vardiya zaman dilimi etiketi (görsel için)
+function getShiftPeriodLabel(startTime?: string | null): string {
+  if (!startTime) return "—";
+  const hour = parseInt(startTime.split(":")[0] || "0", 10);
+  if (hour >= 6 && hour < 10) return "🌅 Açılış";
+  if (hour >= 10 && hour < 14) return "☀️ Aracı";
+  if (hour >= 14 && hour < 18) return "🌆 Akşam";
+  return "🌙 Kapanış";
 }
 
 interface ShiftTemplate {
@@ -149,6 +163,20 @@ export default function KioskSupervisorShift() {
   // Sprint 19.4: Vardiya kartından görev/mesaj bırakma
   const [shiftTaskText, setShiftTaskText] = useState("");
   const [shiftTaskPriority, setShiftTaskPriority] = useState("orta");
+  // Sprint 25: Manuel saat değişikliği state
+  const [editShiftStart, setEditShiftStart] = useState("");
+  const [editShiftEnd, setEditShiftEnd] = useState("");
+
+  // Modal açıldığında mevcut saatleri yükle
+  useEffect(() => {
+    if (shiftToDelete) {
+      setEditShiftStart(shiftToDelete.startTime?.slice(0, 5) || "");
+      setEditShiftEnd(shiftToDelete.endTime?.slice(0, 5) || "");
+    } else {
+      setEditShiftStart("");
+      setEditShiftEnd("");
+    }
+  }, [shiftToDelete]);
   // Sprint 19.3 (Aslan 12 May): Özel saat aralığı input state
   const [customStartTime, setCustomStartTime] = useState("");
   const [customEndTime, setCustomEndTime] = useState("");
@@ -1070,6 +1098,77 @@ export default function KioskSupervisorShift() {
               )}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Sprint 25 (Aslan 12 May): Saat Manuel Değişikliği */}
+          <div className="border-t pt-4 space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              🕐 Vardiya Saatini Değiştir
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Başlangıç</label>
+                <input
+                  type="time"
+                  value={editShiftStart}
+                  onChange={(e) => setEditShiftStart(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  data-testid="edit-shift-start"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Bitiş</label>
+                <input
+                  type="time"
+                  value={editShiftEnd}
+                  onChange={(e) => setEditShiftEnd(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  data-testid="edit-shift-end"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                if (!shiftToDelete || !editShiftStart || !editShiftEnd) return;
+                if (editShiftEnd <= editShiftStart) {
+                  toast({
+                    title: "⚠️ Bitiş başlangıçtan sonra olmalı",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                if (editShiftStart < branchOpeningHours || editShiftEnd > branchClosingHours) {
+                  toast({
+                    title: "⚠️ Şube saatleri dışında",
+                    description: `Şube: ${branchOpeningHours} - ${branchClosingHours}`,
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                if (
+                  editShiftStart === shiftToDelete.startTime?.slice(0, 5) &&
+                  editShiftEnd === shiftToDelete.endTime?.slice(0, 5)
+                ) {
+                  toast({ title: "Saatler aynı, değişiklik yok" });
+                  return;
+                }
+                updateShiftMutation.mutate({
+                  shiftId: shiftToDelete.id,
+                  updates: { startTime: editShiftStart, endTime: editShiftEnd },
+                });
+              }}
+              disabled={updateShiftMutation.isPending || !editShiftStart || !editShiftEnd}
+              size="sm"
+              className="w-full bg-purple-600 hover:bg-purple-700"
+              data-testid="btn-save-shift-time"
+            >
+              {updateShiftMutation.isPending ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : "🕐 Saati Güncelle"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground">
+              Drag-drop ile başka güne taşımak yerine sadece saati değiştir.
+            </p>
+          </div>
 
           {/* Sprint 19.4: Görev/Mesaj Bırak */}
           <div className="border-t pt-4 space-y-2">
