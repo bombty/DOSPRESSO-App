@@ -64,8 +64,12 @@ const SUPERVISOR_ROLES = ["supervisor", "supervisor_buddy", "mudur"];
 // Aslan 11 May 2026 HOTFIX: Kiosk auth header helper
 // Bug: AI öneri "Yetkiniz yok" hatası — kiosk üzerinden web session yok
 // Fix: x-kiosk-token header'ı her API call'a ekle
+// Sprint 19+ (12 May): Token yoksa konsola uyarı (debug için)
 function kioskHeaders(extra: Record<string, string> = {}): HeadersInit {
   const token = typeof window !== "undefined" ? localStorage.getItem("kiosk-token") || "" : "";
+  if (!token && typeof window !== "undefined") {
+    console.warn("[KIOSK AUTH] kiosk-token localStorage'da YOK! Tekrar PIN ile giriş yapın.");
+  }
   return {
     "Content-Type": "application/json",
     "x-kiosk-token": token,
@@ -507,12 +511,51 @@ export default function KioskSupervisorShift() {
       );
     }
     const results = await Promise.allSettled(promises);
-    const ok = results.filter((r) => r.status === "fulfilled").length;
+    // Sprint 19.5 HOTFIX (Aslan 12 May 09:57): response.ok kontrol et
+    // Promise fulfilled olsa bile HTTP 401/403/400 dönmüş olabilir
+    let okCount = 0;
+    let failedCount = 0;
+    let firstError = "";
+    for (const r of results) {
+      if (r.status === "fulfilled") {
+        const res = r.value as Response;
+        if (res.ok) {
+          okCount++;
+        } else {
+          failedCount++;
+          if (!firstError) {
+            try {
+              const errData = await res.json();
+              firstError = errData.message || `HTTP ${res.status}`;
+            } catch {
+              firstError = `HTTP ${res.status}`;
+            }
+          }
+        }
+      } else {
+        failedCount++;
+        if (!firstError) firstError = "Network hatası";
+      }
+    }
     queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
-    toast({
-      title: "📅 Hafta dolduruldu",
-      description: `${ok} ek vardiya oluşturuldu (Pazar off)`,
-    });
+    if (okCount > 0 && failedCount === 0) {
+      toast({
+        title: "📅 Hafta dolduruldu",
+        description: `${okCount} ek vardiya oluşturuldu (Pazar off)`,
+      });
+    } else if (okCount > 0 && failedCount > 0) {
+      toast({
+        title: `⚠️ Kısmi başarı: ${okCount} oluşturuldu, ${failedCount} hata`,
+        description: firstError + ". Sayfayı yenileyin veya yeniden PIN ile giriş yapın.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "❌ Hafta doldurulamadı",
+        description: firstError || "Bilinmeyen hata. KIOSK'TAN ÇIKIP TEKRAR PIN İLE GİRİŞ YAPIN (token yenilenir).",
+        variant: "destructive",
+      });
+    }
     setWeekFillPending(null);
   };
 
