@@ -135,6 +135,7 @@ const PersonelMusaitlik = lazyWithRetry(() => import("@/pages/personel-musaitlik
 const Performance = lazyWithRetry(() => import("@/pages/performance"));
 const AdminContentManagement = lazyWithRetry(() => import("@/pages/yonetim/icerik"));
 const Settings = lazyWithRetry(() => import("@/pages/yonetim/ayarlar"));
+const SubeVardiyaSablonlari = lazyWithRetry(() => import("@/pages/yonetim/sube-vardiya-sablonlari"));
 const UserCRM = lazyWithRetry(() => import("@/pages/yonetim/kullanicilar"));
 const AICostDashboard = lazyWithRetry(() => import("@/pages/yonetim/ai-maliyetler"));
 const AdminChecklistManagement = lazyWithRetry(() => import("@/pages/yonetim/checklistler"));
@@ -667,6 +668,7 @@ function Router() {
           <Route path="/franchise-yatirimcilar/:id">{() => <ModuleGuard moduleKey="franchise"><FranchiseYatirimciDetay /></ModuleGuard>}</Route>
           <Route path="/yonetim/icerik">{() => <AdminOnly><AdminContentManagement /></AdminOnly>}</Route>
           <Route path="/yonetim/ayarlar">{() => <AdminOnly><Settings /></AdminOnly>}</Route>
+          <Route path="/yonetim/sube-vardiya-sablonlari">{() => <AdminOnly><SubeVardiyaSablonlari /></AdminOnly>}</Route>
           <Route path="/yonetim/kullanicilar">{() => <AdminOnly><UserCRM /></AdminOnly>}</Route>
           <Route path="/yonetim/degerlendirme">{() => <ExecutiveOnly><YoneticiDegerlendirme /></ExecutiveOnly>}</Route>
           <Route path="/yonetim/ai-maliyetler">{() => <AdminOnly><AICostDashboard /></AdminOnly>}</Route>
