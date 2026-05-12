@@ -97,37 +97,31 @@ const COLOR_MAP: Record<string, string> = {
   indigo: "bg-indigo-500",
 };
 
-// Sprint 25 (Aslan 12 May): 4 katman zaman dilimi — açık renkler
-// - Açılış (06-10):  Sarı tonları
-// - Aracı (10-14):   Mavi tonları
-// - Akşam (14-18):   Turuncu/peach tonları
-// - Kapanış (18+):   Pembe/mor tonları
+// Sprint 26 (Aslan 12 May 21:50): 3 katman zaman dilimi (4 yerine 3)
+// - Sabah    (≤ 11:00):       Sarı tonları
+// - Aracı    (11:00-15:00):   Mavi tonları
+// - Kapanış  (≥ 15:00 / gece): Pembe tonları
 function getShiftBgClass(startTime?: string | null): string {
   if (!startTime) return "bg-slate-50 dark:bg-slate-900/20 hover:bg-slate-100 dark:hover:bg-slate-900/40";
   const hour = parseInt(startTime.split(":")[0] || "0", 10);
-  // AÇILIS (06-10) — sarı pastel
-  if (hour >= 6 && hour < 10) {
+  // SABAH (≤11) — sarı pastel
+  if (hour < 11) {
     return "bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 border-l-4 border-yellow-400";
   }
-  // ARACI (10-14) — açık mavi pastel
-  if (hour >= 10 && hour < 14) {
+  // ARACI (11-15) — açık mavi pastel
+  if (hour < 15) {
     return "bg-sky-50 dark:bg-sky-900/20 hover:bg-sky-100 dark:hover:bg-sky-900/30 border-l-4 border-sky-400";
   }
-  // AKSAM (14-18) — peach / turuncu pastel
-  if (hour >= 14 && hour < 18) {
-    return "bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 border-l-4 border-orange-400";
-  }
-  // KAPANIS (18+ veya 0-5) — pembe/lavender pastel
+  // KAPANIS (15+ veya 0-5) — pembe pastel
   return "bg-pink-50 dark:bg-pink-900/20 hover:bg-pink-100 dark:hover:bg-pink-900/30 border-l-4 border-pink-400";
 }
 
-// Sprint 25: Vardiya zaman dilimi etiketi (görsel için)
+// Sprint 26: 3 zaman dilimi etiketi
 function getShiftPeriodLabel(startTime?: string | null): string {
   if (!startTime) return "—";
   const hour = parseInt(startTime.split(":")[0] || "0", 10);
-  if (hour >= 6 && hour < 10) return "🌅 Açılış";
-  if (hour >= 10 && hour < 14) return "☀️ Aracı";
-  if (hour >= 14 && hour < 18) return "🌆 Akşam";
+  if (hour < 11) return "🌅 Sabah";
+  if (hour < 15) return "☀️ Aracı";
   return "🌙 Kapanış";
 }
 
@@ -166,15 +160,19 @@ export default function KioskSupervisorShift() {
   // Sprint 25: Manuel saat değişikliği state
   const [editShiftStart, setEditShiftStart] = useState("");
   const [editShiftEnd, setEditShiftEnd] = useState("");
+  // Sprint 26 (Aslan 12 May 21:50): Saat editör collapsible — auto-open bug fix
+  const [editTimeOpen, setEditTimeOpen] = useState(false);
 
   // Modal açıldığında mevcut saatleri yükle
   useEffect(() => {
     if (shiftToDelete) {
       setEditShiftStart(shiftToDelete.startTime?.slice(0, 5) || "");
       setEditShiftEnd(shiftToDelete.endTime?.slice(0, 5) || "");
+      setEditTimeOpen(false); // Sprint 26: Her açılışta kapalı başla
     } else {
       setEditShiftStart("");
       setEditShiftEnd("");
+      setEditTimeOpen(false);
     }
   }, [shiftToDelete]);
   // Sprint 19.3 (Aslan 12 May): Özel saat aralığı input state
@@ -1099,19 +1097,41 @@ export default function KioskSupervisorShift() {
             </DialogDescription>
           </DialogHeader>
 
-          {/* Sprint 25 (Aslan 12 May): Saat Manuel Değişikliği */}
+          {/* Sprint 25+26 (Aslan 12 May): Saat Manuel Değişikliği — Collapsible */}
           <div className="border-t pt-4 space-y-2">
-            <label className="text-sm font-medium flex items-center gap-2">
-              🕐 Vardiya Saatini Değiştir
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground">Başlangıç</label>
-                <input
-                  type="time"
-                  value={editShiftStart}
-                  onChange={(e) => setEditShiftStart(e.target.value)}
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            {!editTimeOpen ? (
+              // Kapalı durumda sadece buton — iOS Safari auto-open bug'ı yok
+              <Button
+                onClick={() => setEditTimeOpen(true)}
+                variant="outline"
+                size="sm"
+                className="w-full"
+                data-testid="btn-open-time-editor"
+              >
+                🕐 Vardiya Saatini Değiştir
+              </Button>
+            ) : (
+              // Açık durumda input'lar göster
+              <>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    🕐 Vardiya Saatini Değiştir
+                  </label>
+                  <button
+                    onClick={() => setEditTimeOpen(false)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    ↩ Geri
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Başlangıç</label>
+                    <input
+                      type="time"
+                      value={editShiftStart}
+                      onChange={(e) => setEditShiftStart(e.target.value)}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                   data-testid="edit-shift-start"
                 />
               </div>
@@ -1168,6 +1188,8 @@ export default function KioskSupervisorShift() {
             <p className="text-[10px] text-muted-foreground">
               Drag-drop ile başka güne taşımak yerine sadece saati değiştir.
             </p>
+              </>
+            )}
           </div>
 
           {/* Sprint 19.4: Görev/Mesaj Bırak */}
@@ -1497,17 +1519,17 @@ function DraggableShiftCard({
       {...listeners}
       {...attributes}
       onClick={() => onShiftClick(shift)}
-      className={`text-xs rounded px-2 py-1.5 w-full text-left transition-colors cursor-grab active:cursor-grabbing touch-none ${bgClass} ${
+      className={`text-sm rounded px-2 py-2 w-full text-left transition-colors cursor-grab active:cursor-grabbing touch-none ${bgClass} ${
         isDragging ? "opacity-50" : ""
       }`}
       data-testid={`shift-card-${shift.id}`}
       role="button"
     >
-      <div className="font-medium truncate flex items-center gap-1">
-        <Clock className="h-3 w-3 flex-shrink-0" />
-        {staffName}
+      <div className="font-medium truncate flex items-center gap-1.5">
+        <Clock className="h-3.5 w-3.5 flex-shrink-0" />
+        <span className="text-[13px]">{staffName}</span>
       </div>
-      <div className="text-muted-foreground text-[10px]">
+      <div className="text-muted-foreground text-xs font-semibold mt-0.5">
         {shift.startTime?.slice(0, 5)}-{shift.endTime?.slice(0, 5)}
       </div>
     </div>

@@ -58,13 +58,14 @@ export interface WeeklyPlanResult {
   offDaysSummary: Record<string, number>;
 }
 
-function timeToMinutes(time: string): number {
+// Sprint 26: Exported for shifts.ts auto-break logic
+export function timeToMinutes(time: string): number {
   if (!time) return 0;
   const [h, m] = time.split(':').map(Number);
   return h * 60 + (m || 0);
 }
 
-function minutesToTime(minutes: number): string {
+export function minutesToTime(minutes: number): string {
   const h = Math.floor(minutes / 60).toString().padStart(2, '0');
   const m = (minutes % 60).toString().padStart(2, '0');
   return `${h}:${m}`;
