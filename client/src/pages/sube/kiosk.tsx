@@ -336,8 +336,6 @@ export default function BranchKiosk() {
   const [kioskFaultCategory, setKioskFaultCategory] = useState("ekipman");
   const [kioskFaultDescription, setKioskFaultDescription] = useState("");
   const [kioskFaultPriority, setKioskFaultPriority] = useState("orta");
-  const [kioskFaultCategory, setKioskFaultCategory] = useState("");
-  const [kioskFaultDesc, setKioskFaultDesc] = useState("");
   const [locationStatus, setLocationStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [kioskMode, setKioskMode] = useState<'pin' | 'qr'>('pin');
   const [qrScannedUser, setQrScannedUser] = useState<{ id: string; firstName: string; lastName: string; profileImageUrl?: string | null } | null>(null);
@@ -845,28 +843,6 @@ export default function BranchKiosk() {
     },
     onError: (error: any) => {
       toast({ title: "Vardiya sonlandırılamadı", description: error.message, variant: "destructive" });
-    },
-  });
-
-  const kioskFaultMutation = useMutation({
-    mutationFn: async (body: { category: string; description: string }) => {
-      const res = await apiRequest("POST", "/api/faults", {
-        description: `[Kiosk] [${body.category}] ${body.description}`,
-        equipmentName: body.category,
-        priority: "medium",
-        branchId: Number(branchId),
-        reportedById: selectedUser?.id,
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({ title: "Sorun bildirildi", description: "Yöneticinize iletilecek." });
-      setShowKioskFaultReport(false);
-      setKioskFaultCategory("");
-      setKioskFaultDesc("");
-    },
-    onError: (error: any) => {
-      toast({ title: "Bildirilemedi", description: error.message, variant: "destructive" });
     },
   });
 
