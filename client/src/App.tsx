@@ -16,6 +16,7 @@ import { GlobalSearch } from "@/components/global-search";
 import { AppHeader } from "@/components/app-header";
 import { QRScannerModal } from "@/components/qr-scanner-modal";
 import { GlobalAIAssistant } from "@/components/global-ai-assistant";
+import { MrDobodyOnboarding } from "@/components/onboarding/MrDobodyOnboarding";
 import { PushPermissionBanner } from "@/components/push-permission";
 import { useAuth } from "@/hooks/useAuth";
 import { ROLE_CONTROL_PATH } from "@/lib/role-routes";
@@ -196,6 +197,7 @@ const CoachUyumPaneli = lazyWithRetry(() => import("@/pages/coach-uyum-paneli"))
 const RolYetkileri = lazyWithRetry(() => import("@/pages/admin/rol-yetkileri"));
 // Sprint A1 (21 Nisan 2026) — 14 kırık admin sidebar linkine karşılık gelen sayfa import'ları
 const AdminAktiviteLoglari = lazyWithRetry(() => import("@/pages/admin/aktivite-loglari"));
+const AdminOnboardingYonetim = lazyWithRetry(() => import("@/pages/admin/onboarding-yonetim"));  // Sprint 47.2
 const AdminPilotDashboard = lazyWithRetry(() => import("@/pages/admin/pilot-dashboard"));
 const AdminSifreYonetimi = lazyWithRetry(() => import("@/pages/admin/sifre-yonetimi"));
 const AdminCriticalLogs = lazyWithRetry(() => import("@/pages/admin/critical-logs"));
@@ -603,6 +605,7 @@ function Router() {
           <Route path="/admin/rol-yetkileri">{() => <AdminOnly><RolYetkileri /></AdminOnly>}</Route>
           {/* Sprint A1 (21 Nisan 2026) — 14 kırık admin/yonetim linki düzeltmesi (wildcard /admin/*?'dan ÖNCE olmalı) */}
           <Route path="/admin/aktivite-loglari">{() => <AdminOnly><AdminAktiviteLoglari /></AdminOnly>}</Route>
+          <Route path="/admin/onboarding-yonetim">{() => <AdminOnly><AdminOnboardingYonetim /></AdminOnly>}</Route>
           <Route path="/admin/pilot-dashboard">{() => <ProtectedRoute allowedRoles={["admin", "ceo", "cgo"]}><AdminPilotDashboard /></ProtectedRoute>}</Route>
           <Route path="/admin/sifre-yonetimi">{() => <ProtectedRoute allowedRoles={["admin", "ceo", "cgo", "adminhq"]}><AdminSifreYonetimi /></ProtectedRoute>}</Route>
           <Route path="/admin/critical-logs">{() => <ProtectedRoute allowedRoles={["admin", "ceo", "cgo"]}><AdminCriticalLogs /></ProtectedRoute>}</Route>
@@ -951,6 +954,12 @@ function AppContent() {
       
       {/* Global AI Assistant */}
       {user && <GlobalAIAssistant />}
+
+      {/* Sprint 47.2 (Aslan 13 May 2026): Mr. Dobody Onboarding */}
+      {/* Yeni kullanıcı için ilk girişte otomatik açılır, kiosk hariç */}
+      {user && user.role !== 'sube_kiosk' && user.role !== 'fabrika_kiosk' && (
+        <MrDobodyOnboarding />
+      )}
     </div>
   );
 }
