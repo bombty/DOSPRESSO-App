@@ -307,26 +307,51 @@ export class ShiftScheduler {
         return !leaveUserDates.has(key);
       });
 
-      // V2: Off sayısı — Cmt+Paz YASAK, Cum 1-2, Pzt-Sal max
+      // ═══════════════════════════════════════════════════════════
+      // Sprint 36 (Aslan 13 May 00:35) — Off Dengelemesi
+      // ═══════════════════════════════════════════════════════════
+      // Sprint 32 V2'de Pzt(35%)+Sal(35%)+Çar(20%)+Per(20%)+Cum(8%) = 13 off-day
+      // 12 personel × 1 off = 12 ihtiyaç → 1 fazla → bazı personel 2 off
+      // Sonuç: 5 gün × 7.5h = 37.5h (hedef 45h ❌)
+      //
+      // YENI: Hedef her personele TAM 1 off
+      // Pzt(27%)+Sal(27%)+Çar(17%)+Per(17%)+Cum(1) = 11-12 off-day
+      // Sonuç: 6 gün × 7.5h = 45h ✅
       let needOff = 0;
       if (isWeekendStrict) {
         needOff = 0; // Cmt+Paz YASAK
       } else if (isFriday) {
-        // Sprint 34: Cum 1-2 off (önceden 0-1 idi, Aslan talebi: 1 veya 2)
+        // Cum: 1-2 (Aslan talebi)
         needOff = Math.max(1, Math.min(2, Math.floor(staffCount * 0.10)));
       } else if (isQuietDay) {
-        needOff = Math.ceil(staffCount * 0.35); // Pzt+Sal en çok
+        // Sprint 36: Pzt+Sal 35% → 27% (3 kişi @ 12 personel)
+        needOff = Math.ceil(staffCount * 0.27);
       } else {
-        needOff = Math.ceil(staffCount * 0.20); // Çar+Per normal
+        // Sprint 36: Çar+Per 20% → 17% (2 kişi @ 12 personel)
+        needOff = Math.ceil(staffCount * 0.17);
       }
 
       const offCandidates = availableToday
-        .filter(s => offDaysTracker[s.id] < 2)
+        // Sprint 36: Sıkı limit — max 1 off/personel/hafta (önceden < 2 idi)
+        // Bu sayede 45h hedef garantili
+        .filter(s => offDaysTracker[s.id] < 1)
         // Müdür Cmt/Paz/Cum off yasağı (yoğun gün liderlik)
         .filter(s => !(s.role === 'mudur' && (isWeekendStrict || isFriday)))
         .sort((a, b) => offDaysTracker[a.id] - offDaysTracker[b.id]);
 
-      const todayOffIds = new Set(offCandidates.slice(0, Math.min(needOff, offCandidates.length)).map(s => s.id));
+      // Sprint 36 FALLBACK: Eğer 1-off limitiyle yeterli candidate yoksa
+      // ikinci off'a izin ver (rare edge case, küçük şubeler için)
+      let todayOffIds: Set<string>;
+      if (offCandidates.length >= needOff) {
+        todayOffIds = new Set(offCandidates.slice(0, needOff).map(s => s.id));
+      } else {
+        // Fallback: 2-off limit dene
+        const fallbackCandidates = availableToday
+          .filter(s => offDaysTracker[s.id] < 2)
+          .filter(s => !(s.role === 'mudur' && (isWeekendStrict || isFriday)))
+          .sort((a, b) => offDaysTracker[a.id] - offDaysTracker[b.id]);
+        todayOffIds = new Set(fallbackCandidates.slice(0, Math.min(needOff, fallbackCandidates.length)).map(s => s.id));
+      }
       todayOffIds.forEach(id => { offDaysTracker[id]++; });
 
       const workingToday = availableToday.filter(s => !todayOffIds.has(s.id));
@@ -378,28 +403,43 @@ export class ShiftScheduler {
       const tier2 = workingToday.filter(p => personTier[p.id] === 2); // Kapanış Aracısı adayları
       const tier3 = workingToday.filter(p => personTier[p.id] === 3); // Kapanış adayları
 
-      // Hedef sırada birleştir: Açılış → Aracı → KapAracı → Kapanış
-      // Eğer tier'da çok kişi varsa, fazlalar bir sonraki tier'a kayar (overflow)
+      // ═══════════════════════════════════════════════════════════
+      // Sprint 36 (Aslan 13 May 00:35) — COUNTER-ROTATION OVERFLOW
+      // ═══════════════════════════════════════════════════════════
+      // PROBLEM: Önceki overflow tier 0 → tier 1 → tier 2 (lineer kayma)
+      // Sonuç: tier 0 fazlası HEP tier 1'e düşüyor → Cihan hep "Açılış Aracısı"
+      //
+      // YENI: Counter-rotation (zıt tier'a kay):
+      //   tier 0 fazla → tier 2 (Kapanış Aracısı)  — zıt yön
+      //   tier 1 fazla → tier 3 (Kapanış)          — zıt yön
+      //   tier 2 fazla → tier 0 (eğer slot varsa)  — zıt yön
+      //   tier 3 fazla → tier 1                     — zıt yön
+      //
+      // Sonuç: Cihan tier 0'da 3. kişiyse → bu hafta Kapanış Aracısı
+      //        Sonraki hafta Cihan tier 1 → ideal Açılış Aracısı
+      //        4 hafta sonra TAM döngü tamamlanır
       const rotatedStaff: typeof workingToday = [];
 
-      // Açılış (max opening_count): tier 0'dan al
+      // 1. AÇILIŞ (max opening_count): tier 0'dan al
       const opening = tier0.slice(0, opening_count);
-      const tier0_overflow = tier0.slice(opening_count);
+      const tier0_overflow = tier0.slice(opening_count); // Bunlar tier 2'ye kayacak
       rotatedStaff.push(...opening);
 
-      // Açılış Aracısı: tier 1 + tier 0 overflow
-      const middle1 = [...tier1, ...tier0_overflow].slice(0, opening_mid_count);
-      const tier1_overflow = [...tier1, ...tier0_overflow].slice(opening_mid_count);
+      // 2. KAPANIŞ (max closing_count): tier 3'den al
+      const closing = tier3.slice(0, closing_count);
+      const tier3_overflow = tier3.slice(closing_count); // Bunlar tier 1'e kayacak
+
+      // 3. AÇILIŞ ARACISI (~opening_mid_count): tier 1 + tier 3 overflow (counter)
+      const middle1Pool = [...tier1, ...tier3_overflow];
+      const middle1 = middle1Pool.slice(0, opening_mid_count);
+      const tier1_overflow = middle1Pool.slice(opening_mid_count); // Bunlar tier 3'e kayacak (kapanış'a)
       rotatedStaff.push(...middle1);
 
-      // Kapanış (max closing_count): tier 3'den al (sondan)
-      // closing son sırada olmalı — önce kapanış aracısını ekle
-      const closing = tier3.slice(0, closing_count);
-      const tier3_overflow = tier3.slice(closing_count);
-
-      // Kapanış Aracısı: tier 2 + tier 1 overflow + tier 3 overflow
-      const middle2 = [...tier2, ...tier1_overflow, ...tier3_overflow];
+      // 4. KAPANIŞ ARACISI (kalan): tier 2 + tier 0 overflow (counter) + tier 1 overflow son seçenek
+      const middle2 = [...tier2, ...tier0_overflow, ...tier1_overflow];
       rotatedStaff.push(...middle2);
+
+      // 5. Closing en sona
       rotatedStaff.push(...closing);
 
 
