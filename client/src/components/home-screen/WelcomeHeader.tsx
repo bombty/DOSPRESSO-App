@@ -1,5 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { AiAlertsBell } from "@/components/AiAlertsBell";  // Sprint 49 (Aslan 13 May 2026)
 
 interface WelcomeHeaderProps {
   firstName?: string;
@@ -70,12 +71,16 @@ export function WelcomeHeader({ role, alerts }: WelcomeHeaderProps) {
 
   return (
     <div className="space-y-2.5 mb-3">
-      <div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-foreground" style={{fontSize: isMobile ? 17 : 20}}>{greet}, {firstName}</span>
-          <span className="px-2 py-0.5 rounded-full font-semibold" style={{background:`${roleInfo.color}20`,color:roleInfo.color,fontSize:isMobile?11:12}}>{roleInfo.label}</span>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-foreground" style={{fontSize: isMobile ? 17 : 20}}>{greet}, {firstName}</span>
+            <span className="px-2 py-0.5 rounded-full font-semibold" style={{background:`${roleInfo.color}20`,color:roleInfo.color,fontSize:isMobile?11:12}}>{roleInfo.label}</span>
+          </div>
+          <p className="text-muted-foreground" style={{fontSize: isMobile ? 12 : 13}}>{today}</p>
         </div>
-        <p className="text-muted-foreground" style={{fontSize: isMobile ? 12 : 13}}>{today}</p>
+        {/* Sprint 49 (Aslan 13 May 2026): AI Alerts Bell */}
+        <AiAlertsBell />
       </div>
       {kpis.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
