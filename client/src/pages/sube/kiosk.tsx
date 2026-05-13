@@ -170,23 +170,28 @@ export default function BranchKiosk() {
 
   // Sprint 47.3 fix (Aslan 13 May 2026): Personelin kendi vardiyalarını kiosk'ta gösterme
   // Bug: Şift yöneticisi vardiya planı yapınca personel kendi kiosk'unda göremiyordu
+  // Sprint 51.1 hotfix (Aslan 13 May 12:50): branchId değişkeni satır 230'da tanımlı —
+  // burada hoisting hatası alıyordu ("Cannot access 'branchId' before initialization").
+  // Çözüm: branchId'yi useQuery'nin İÇİNDE inline hesapla — bağımlı state'leri queryKey'e
+  // koy, böylece her değişiklikte refetch olur.
   const { data: myShifts = [] } = useQuery<any[]>({
-    queryKey: ['/api/shifts/personal', selectedUser?.id, branchId],
+    queryKey: ['/api/shifts/personal', selectedUser?.id, branchAuth?.id, params.branchId],
     queryFn: async () => {
-      if (!selectedUser?.id || !branchId) return [];
+      const resolvedBranchId = branchAuth?.id || (params.branchId ? parseInt(params.branchId) : null);
+      if (!selectedUser?.id || !resolvedBranchId) return [];
       // Bugünden 14 gün ileriye kadar
       const today = new Date();
       const future = new Date(today);
       future.setDate(today.getDate() + 14);
       const dateFrom = today.toISOString().split('T')[0];
       const dateTo = future.toISOString().split('T')[0];
-      const res = await fetch(`/api/shifts?branchId=${branchId}&assignedToId=${selectedUser.id}&dateFrom=${dateFrom}&dateTo=${dateTo}`);
+      const res = await fetch(`/api/shifts?branchId=${resolvedBranchId}&assignedToId=${selectedUser.id}&dateFrom=${dateFrom}&dateTo=${dateTo}`);
       if (!res.ok) return [];
       const data = await res.json();
       // shifts array veya paginated response
       return Array.isArray(data) ? data : (data.items || data.data || []);
     },
-    enabled: step === 'working' && !!selectedUser?.id && !!branchId,
+    enabled: step === 'working' && !!selectedUser?.id && !!(branchAuth?.id || params.branchId),
     staleTime: 60000, // 1 dk
     refetchInterval: 5 * 60 * 1000, // 5 dk'da bir refresh
   });
