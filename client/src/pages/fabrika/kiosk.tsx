@@ -245,6 +245,8 @@ export default function FactoryKiosk() {
     plannedMinutes: number;
   } | null>(null);
   const [selectedBreakReason, setSelectedBreakReason] = useState<BreakReason | null>(null);
+  // Sprint 54.1 hotfix (Aslan 13 May 2026): Vardiya bitirme onayı (form yerine)
+  const [confirmEndShift, setConfirmEndShift] = useState(false);
 
   const [qcMode, setQcMode] = useState(false);
   const [selectedQcOutput, setSelectedQcOutput] = useState<any>(null);
@@ -343,12 +345,17 @@ export default function FactoryKiosk() {
   });
 
   const stationCategory = currentStationInfo?.category || null;
+  const stationId = currentStationInfo?.id || null;
   const { data: factoryProducts = [] } = useQuery<FactoryProduct[]>({
-    queryKey: ['/api/factory/products', stationCategory],
+    queryKey: ['/api/factory/products', stationCategory, stationId],
     queryFn: () => {
-      const url = stationCategory 
-        ? `/api/factory/products?category=${encodeURIComponent(stationCategory)}`
-        : '/api/factory/products';
+      // Sprint 54.1 hotfix (Aslan 13 May 2026): stationId fallback ekle
+      // Backend station.category boşsa name'den infer eder
+      const params = new URLSearchParams();
+      if (stationCategory) params.set('category', stationCategory);
+      if (stationId) params.set('stationId', stationId.toString());
+      const qs = params.toString();
+      const url = qs ? `/api/factory/products?${qs}` : '/api/factory/products';
       return kioskFetchJson<FactoryProduct[]>(url, []);
     },
     enabled: step === 'production-entry' || step === 'log-production' || step === 'working',
@@ -1686,7 +1693,9 @@ export default function FactoryKiosk() {
                   setProductError('');
                   setWasteDoughKg('');
                   setWasteProductCount('');
-                  setStep('production-entry');
+                  // Sprint 54.1 hotfix (Aslan 13 May 2026): Form yerine direkt onay
+                  // Vardiya seviyesinde üretim girişi gereksiz — batch'lerde girilmiş zaten
+                  setConfirmEndShift(true);
                 }}
                 data-testid="button-end-shift"
               >
@@ -2839,6 +2848,39 @@ export default function FactoryKiosk() {
           />
         </div>
       )}
+
+      {/* Sprint 54.1 hotfix (Aslan 13 May 2026): Vardiya bitirme onay modali */}
+      <AlertDialog open={confirmEndShift} onOpenChange={setConfirmEndShift}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-xl">
+              <LogOut className="w-6 h-6 text-red-600" />
+              Vardiyayı Bitirmek İstiyor Musunuz?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base pt-2">
+              Vardiyanız sonlanacak ve kiosktan çıkacaksınız.
+              <br /><br />
+              Üretim ve zaiyat bilgileri her batch'te kaydedildi.
+              <br /><br />
+              Devam etmek istiyor musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="btn-end-shift-cancel">İptal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                if (!currentSession) return;
+                endShiftMutation.mutate({ sessionId: currentSession.id });
+                setConfirmEndShift(false);
+              }}
+              data-testid="btn-end-shift-confirm"
+            >
+              Evet, Vardiyayı Bitir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

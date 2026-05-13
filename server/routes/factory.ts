@@ -144,7 +144,33 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/products', isAuthenticated, async (req, res) => {
     try {
-      const category = req.query.category as string | undefined;
+      let category = req.query.category as string | undefined;
+      const stationIdParam = req.query.stationId as string | undefined;
+
+      // Sprint 54.1 hotfix (Aslan 13 May 2026): Eğer category yoksa stationId'den çıkar
+      // factoryStations.category (hamur/dolum/...) ≠ factoryProducts.category (donut/cookie/...)
+      // İstasyon adından ürün kategorisini infer et
+      if (!category && stationIdParam) {
+        const stationId = parseInt(stationIdParam);
+        if (!isNaN(stationId)) {
+          const [station] = await db.select().from(factoryStations).where(eq(factoryStations.id, stationId)).limit(1);
+          if (station) {
+            const name = (station.name || '').toLowerCase();
+            // Station name → product category mapping
+            if (name.includes('donut')) category = 'donut';
+            else if (name.includes('cookie')) category = 'cookie';
+            else if (name.includes('cinnaboom') || name.includes('cinnabon')) category = 'cinnabon';
+            else if (name.includes('mamabon')) category = 'mamabon';
+            else if (name.includes('cheesecake')) category = 'cheesecake';
+            else if (name.includes('wrapitos')) category = 'wrapitos';
+            else if (name.includes('konsantre') || name.includes('şurup') || name.includes('surup')) category = 'syrup';
+            else if (name.includes('brownie')) category = 'brownie';
+            else if (name.includes('cake') || name.includes('kek')) category = 'cake';
+            console.log(`[Factory/products] Station "${station.name}" → category "${category || '(no-match)'}"`);
+          }
+        }
+      }
+
       const products = await storage.getFactoryProducts(category);
       res.json(products);
     } catch (error: unknown) {
