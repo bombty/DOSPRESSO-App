@@ -419,6 +419,8 @@ import rawMaterialsRouter from "./routes/raw-materials";
 import semaRouter from "./routes/sema-routes";
 // Sprint 54 (Aslan 13 May 2026): Eren (fabrika_mudur) paneli
 import erenRouter from "./routes/eren-routes";
+// Sprint 54.2 (Aslan 13 May 2026): İstasyon-Ürün mapping
+import stationProductsRouter from "./routes/factory-station-products";
 import pushRouter from "./routes/push";
 import dataManagementRouter from "./routes/data-management";
 import setupRouter from "./routes/setup";
@@ -921,6 +923,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(rawMaterialsRouter);
   app.use(semaRouter);  // Sprint 53 — Sema gida_muhendisi paneli
   app.use(erenRouter);  // Sprint 54 — Eren fabrika_mudur paneli
+  app.use(stationProductsRouter);  // Sprint 54.2 — İstasyon-Ürün mapping
   app.use(branchInventoryRouter);
   app.use(pushRouter);
   app.use(dataManagementRouter);
