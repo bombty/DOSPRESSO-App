@@ -263,12 +263,29 @@ GÖREVİN:
 - 3-5 önemli madde (emoji ile)
 - En önemli aksiyon ne olmalı?
 
+⚠️ KRİTİK — actionUrl KURALLARI:
+SADECE BU SABİT ROUTE'LARI KULLANABİLİRSİN. Başka path UYDURMA, 404 olur:
+- "/" → Ana ekran
+- "/subeler" → Şubeler listesi
+- "/ik" → İK Merkezi
+- "/raporlar" → Raporlar
+- "/satinalma" → Satın alma
+- "/hammaddeler" → Hammadde listesi
+- "/fabrika/kiosk" → Fabrika
+- "/operasyon-yonetimi" → Operasyon
+- "/control-centrum" → CEO Komuta Merkezi
+- "/akademi" → Eğitim
+- "/admin/onboarding-yonetim" → Onboarding admin
+- "/sube/kiosk/:id" → Kiosk (id 5=Işıklar, 8=Lara, 23=HQ, 24=Fabrika)
+
+EĞER UYGUN ROUTE YOKSA → actionUrl: null bırak, actionLabel da boş.
+
 JSON FORMAT:
 {
   "summary": "Bir cümlede günün özeti (max 100 char)",
   "content": "Markdown formatında 3-5 maddelik brief",
   "priorityItems": [
-    { "type": "warning|info|success", "text": "Madde içeriği", "actionUrl": "/path" }
+    { "type": "warning|info|success", "text": "Madde içeriği", "actionUrl": "/path veya null" }
   ]
 }`;
 
