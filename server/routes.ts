@@ -42,6 +42,7 @@ import kvkkDataRequestsRoutes from "./routes/kvkk-data-requests";  // Aslan 10 M
 import onboardingRoutes from "./routes/onboarding";  // Sprint 47 (Aslan 13 May 2026): AI-Native Conversational Onboarding
 import dailyBriefsRoutes from "./routes/daily-briefs";  // Sprint 48 (Aslan 13 May 2026): Daily AI Brief
 import aiAlertsRoutes from "./routes/ai-alerts";  // Sprint 49 (Aslan 13 May 2026): AI Alert System
+import supplierAiHelperRoutes from "./routes/supplier-ai-helper";  // Sprint 50 (Aslan 13 May 2026): Tedarikçi AI Asistanı
 import pinResetRoutes from "./routes/pin-reset";  // Aslan 11 May 2026: PIN sıfırlama (mail ile)
 import hqKioskBreakRoutes from "./routes/hq-kiosk-break";  // Sprint 14a 11 May 2026: HQ kiosk mola yönetimi
 import employeeSummaryRoutes from "./routes/employee-summary";
@@ -1301,6 +1302,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(onboardingRoutes);  // Sprint 47 (Aslan 13 May 2026): Mr. Dobody Onboarding
   app.use(dailyBriefsRoutes);  // Sprint 48 (Aslan 13 May 2026): Daily AI Brief
   app.use(aiAlertsRoutes);  // Sprint 49 (Aslan 13 May 2026): AI Alert System
+  app.use(supplierAiHelperRoutes);  // Sprint 50 (Aslan 13 May 2026): Tedarikçi AI Asistanı
   app.use(pinResetRoutes);  // Aslan 11 May 2026: PIN sıfırlama (mail ile)
   app.use(hqKioskBreakRoutes);  // Sprint 14a 11 May 2026: HQ kiosk mola yönetimi
   app.use(branchSummaryRoutes);

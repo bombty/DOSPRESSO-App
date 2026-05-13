@@ -36,10 +36,12 @@ import {
   Mail,
   MapPin,
   Star,
-  Edit
+  Edit,
+  Sparkles
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { SupplierAiHelperDialog } from "@/components/SupplierAiHelperDialog";  // Sprint 50 (Aslan 13 May 2026)
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { ErrorState } from "../../components/error-state";
 import { LoadingState } from "../../components/loading-state";
@@ -71,6 +73,8 @@ export default function TedarikciYonetimi() {
   const [status, setStatus] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  // Sprint 50 (Aslan 13 May 2026): Mr. Dobody Tedarikçi Asistanı
+  const [showAiHelper, setShowAiHelper] = useState(false);
 
   const queryParams = new URLSearchParams();
   if (status && status !== "all") queryParams.set("status", status);
@@ -170,6 +174,17 @@ export default function TedarikciYonetimi() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Sprint 50 (Aslan 13 May 2026): Mr. Dobody Tedarikçi Asistanı */}
+        <Button
+          variant="outline"
+          onClick={() => setShowAiHelper(true)}
+          data-testid="button-ai-helper"
+          className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+        >
+          <Sparkles className="h-4 w-4 mr-2" />
+          Mr. Dobody Yardım
+        </Button>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
@@ -302,6 +317,12 @@ export default function TedarikciYonetimi() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Sprint 50 (Aslan 13 May 2026): Mr. Dobody Tedarikçi Asistanı */}
+      <SupplierAiHelperDialog
+        open={showAiHelper}
+        onOpenChange={setShowAiHelper}
+      />
     </div>
   );
 }
