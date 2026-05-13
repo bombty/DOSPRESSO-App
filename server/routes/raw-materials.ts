@@ -41,7 +41,8 @@ router.get(
   requireManifestAccess("stok", "view"),
   async (req: any, res) => {
     try {
-      const { category, search, isActive = "true", limit = 100, offset = 0 } = req.query;
+      // Sprint 52 (Aslan 13 May 2026): mainCategory (4 ana kategori) destek
+      const { category, mainCategory, search, isActive = "true", limit = 100, offset = 0 } = req.query;
 
       const conditions = [];
 
@@ -53,6 +54,11 @@ router.get(
 
       if (category) {
         conditions.push(eq(rawMaterials.category, category as string));
+      }
+
+      // Sprint 52: Yeni 4 ana kategori filtresi
+      if (mainCategory && mainCategory !== "all") {
+        conditions.push(eq(rawMaterials.mainCategory, mainCategory as string));
       }
 
       if (search) {

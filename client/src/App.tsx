@@ -254,6 +254,10 @@ const AjandaPage = lazyWithRetry(() => import("@/pages/ajanda"));
 const CEOCommandCenter = lazyWithRetry(() => import("@/pages/ceo-command-center"));
 const CGOCommandCenter = lazyWithRetry(() => import("@/pages/cgo-command-center"));
 const SatinalmaMega = lazyWithRetry(() => import("@/pages/satinalma-mega"));
+// Sprint 52 (Aslan 13 May 2026): Samet Mega UI — 3 yeni sayfa
+const HammaddelerYonetimi = lazyWithRetry(() => import("@/pages/satinalma/hammaddeler-yonetimi"));
+const FactoryProductsSamet = lazyWithRetry(() => import("@/pages/satinalma/factory-products-samet"));
+const B2bCustomersPage = lazyWithRetry(() => import("@/pages/satinalma/b2b-customers"));
 
 // Centrum v5 pages
 const MuhasebeCentrum = lazyWithRetry(() => import("@/pages/muhasebe-centrum"));
@@ -722,6 +726,10 @@ function Router() {
           <Route path="/hq-dashboard/:department?">{({ params }: any) => { const [,nav] = useLocation(); useEffect(() => { const dept = params?.department; if (dept === "marketing") nav("/marketing-centrum"); else if (dept === "destek") nav("/destek-centrum"); else nav("/ceo-command-center"); }, []); return null; }}</Route>
           <Route path="/kalite-kontrol-dashboard">{() => { const [,nav] = useLocation(); useEffect(() => { nav("/fabrika-centrum"); }, []); return null; }}</Route>
           <Route path="/gida-guvenligi-dashboard">{() => <HQOnly><GidaGuvenligiDashboard /></HQOnly>}</Route>
+          {/* Sprint 52 (Aslan 13 May 2026): Samet UI — 3 yeni sayfa (önce gelmeli!) */}
+          <Route path="/satinalma/hammaddeler-yonetimi">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><HammaddelerYonetimi /></ProtectedRoute>}</Route>
+          <Route path="/satinalma/factory-products">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><FactoryProductsSamet /></ProtectedRoute>}</Route>
+          <Route path="/satinalma/b2b-customers">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><B2bCustomersPage /></ProtectedRoute>}</Route>
           <Route path="/satinalma/:tab?">{() => <ProtectedRoute allowedRoles={["satinalma","admin","ceo","cgo"]}><SatinalmaMega /></ProtectedRoute>}</Route>
           <Route path="/urun-sikayet">{() => { window.location.replace("/crm/ticket-talepler"); return null; }}</Route>
           <Route path="/raporlar/sube-saglik">{() => <ExecutiveOnly><SubeSaglikSkoru /></ExecutiveOnly>}</Route>
