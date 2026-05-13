@@ -415,6 +415,8 @@ import aiPolicyAdminRouter from "./routes/ai-policy-admin";
 import branchInventoryRouter from "./routes/branch-inventory";
 import branchOrdersRouter from "./routes/branch-orders";
 import rawMaterialsRouter from "./routes/raw-materials";
+// Sprint 53 (Aslan 13 May 2026): Sema (gida_muhendisi) paneli
+import semaRouter from "./routes/sema-routes";
 import pushRouter from "./routes/push";
 import dataManagementRouter from "./routes/data-management";
 import setupRouter from "./routes/setup";
@@ -915,6 +917,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(aiPolicyAdminRouter);
   app.use(branchOrdersRouter);
   app.use(rawMaterialsRouter);
+  app.use(semaRouter);  // Sprint 53 — Sema gida_muhendisi paneli
   app.use(branchInventoryRouter);
   app.use(pushRouter);
   app.use(dataManagementRouter);

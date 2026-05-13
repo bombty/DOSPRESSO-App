@@ -2823,6 +2823,22 @@ export default function FactoryKiosk() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sprint 14a (11 May 2026): Mola dönüş özet modalı */}
+      {/* Sprint 53.x HOTFIX (Aslan 13 May 2026): KioskBatchSection'dan FactoryKiosk'a taşındı (scope fix - breakReturnSummary state burada) */}
+      {breakReturnSummary && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <BreakReturnSummary
+            userName={breakReturnSummary.userName}
+            breakStartTime={breakReturnSummary.breakStartTime}
+            breakEndTime={breakReturnSummary.breakEndTime}
+            plannedMinutes={breakReturnSummary.plannedMinutes}
+            totalDailyBreakMinutes={dailyUsedMinutes}
+            newWarningsToday={0}
+            onReturnToShift={() => setBreakReturnSummary(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -3083,20 +3099,6 @@ function KioskBatchSection({ userId, stationId }: { userId: string; stationId: n
         <KvkkFooterLink context="fabrika" />
       </div>
 
-      {/* Sprint 14a (11 May 2026): Mola dönüş özet modalı */}
-      {breakReturnSummary && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <BreakReturnSummary
-            userName={breakReturnSummary.userName}
-            breakStartTime={breakReturnSummary.breakStartTime}
-            breakEndTime={breakReturnSummary.breakEndTime}
-            plannedMinutes={breakReturnSummary.plannedMinutes}
-            totalDailyBreakMinutes={dailyUsedMinutes}
-            newWarningsToday={0}
-            onReturnToShift={() => setBreakReturnSummary(null)}
-          />
-        </div>
-      )}
     </div>
   );
 }
