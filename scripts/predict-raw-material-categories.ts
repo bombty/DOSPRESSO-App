@@ -28,6 +28,8 @@ const openai = new OpenAI({
 });
 
 const DRY_RUN = process.argv.includes("--dry-run");
+const maxBatchesArg = process.argv.find(a => a.startsWith("--max-batches="));
+const MAX_BATCHES = maxBatchesArg ? parseInt(maxBatchesArg.split("=")[1]) : Infinity;
 
 interface MaterialBatch {
   id: number;
@@ -144,7 +146,7 @@ async function main() {
   let totalProcessed = 0;
   let totalChanged = 0;
 
-  for (let i = 0; i < allMaterials.length; i += BATCH_SIZE) {
+  for (let i = 0; i < allMaterials.length && Math.floor(i / BATCH_SIZE) < MAX_BATCHES; i += BATCH_SIZE) {
     const batch = allMaterials.slice(i, i + BATCH_SIZE).map(m => ({
       id: m.id,
       code: m.code,
