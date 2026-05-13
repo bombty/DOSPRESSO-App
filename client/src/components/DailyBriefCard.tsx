@@ -84,7 +84,7 @@ export function DailyBriefCard({ compact = false }: { compact?: boolean }) {
   });
 
   const handleItemClick = (item: PriorityItem, index: number) => {
-    if (item.actionUrl && brief) {
+    if (item.actionUrl && item.actionUrl !== "null" && item.actionUrl !== "" && brief) {
       clickMutation.mutate({ briefId: brief.id, itemIndex: index, actionUrl: item.actionUrl });
       setLocation(item.actionUrl);
     }
@@ -186,21 +186,24 @@ export function DailyBriefCard({ compact = false }: { compact?: boolean }) {
           {/* Priority Items - tıklanabilir */}
           {brief.priorityItems && brief.priorityItems.length > 0 && (
             <div className="space-y-2 mt-3">
-              {brief.priorityItems.map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleItemClick(item, idx)}
-                  disabled={!item.actionUrl}
-                  className={`w-full text-left rounded-md border p-2.5 flex items-start gap-2 transition-colors ${
-                    colorFor(item.type)
-                  } ${item.actionUrl ? "hover:opacity-80 cursor-pointer" : ""}`}
-                  data-testid={`priority-item-${idx}`}
-                >
-                  <div className="flex-shrink-0 mt-0.5">{iconFor(item.type)}</div>
-                  <p className="text-sm flex-1">{item.text}</p>
-                  {item.actionUrl && <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
-                </button>
-              ))}
+              {brief.priorityItems.map((item, idx) => {
+                const hasValidUrl = item.actionUrl && item.actionUrl !== "null" && item.actionUrl !== "";
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleItemClick(item, idx)}
+                    disabled={!hasValidUrl}
+                    className={`w-full text-left rounded-md border p-2.5 flex items-start gap-2 transition-colors ${
+                      colorFor(item.type)
+                    } ${hasValidUrl ? "hover:opacity-80 cursor-pointer" : "cursor-default"}`}
+                    data-testid={`priority-item-${idx}`}
+                  >
+                    <div className="flex-shrink-0 mt-0.5">{iconFor(item.type)}</div>
+                    <p className="text-sm flex-1">{item.text}</p>
+                    {hasValidUrl && <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                  </button>
+                );
+              })}
             </div>
           )}
 

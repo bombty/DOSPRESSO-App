@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { InboxDialog } from "@/components/inbox-dialog";
+import { AiAlertsBell } from "@/components/AiAlertsBell";  // Sprint 50.1 hotfix (Aslan 13 May 2026)
 import dospressoLogo from "@assets/IMG_6637_1765138781125.png";
 import type { User } from "@shared/schema";
 import { getRoleHomePath } from "@/lib/role-routes";
@@ -147,7 +148,10 @@ export function AppHeader({ user, branchName, onQRClick }: AppHeaderProps) {
           />
         </div>
 
-        <div className="flex-1 flex justify-end gap-0.5">
+        <div className="flex-1 flex justify-end gap-0.5 items-center">
+          {/* Sprint 50.1 hotfix (Aslan 13 May 2026): AI Alerts Bell her sayfada görünür.
+              Önceden sadece HomeScreen WelcomeHeader'da vardı. */}
+          <AiAlertsBell />
           <InboxDialog />
           <Button
             variant="ghost"
