@@ -24,6 +24,7 @@ import {
   isHQRole,
   type UserRoleType,
   factoryStations,
+  factoryStationProducts,
   factoryStaffPins,
   factoryShiftSessions,
   factoryProductionRuns,
@@ -144,33 +145,65 @@ function checkKioskRateLimit(identifier: string): { allowed: boolean; retryAfter
 
   router.get('/api/factory/products', isAuthenticated, async (req, res) => {
     try {
-      let category = req.query.category as string | undefined;
+      const category = req.query.category as string | undefined;
       const stationIdParam = req.query.stationId as string | undefined;
 
-      // Sprint 54.1 hotfix (Aslan 13 May 2026): Eğer category yoksa stationId'den çıkar
-      // factoryStations.category (hamur/dolum/...) ≠ factoryProducts.category (donut/cookie/...)
-      // İstasyon adından ürün kategorisini infer et
-      if (!category && stationIdParam) {
+      // Sprint 54.2 (Aslan 13 May 2026): factory_station_products mapping kullan
+      // Eğer stationId verilmişse, SADECE o istasyona atanmış ürünleri döndür
+      if (stationIdParam) {
         const stationId = parseInt(stationIdParam);
         if (!isNaN(stationId)) {
+          const mapped = await db.select({
+            id: factoryProducts.id,
+            sku: factoryProducts.sku,
+            name: factoryProducts.name,
+            category: factoryProducts.category,
+            subCategory: factoryProducts.subCategory,
+            description: factoryProducts.description,
+            unit: factoryProducts.unit,
+            isActive: factoryProducts.isActive,
+            isPrimary: factoryStationProducts.isPrimary,
+            sortOrder: factoryStationProducts.sortOrder,
+          })
+          .from(factoryStationProducts)
+          .innerJoin(factoryProducts, eq(factoryStationProducts.productId, factoryProducts.id))
+          .where(and(
+            eq(factoryStationProducts.stationId, stationId),
+            eq(factoryProducts.isActive, true),
+          ))
+          .orderBy(factoryStationProducts.sortOrder, factoryProducts.name);
+
+          // Eğer mapping boşsa (henüz seed yapılmamış), category fallback
+          if (mapped.length > 0) {
+            console.log(`[Factory/products] Station ${stationId} → ${mapped.length} mapped products`);
+            return res.json(mapped);
+          }
+
+          // Fallback: station.name'den infer (geçici - mapping seed yapılana kadar)
           const [station] = await db.select().from(factoryStations).where(eq(factoryStations.id, stationId)).limit(1);
           if (station) {
             const name = (station.name || '').toLowerCase();
-            // Station name → product category mapping
-            if (name.includes('donut')) category = 'donut';
-            else if (name.includes('cookie')) category = 'cookie';
-            else if (name.includes('cinnaboom') || name.includes('cinnabon')) category = 'cinnabon';
-            else if (name.includes('mamabon')) category = 'mamabon';
-            else if (name.includes('cheesecake')) category = 'cheesecake';
-            else if (name.includes('wrapitos')) category = 'wrapitos';
-            else if (name.includes('konsantre') || name.includes('şurup') || name.includes('surup')) category = 'syrup';
-            else if (name.includes('brownie')) category = 'brownie';
-            else if (name.includes('cake') || name.includes('kek')) category = 'cake';
-            console.log(`[Factory/products] Station "${station.name}" → category "${category || '(no-match)'}"`);
+            let inferredCategory: string | undefined;
+            if (name.includes('donut')) inferredCategory = 'donut';
+            else if (name.includes('cookie')) inferredCategory = 'cookie';
+            else if (name.includes('cinnaboom') || name.includes('cinnabon')) inferredCategory = 'cinnabon';
+            else if (name.includes('mamabon')) inferredCategory = 'mamabon';
+            else if (name.includes('cheesecake')) inferredCategory = 'cheesecake';
+            else if (name.includes('wrapitos')) inferredCategory = 'wrapitos';
+            else if (name.includes('konsantre') || name.includes('şurup') || name.includes('surup')) inferredCategory = 'syrup';
+            else if (name.includes('brownie')) inferredCategory = 'brownie';
+            else if (name.includes('cake') || name.includes('kek')) inferredCategory = 'cake';
+            
+            if (inferredCategory) {
+              console.log(`[Factory/products] Station "${station.name}" mapping yok, infer fallback → "${inferredCategory}"`);
+              const products = await storage.getFactoryProducts(inferredCategory);
+              return res.json(products);
+            }
           }
         }
       }
 
+      // Category-based fetch (geriye uyumlu)
       const products = await storage.getFactoryProducts(category);
       res.json(products);
     } catch (error: unknown) {

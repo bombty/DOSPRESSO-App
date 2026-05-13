@@ -336,6 +336,38 @@ export const insertFactoryStationSchema = createInsertSchema(factoryStations).om
 export type InsertFactoryStation = z.infer<typeof insertFactoryStationSchema>;
 export type FactoryStation = typeof factoryStations.$inferSelect;
 
+// ═══════════════════════════════════════════════════════════════════
+// Sprint 54.2 (Aslan 13 May 2026): İstasyon → Ürün Mapping Tablosu
+// ═══════════════════════════════════════════════════════════════════
+// Her fabrika istasyonunda hangi ürünler üretiliyor/işleniyor
+// Örnek: "Donut Süsleme" → 21 donut çeşidi
+//        "Konsantre Dolum" → 20+ şurup
+//        "Donut Paketleme" → tüm tatlılar (donut+cheese+cinna+cookie)
+// ═══════════════════════════════════════════════════════════════════
+export const factoryStationProducts = pgTable("factory_station_products", {
+  id: serial("id").primaryKey(),
+  stationId: integer("station_id").notNull().references(() => factoryStations.id, { onDelete: "cascade" }),
+  productId: integer("product_id").notNull().references(() => factoryProducts.id, { onDelete: "cascade" }),
+  isPrimary: boolean("is_primary").default(false), // Bu istasyonun ana çıktısı mı?
+  sortOrder: integer("sort_order").default(0),
+  notes: text("notes"), // Örn: "Şoklama sonrası kolilenir", "1 koli = 48 adet"
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("fsp_station_idx").on(table.stationId),
+  index("fsp_product_idx").on(table.productId),
+  unique("fsp_station_product_unique").on(table.stationId, table.productId),
+]);
+
+export const insertFactoryStationProductSchema = createInsertSchema(factoryStationProducts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertFactoryStationProduct = z.infer<typeof insertFactoryStationProductSchema>;
+export type FactoryStationProduct = typeof factoryStationProducts.$inferSelect;
+
 // Fabrika Personeli PIN Kodları (kiosk girişi için)
 export const factoryStaffPins = pgTable("factory_staff_pins", {
   id: serial("id").primaryKey(),
