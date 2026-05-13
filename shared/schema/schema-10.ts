@@ -328,6 +328,24 @@ export const rawMaterials = pgTable("raw_materials", {
   isActive: boolean("is_active").default(true),
   notes: text("notes"),
   
+  // ═══════════════════════════════════════════════════════════════════
+  // Sprint 51 (Aslan 13 May 2026): Fabrika System Refactor
+  // ═══════════════════════════════════════════════════════════════════
+  // 4 ana kategori: hammadde, al_sat, uretim_malzeme, fabrika_kullanim
+  mainCategory: varchar("main_category", { length: 50 }),
+  
+  // Stok takibi (artık inventory tablosu kullanılmıyor — TEK kaynak)
+  currentStock: numeric("current_stock", { precision: 12, scale: 3 }).default("0"),
+  minStock: numeric("min_stock", { precision: 12, scale: 3 }).default("0"),
+  maxStock: numeric("max_stock", { precision: 12, scale: 3 }),
+  reorderPoint: numeric("reorder_point", { precision: 12, scale: 3 }),
+  stockLastUpdated: timestamp("stock_last_updated"),
+  warehouseLocation: varchar("warehouse_location", { length: 100 }),
+  
+  // Satış (al_sat kategorisi için)
+  kdvRate: integer("kdv_rate").default(18),
+  sellingPrice: numeric("selling_price", { precision: 12, scale: 4 }),
+  
   // Keyblend - Gizli formülasyon hammaddesi
   isKeyblend: boolean("is_keyblend").default(false),
   keyblendCost: numeric("keyblend_cost", { precision: 12, scale: 4 }).default("0"), // Admin tarafından girilen maliyet
