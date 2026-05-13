@@ -770,7 +770,12 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
     max: 100,
     standardHeaders: true,
     legacyHeaders: false,
+    // Sprint 52.1 hotfix (Aslan 13 May 2026): IP yerine user.id bazlı
+    // Kiosk paylaşımlı IP'lerde 4-12 personel 100 isteği çabuk patlatıyordu
+    // (POST /api/shifts × 7 gün × 3-4 vardiya = 21-28 + polling + GET'ler)
+    keyGenerator: (req: any) => req.user?.id?.toString() || req.ip || 'anon',
     message: { error: 'Çok fazla istek gönderdiniz, lütfen bir süre bekleyin' },
+    validate: false,
   });
 
   const authLimiter = rateLimit({
@@ -879,6 +884,9 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   }
 
   app.use('/api/ai/', sensitiveApiLimiter);
+  // Sprint 52.1 hotfix (Aslan 13 May 2026): OpenAI çağıran shift endpoint'leri
+  // generalLimiter'a değil sensitiveApiLimiter'a (20/saat) bağla — OpenAI quota koruması
+  app.use('/api/shifts/recommendations', sensitiveApiLimiter);
   app.use('/api/agent/run-now', agentRunLimiter);
 
   // CSRF protection — validates Origin/Referer on mutating requests
