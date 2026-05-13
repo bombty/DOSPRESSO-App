@@ -32,3 +32,4 @@ export * from './schema/schema-27-branch-data-collection';
 export * from './schema/schema-28-kvkk-approvals';  // Aslan 10 May 2026: KVKK per-user
 export * from './schema/schema-29-kvkk-data-requests';  // Aslan 10 May 2026: KVKK m.11 talepleri
 export * from './schema/schema-30-onboarding-ai';  // Sprint 47-48 (Aslan 13 May 2026): AI-Native Onboarding + Daily Brief
+export * from './schema/schema-31-fabrika-refactor';  // Sprint 51 (Aslan 13 May 2026): Fabrika sistem refactor + b2b_customers
