@@ -2574,8 +2574,13 @@ router.get('/api/shifts/recommendations', isAuthenticated, async (req, res) => {
   } catch (error: unknown) {
     if (respondIfAiBudgetError(error, res)) return;
     console.error("Error generating shift recommendations:", error);
-    const message = error instanceof Error ? error.message : "Vardiya önerileri oluşturulamadı";
-    res.status(500).json({ message });
+    // Sprint 52.1 hotfix (Aslan 13 May 2026): OpenAI quota/timeout için yapıcı mesaj
+    const rawMessage = error instanceof Error ? error.message : "";
+    const isQuotaOrTimeout = /quota|429|rate.?limit|timeout|ECONNRESET|ETIMEDOUT/i.test(rawMessage);
+    const userMessage = isQuotaOrTimeout
+      ? "AI servisi şu anda yoğun, lütfen 1-2 dakika sonra tekrar deneyin veya vardiyaları manuel ekleyin"
+      : (rawMessage || "Vardiya önerileri oluşturulamadı");
+    res.status(500).json({ message: userMessage, code: isQuotaOrTimeout ? "AI_BUSY" : "AI_ERROR" });
   }
 });
 
@@ -2975,10 +2980,13 @@ router.post('/api/shifts/ai-apply', kioskOrAuth, async (req, res) => {
     const existingShifts = await storage.getShifts(branchId, undefined, weekStartDate, weekEndStr);
 
     if (existingShifts.length > 0 && !confirmOverwrite) {
+      // Sprint 52.1 hotfix (Aslan 13 May 2026): Frontend bunu modal ile yakalayıp
+      // kullanıcı onayıyla confirmOverwrite=true gönderecek
       return res.status(409).json({
-        message: `Bu hafta için ${existingShifts.length} mevcut vardiya var. Üzerine yazmak için confirmOverwrite: true gönderin.`,
+        message: `Bu hafta için ${existingShifts.length} mevcut vardiya kaydı var. Üzerine yazmak için onay gerekli.`,
         existingCount: existingShifts.length,
         requiresConfirmation: true,
+        code: "EXISTING_SHIFTS_CONFIRM_REQUIRED",
       });
     }
 

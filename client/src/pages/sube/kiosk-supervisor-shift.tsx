@@ -43,6 +43,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+// Sprint 52.1 hotfix (Aslan 13 May 2026): 409 mevcut vardiya onay dialogu
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ChevronLeft,
   ChevronRight,
@@ -192,6 +203,8 @@ export default function KioskSupervisorShift() {
   // Sprint 19.2: Aktif hafta tab (0=Hafta 1, 1=Hafta 2) — weekAnalysis için
   const [currentWeekTab, setCurrentWeekTab] = useState<0 | 1>(0);
   const [aiPreview, setAiPreview] = useState<any | null>(null);
+  // Sprint 52.1 hotfix (Aslan 13 May 2026): 409 mevcut vardiya onay state
+  const [overwriteConfirm, setOverwriteConfirm] = useState<{ existingCount: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -476,7 +489,9 @@ export default function KioskSupervisorShift() {
   });
 
   const aiApplyMutation = useMutation({
-    mutationFn: async () => {
+    // Sprint 52.1 hotfix (Aslan 13 May 2026): confirmOverwrite parametre al
+    // İlk denemede false → 409 alırsak modal → onayla → true ile retry
+    mutationFn: async (confirmOverwrite: boolean = false) => {
       // Aslan 11 May 2026 HOTFIX-3: Backend 'plan' field bekliyor + weekStartDate gerekli
       if (!aiPreview?.plan?.length) throw new Error("Öneri yok");
       const res = await fetch("/api/shifts/ai-apply", {
@@ -488,9 +503,17 @@ export default function KioskSupervisorShift() {
           plan: aiPreview.plan,
           // Sprint 31: Seçili haftayı gönder
           weekStartDate: activeWeekStartStr,
-          confirmOverwrite: true,  // Kiosktan uygulanıyor, mevcut planı override et
+          confirmOverwrite,
         }),
       });
+      if (res.status === 409) {
+        // Sprint 52.1: Mevcut vardiya var, modal göster
+        const data = await res.json().catch(() => ({}));
+        const err: any = new Error(data.message || "Onay gerekli");
+        err.code = "EXISTING_SHIFTS_CONFIRM_REQUIRED";
+        err.existingCount = data.existingCount || 0;
+        throw err;
+      }
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.message || "Uygulanamadı");
@@ -504,8 +527,14 @@ export default function KioskSupervisorShift() {
         description: `${data?.created || 0} vardiya kaydedildi.` 
       });
       setAiPreview(null);
+      setOverwriteConfirm(null);
     },
     onError: (err: any) => {
+      // Sprint 52.1: 409 ise modal göster, toast verme
+      if (err?.code === "EXISTING_SHIFTS_CONFIRM_REQUIRED") {
+        setOverwriteConfirm({ existingCount: err.existingCount || 0 });
+        return;
+      }
       toast({ 
         title: "Uygulama hatası", 
         description: err.message || "Bilinmeyen hata",
@@ -1135,6 +1164,38 @@ export default function KioskSupervisorShift() {
         </DialogContent>
       </Dialog>
 
+      {/* Sprint 52.1 hotfix (Aslan 13 May 2026): Mevcut vardiya üzerine yazma onayı */}
+      <AlertDialog open={!!overwriteConfirm} onOpenChange={(open) => { if (!open) setOverwriteConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <span className="text-2xl">⚠️</span>
+              Bu hafta mevcut vardiyalar var
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-base pt-2">
+              Bu hafta için <strong>{overwriteConfirm?.existingCount || 0}</strong> mevcut vardiya kaydı bulundu.
+              <br /><br />
+              AI önerisini uygulamak için <strong>mevcut tüm vardiyalar silinecek</strong> ve yeni plan kaydedilecek.
+              <br /><br />
+              Devam etmek istiyor musunuz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="btn-overwrite-cancel">İptal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => {
+                // Onaylandı — confirmOverwrite=true ile retry
+                aiApplyMutation.mutate(true);
+              }}
+              data-testid="btn-overwrite-confirm"
+            >
+              Sil ve Yeni Plan Uygula
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Vardiya Detay Modal — sil + görev/mesaj bırak (Sprint 19.4) */}
       <Dialog open={!!shiftToDelete} onOpenChange={(open) => {
         if (!open) { setShiftToDelete(null); setShiftTaskText(""); }
@@ -1472,7 +1533,7 @@ export default function KioskSupervisorShift() {
               İptal
             </Button>
             <Button
-              onClick={() => aiApplyMutation.mutate()}
+              onClick={() => aiApplyMutation.mutate(false)}
               disabled={aiApplyMutation.isPending}
               className="bg-purple-600 hover:bg-purple-700"
             >
