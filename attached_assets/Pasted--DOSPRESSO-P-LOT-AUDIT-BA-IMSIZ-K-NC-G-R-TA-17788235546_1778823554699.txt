@@ -1,0 +1,84 @@
+═══════════════════════════════════════════════════
+DOSPRESSO PİLOT AUDIT — BAĞIMSIZ İKİNCİ GÖRÜŞ TALEBİ
+═══════════════════════════════════════════════════
+
+Selam Agent. Pilot 18 May Pazar 15:00'te başlayacak.
+Claude (Anthropic) son 36 saatte 12 sprint atıp 5,481 satır
+ekledi. Şimdi pilot öncesi senin bağımsız ikinci görüşüne
+ihtiyacım var.
+
+═══════════════════════════════════════════════════
+1. RAPORU OKU
+═══════════════════════════════════════════════════
+docs/AUDIT-14-MAY-2026.md dosyasını oku
+(GitHub main branch'te, son commit: c3992a960)
+
+═══════════════════════════════════════════════════
+2. DOĞRULA
+═══════════════════════════════════════════════════
+Şu komutları çalıştır + sonuçları paylaş:
+
+# Git durumu
+git log --oneline | head -15
+
+# Yeni router'lar mount edilmiş mi?
+grep -n "semaRouter\|erenRouter\|aslan2Router\|stationProductsRouter\|pilotReadinessRouter" server/routes.ts
+
+# Yeni route'lar App.tsx'te mi?
+grep -n "SemaPaneli\|ErenPaneli\|Aslan2Paneli" client/src/App.tsx
+
+# Sidebar yeni menü?
+grep -n "sema-paneli\|eren-paneli\|aslan2-paneli" client/src/components/layout/module-menu-config.ts
+
+# DB tablo durumu
+psql $DATABASE_URL -c "\d factory_station_products" 2>&1 | head -10
+
+# Yeni tabloda kayıt var mı?
+psql $DATABASE_URL -c "SELECT COUNT(*) FROM factory_station_products"
+
+═══════════════════════════════════════════════════
+3. 12 SORUYA CEVAP VER
+═══════════════════════════════════════════════════
+Raporun Bölüm 6'sında 12 soru var. Her birine
+mühendis bakış açınla cevap ver:
+
+A) MİMARİ (3 soru)
+1. factory_station_products tablosunun migration'da
+   constraint çakışması var mı?
+2. /recete-gm prefix'i mevcut route ile çakışıyor mu?
+3. requireManifestAccess eksikliği pilot için kritik mi?
+
+B) TEST STRATEJİSİ (3 soru)
+4. Pilot Readiness Check endpoint'i performance issue
+   yaratır mı? (337 hammadde tarama)
+5. 5 panel için 4 saat test yeterli mi?
+6. Kiosk bug fix doğrulama için spesifik senaryo öneriyor
+   musun?
+
+C) OPERASYONEL (3 soru)
+7. Personel hesaplarını seed script ile mi yoksa manuel
+   mi oluşturmalı?
+8. Eksik 8 donut çeşidini nasıl tespit edip ekleriz?
+9. Workspace URL ile pilot başlatmak güvenli mi?
+   Production'a kıyasla kayıp feature var mı?
+
+D) RİSK MİTİGASYON (3 soru)
+10. Pilot kritik bug ile başlarsa hızlı rollback nasıl?
+11. Pilot canlıyken hot fix sprint nasıl daha hızlı?
+12. İlk 2 saat hangi metric'leri canlı izlemeli?
+
+═══════════════════════════════════════════════════
+4. RAPORUNDA ŞUNLAR OLSUN
+═══════════════════════════════════════════════════
+
+a) Onayladığın bulgular ✅
+b) İtiraz ettiğin / farklı düşündüğün konular ❌
+c) Gözden kaçırılan riskler 🆕
+d) 12 soruya somut cevap (kısa, net)
+e) Pilot Pazar günü için son tavsiyen
+
+═══════════════════════════════════════════════════
+ÖZET
+═══════════════════════════════════════════════════
+Hedef: Pilot 4 gün öncesi cross-check ile risk azaltma
+Format: Kısa, somut, eyleme dönük cevaplar
