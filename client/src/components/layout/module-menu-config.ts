@@ -78,6 +78,10 @@ const FABRIKA_MENU: ModuleMenuConfig = {
     { id: "fiyat-listesi", label: "💰 Fiyat Listesi", path: "/fiyat-listesi", icon: DollarSign, allowedRoles: ["admin","ceo","cgo","satinalma","muhasebe","fabrika_mudur","gida_muhendisi"] },
     { id: "fabrika-personel", label: "🏭 Personel Performans", path: "/fabrika/personel-performans", icon: UserCog, allowedRoles: ["admin","ceo","cgo","fabrika_mudur","fabrika_sorumlu","ik","muhasebe"] },
     { id: "gm-dashboard", label: "🥗 GM Anasayfa", path: "/gida-muhendisi-dashboard", icon: Beaker, allowedRoles: ["admin","ceo","cgo","gida_muhendisi","kalite_kontrol","kalite_yoneticisi"] },
+    // Sprint 56 (Aslan 14 May 2026): Pilot panelleri sidebar'a eklenmiş
+    { id: "sema-paneli", label: "🧪 Sema Paneli", path: "/gida-muhendisi/sema-paneli", icon: Beaker, allowedRoles: ["admin","ceo","cgo","gida_muhendisi","kalite_kontrol"] },
+    { id: "eren-paneli", label: "🏭 Eren Paneli", path: "/fabrika-mudur/eren-paneli", icon: Factory, allowedRoles: ["admin","ceo","cgo","fabrika_mudur","uretim_sefi"] },
+    { id: "aslan2-paneli", label: "🔑 Reçete GM (Aslan2)", path: "/recete-gm/aslan2-paneli", icon: Lock, allowedRoles: ["admin","ceo","cgo","recete_gm"] },
     { id: "mr-dobody-eksiklik", label: "🤖 Mr. Dobody Eksiklik Raporu", path: "/mr-dobody/hammadde-eksiklik", icon: Sparkles, allowedRoles: ["admin","ceo","cgo","satinalma","gida_muhendisi","kalite_kontrol","kalite_yoneticisi","fabrika_mudur","fabrika_sorumlu"] },
     // Sprint 13 (6 May 2026): "Etiket Hesapla" sidebar link'i kaldırıldı.
     // Sebep: productId parametresi olmadan crash veriyordu (Eksik parametre hatası).
@@ -290,6 +294,10 @@ const PREFIX_ROUTE_MAP: Array<{ prefix: string; config: ModuleMenuConfig }> = [
   { prefix: "/ik", config: IK_MENU },
   { prefix: "/personel", config: IK_MENU },
   { prefix: "/fabrika", config: FABRIKA_MENU },
+  // Sprint 56 (Aslan 14 May 2026): Yeni paneller fabrika sidebar'ı görsün
+  { prefix: "/gida-muhendisi", config: FABRIKA_MENU },
+  { prefix: "/fabrika-mudur", config: FABRIKA_MENU },
+  { prefix: "/recete-gm", config: FABRIKA_MENU },
   { prefix: "/crm", config: CRM_MENU },
   { prefix: "/destek", config: CRM_MENU },
   { prefix: "/akademi", config: AKADEMI_MENU },
