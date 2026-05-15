@@ -425,6 +425,8 @@ import stationProductsRouter from "./routes/factory-station-products";
 import aslan2Router from "./routes/aslan2-routes";
 // Sprint 56 (Aslan 14 May 2026): Pilot Readiness Check
 import pilotReadinessRouter from "./routes/pilot-readiness-check";
+// Sprint 56.1 (Aslan 14 May 2026): Pilot Emergency Seed
+import pilotSeedRouter from "./routes/pilot-emergency-seed";
 import pushRouter from "./routes/push";
 import dataManagementRouter from "./routes/data-management";
 import setupRouter from "./routes/setup";
@@ -930,6 +932,7 @@ function resetKioskRateLimit(identifier: string): void { kioskLoginAttempts.dele
   app.use(stationProductsRouter);  // Sprint 54.2 — İstasyon-Ürün mapping
   app.use(aslan2Router);  // Sprint 55 — Aslan2 recete_gm paneli
   app.use(pilotReadinessRouter);  // Sprint 56 — Pilot Readiness Check
+  app.use(pilotSeedRouter);  // Sprint 56.1 — Pilot Emergency Seed
   app.use(branchInventoryRouter);
   app.use(pushRouter);
   app.use(dataManagementRouter);
