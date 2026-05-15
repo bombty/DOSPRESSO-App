@@ -406,6 +406,11 @@ export const M09_FABRIKA: ModuleManifest = {
     { id: 'factory-kiosk', name: 'Fabrika Kiosk', description: 'Fabrika vardiya', path: '/fabrika/kiosk', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'haccp', name: 'HACCP & Gıda Güvenliği', description: 'Gıda güvenliği', path: '/fabrika/haccp', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
     { id: 'roasting', name: 'Kavurma Logları', description: 'Kahve kavurma', path: '/fabrika/kavurma', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
+    // Sprint 56 (Aslan 14 May 2026): Pilot rol panelleri manifest'e ekli
+    { id: 'sema-paneli', name: 'Sema Paneli (Gıda Müh.)', description: 'Besin değer + reçete onay + alerjen', path: '/gida-muhendisi/sema-paneli', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
+    { id: 'eren-paneli', name: 'Eren Paneli (Fabrika Müd.)', description: 'Üretim + vardiya + KPI', path: '/fabrika-mudur/eren-paneli', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
+    { id: 'aslan2-paneli', name: 'Aslan2 Paneli (Reçete GM)', description: 'Reçete + KEYBLEND + maliyet', path: '/recete-gm/aslan2-paneli', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
+    { id: 'station-products', name: 'İstasyon-Ürün Mapping', description: 'Fabrika istasyon → ürün eşleştirme', path: '/fabrika/station-products', canDisable: true, defaultEnabled: true, flagBehavior: 'standard' },
   ],
   roles: {
     admin:            { view: true, create: true, edit: true, delete: true, approve: true, scope: 'all_branches' },
