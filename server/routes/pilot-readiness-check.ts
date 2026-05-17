@@ -139,9 +139,9 @@ router.get("/api/admin/pilot-readiness-check", isAuthenticated, requireAdmin, as
     const rawMaterials = await db.execute(sql`
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN energy_kcal_per_100g IS NOT NULL THEN 1 END) as with_energy,
-        COUNT(CASE WHEN protein_per_100g IS NOT NULL THEN 1 END) as with_protein,
-        COUNT(CASE WHEN allergens IS NOT NULL AND allergens != '[]' THEN 1 END) as with_allergens
+        COUNT(CASE WHEN energy_kcal IS NOT NULL THEN 1 END) as with_energy,
+        COUNT(CASE WHEN protein IS NOT NULL THEN 1 END) as with_protein,
+        COUNT(CASE WHEN allergen_present = true THEN 1 END) as with_allergens
       FROM raw_materials 
       WHERE is_active = true
     `);
